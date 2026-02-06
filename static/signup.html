@@ -54,9 +54,9 @@
     <script>
         async function handleSignup(event) {
             event.preventDefault();
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const invitation = document.getElementById('invitation').value;
+            const invitation = document.getElementById('invitation').value.trim();
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
             
