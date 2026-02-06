@@ -16,14 +16,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def verify_password(plain_password, hashed_password):
     try:
         return pwd_context.verify(plain_password, hashed_password)
-    except Exception as e:
-        print(f"!!! PWD VERIFY ERROR: {e}")
+    except Exception:
         # Try a fallback if it's a version mismatch or similar
         try:
             import bcrypt
             return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
         except:
-            raise e
+            return False
 
 def get_password_hash(password):
     return pwd_context.hash(password)

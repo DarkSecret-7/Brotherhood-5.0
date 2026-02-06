@@ -23,36 +23,33 @@ if USE_LOCAL_DB:
     )
 else:
     # Get the database URL from environment variable
-    # Render often provides DATABASE_URL
     SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
     if not SQLALCHEMY_DATABASE_URL:
         # Check all env vars for something containing DATABASE_URL or POSTGRES_URL
         for key, value in os.environ.items():
             if "DATABASE_URL" in key.upper() or "POSTGRES_URL" in key.upper():
-                print(f"DEBUG: Found alternative DB env var: {key}")
                 SQLALCHEMY_DATABASE_URL = value
                 break
 
     if not SQLALCHEMY_DATABASE_URL:
-        print("!!! WARNING: No database environment variable found (DATABASE_URL, etc.).")
-        print("!!! Falling back to localhost:5432 for local development.")
+        # Fallback to localhost for local development
         SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgrespassword@localhost:5432/brotherhood"
     else:
         # Render/SQLAlchemy fix for "postgres://" (SQLAlchemy requires "postgresql://")
         if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
             SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
         
-        # Log the connection (safely)
+        # Log connection info (safely)
         from urllib.parse import urlparse
         try:
             parsed = urlparse(SQLALCHEMY_DATABASE_URL)
             host = parsed.hostname or "unknown"
             port = parsed.port or "5432"
             path = parsed.path or "/unknown"
-            print(f"DEBUG: Connecting to DB host: {host}:{port}{path}")
-        except Exception as e:
-            print(f"DEBUG: DB config found but parsing for logs failed: {e}")
+            print(f"INFO: Connecting to database at {host}:{port}{path}")
+        except:
+            pass
 
     engine_args = {
         "pool_pre_ping": True,

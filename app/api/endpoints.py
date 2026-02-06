@@ -57,7 +57,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     try:
         user = crud.get_user_by_username(db, username=form_data.username)
         if not user:
-            print(f"DEBUG LOGIN: User {form_data.username} not found")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -67,11 +66,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         try:
             is_valid = utils.verify_password(form_data.password, user.hashed_password)
         except Exception as e:
-            print(f"!!! ERROR LOGIN: Password verification failed for {form_data.username}: {e}")
+            print(f"ERROR: Password verification failed: {e}")
             raise HTTPException(status_code=500, detail="Internal error during password verification")
 
         if not is_valid:
-            print(f"DEBUG LOGIN: Invalid password for {form_data.username}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -86,10 +84,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     except HTTPException:
         raise
     except Exception as e:
-        print(f"!!! CRITICAL LOGIN ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"CRITICAL: Login error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # --- Utility Endpoints (for dev/setup) ---
 
@@ -168,8 +164,7 @@ def get_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), curre
             raise HTTPException(status_code=404, detail="Snapshot not found")
         return snapshot
     except Exception as e:
-        print(f"Error fetching snapshot {snapshot_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.delete("/snapshots/{snapshot_id}")
 def delete_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
