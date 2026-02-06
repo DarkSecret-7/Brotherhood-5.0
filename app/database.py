@@ -52,10 +52,11 @@ else:
             pass
 
     engine_args = {
-        "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "pool_size": 5,
-        "max_overflow": 10,
+        "pool_pre_ping": True,  # Verifies connection is alive before use
+        "pool_recycle": 300,    # Recycle connections every 5 minutes
+        "pool_size": 3,         # Reduced pool size for Render Free Tier
+        "max_overflow": 2,      # Minimal overflow
+        "pool_timeout": 30,     # Timeout after 30 seconds
     }
     # If we are on Render, we MUST use sslmode=require for external connections
     # and it helps with stability even for internal ones.
@@ -69,7 +70,12 @@ else:
     except Exception as e:
         print(f"!!! ERROR: Failed to create engine: {e}")
         # Final fallback just in case
-        engine = create_engine("postgresql://postgres:postgrespassword@localhost:5432/brotherhood", pool_pre_ping=True)
+        engine = create_engine(
+            "postgresql://postgres:postgrespassword@localhost:5432/brotherhood",
+            pool_pre_ping=True,
+            pool_size=3,
+            max_overflow=2
+        )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
