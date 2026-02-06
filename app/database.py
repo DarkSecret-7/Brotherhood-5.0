@@ -23,32 +23,19 @@ if USE_LOCAL_DB:
     )
 else:
     # Get the database URL from environment variable
-    # Render often provides DATABASE_URL or INTERNAL_DATABASE_URL
-    # We also check for other common names just in case
-    
-    # Debug: List environment variables that might contain DB info (keys only)
-    db_env_keys = [k for k in os.environ.keys() if any(x in k.upper() for x in ["DATABASE", "POSTGRES", "DB", "URL"])]
-    if db_env_keys:
-        print(f"DEBUG: Found environment variables that might contain DB info: {db_env_keys}")
-    else:
-        print("DEBUG: No environment variables found with 'DATABASE', 'POSTGRES', 'DB', or 'URL' in their name.")
-
-    SQLALCHEMY_DATABASE_URL = (
-        os.getenv("INTERNAL_DATABASE_URL") or
-        os.getenv("DATABASE_URL") or 
-        os.getenv("DATABASE_PUBLIC_URL") or
-        os.getenv("DB_URL") or
-        os.getenv("POSTGRES_URL") or
-        os.getenv("DATABASE_INTERNAL_URL") or
-        os.getenv("DATABASE_PRIVATE_URL")
-    )
+    # Render often provides DATABASE_URL
+    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
     if not SQLALCHEMY_DATABASE_URL:
-        # If no env var found, we fallback to localhost for local development
-        # But we print a very clear message for Render logs
-        print("!!! WARNING: No database environment variable found (DATABASE_URL, INTERNAL_DATABASE_URL, etc.).")
-        print("!!! This is why it is connecting to localhost.")
-        print("!!! If you are on Render, you MUST link your database to this service in the Render Dashboard.")
+        # Check all env vars for something containing DATABASE_URL or POSTGRES_URL
+        for key, value in os.environ.items():
+            if "DATABASE_URL" in key.upper() or "POSTGRES_URL" in key.upper():
+                print(f"DEBUG: Found alternative DB env var: {key}")
+                SQLALCHEMY_DATABASE_URL = value
+                break
+
+    if not SQLALCHEMY_DATABASE_URL:
+        print("!!! WARNING: No database environment variable found (DATABASE_URL, etc.).")
         print("!!! Falling back to localhost:5432 for local development.")
         SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgrespassword@localhost:5432/brotherhood"
     else:
@@ -60,14 +47,10 @@ else:
         from urllib.parse import urlparse
         try:
             parsed = urlparse(SQLALCHEMY_DATABASE_URL)
-            # Hide password but show host and database name to confirm connection details
-            scheme = parsed.scheme or "postgresql"
-            user = parsed.username or "unknown"
             host = parsed.hostname or "unknown"
             port = parsed.port or "5432"
             path = parsed.path or "/unknown"
-            safe_url = f"{scheme}://{user}:****@{host}:{port}{path}"
-            print(f"DEBUG: Successfully found DB configuration. Connecting to: {safe_url}")
+            print(f"DEBUG: Connecting to DB host: {host}:{port}{path}")
         except Exception as e:
             print(f"DEBUG: DB config found but parsing for logs failed: {e}")
 
