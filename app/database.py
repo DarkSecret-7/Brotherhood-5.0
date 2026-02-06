@@ -24,30 +24,36 @@ if USE_LOCAL_DB:
 else:
     # Get the database URL from environment variable
     # Render often provides DATABASE_URL or INTERNAL_DATABASE_URL
+    # We also check for other common names just in case
     SQLALCHEMY_DATABASE_URL = (
         os.getenv("DATABASE_URL") or 
         os.getenv("INTERNAL_DATABASE_URL") or
-        os.getenv("DATABASE_PUBLIC_URL")
+        os.getenv("DATABASE_PUBLIC_URL") or
+        os.getenv("POSTGRES_URL") or
+        os.getenv("DB_URL")
     )
 
     if not SQLALCHEMY_DATABASE_URL:
-        # If no env var found, we fallback to localhost
+        # If no env var found, we fallback to localhost for local development
+        # But we print a very clear message for Render logs
+        print("!!! WARNING: No database environment variable found (DATABASE_URL, INTERNAL_DATABASE_URL, etc.).")
+        print("!!! If you are on Render, make sure your database is linked to this service.")
+        print("!!! Falling back to localhost:5432 for local development.")
         SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgrespassword@localhost:5432/brotherhood"
-        print("!!! WARNING: No database environment variable found. Falling back to localhost.")
     else:
+        # Render/SQLAlchemy fix for "postgres://" (SQLAlchemy requires "postgresql://")
+        if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+            SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        
         # Log the connection (safely)
         from urllib.parse import urlparse
         try:
             parsed = urlparse(SQLALCHEMY_DATABASE_URL)
-            # Hide password but show host to confirm if it's internal or external
+            # Hide password but show host and database name to confirm connection details
             safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}"
-            print(f"DEBUG: Found DB config. Connecting to: {safe_url}")
-        except:
-            print("DEBUG: DB config found but parsing failed.")
-
-    # Render/SQLAlchemy fix for "postgres://"
-    if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+            print(f"DEBUG: Found DB configuration. Connecting to: {safe_url}")
+        except Exception as e:
+            print(f"DEBUG: DB config found but parsing for logs failed: {e}")
 
     try:
         engine = create_engine(SQLALCHEMY_DATABASE_URL)

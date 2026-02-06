@@ -77,6 +77,24 @@ When you edit a prerequisite in the Web UI, the system automatically:
 ### Circularity Detection
 The system prevents the creation of circular dependencies (e.g., A -> B -> A) by performing a cycle check during every create or update operation.
 
+## Deployment to Render
+
+This project is configured to deploy easily to [Render](https://render.com) using the provided `render.yaml` blueprint.
+
+### 1. Connect your Database
+On Render, the database environment variable is usually provided automatically if you use the Blueprint. If you are setting it up manually:
+1. Go to your **Web Service** dashboard.
+2. Click **Environment**.
+3. Add a new environment variable:
+   - **Key**: `DATABASE_URL`
+   - **Value**: (Copy the **Internal Database URL** from your Render Database dashboard)
+4. Save changes and the service will redeploy.
+
+### 2. Troubleshoot "No Database Environment Variable"
+If the logs show `!!! WARNING: No database environment variable found`, it means the `DATABASE_URL` is missing from the environment.
+- Ensure the name of your database in `render.yaml` matches your actual database name (currently set to `brotherhood-db`).
+- Check that the database is in the same "Region" as your web service.
+
 ## Authentication & Security
 
 - **Invite-Only Signup**: Registration is restricted to users with a valid invitation code.
