@@ -12,7 +12,14 @@ from . import models
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
-    Base.metadata.create_all(bind=engine)
+    try:
+        print("DEBUG: Creating database tables...")
+        Base.metadata.create_all(bind=engine)
+        print("DEBUG: Database tables created successfully.")
+    except Exception as e:
+        print(f"!!! CRITICAL ERROR during startup: Failed to create database tables: {e}")
+        # We don't re-raise here so the app can at least start and serve a health check
+        # even if the DB is down, which helps with debugging.
     yield
 
 app = FastAPI(title="Brotherhood 5.0 Graph API", lifespan=lifespan)

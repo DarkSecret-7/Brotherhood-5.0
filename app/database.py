@@ -50,13 +50,25 @@ else:
         try:
             parsed = urlparse(SQLALCHEMY_DATABASE_URL)
             # Hide password but show host and database name to confirm connection details
-            safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}"
+            scheme = parsed.scheme or "postgresql"
+            user = parsed.username or "unknown"
+            host = parsed.hostname or "unknown"
+            port = parsed.port or "5432"
+            path = parsed.path or "/unknown"
+            safe_url = f"{scheme}://{user}:****@{host}:{port}{path}"
             print(f"DEBUG: Found DB configuration. Connecting to: {safe_url}")
         except Exception as e:
             print(f"DEBUG: DB config found but parsing for logs failed: {e}")
 
+    engine_args = {}
+    # If we are on Render (detected by environment variables), we might need sslmode
+    if os.getenv("RENDER") or "render.com" in SQLALCHEMY_DATABASE_URL:
+        # Only add sslmode if it's not already in the URL
+        if "sslmode" not in SQLALCHEMY_DATABASE_URL:
+            engine_args["connect_args"] = {"sslmode": "require"}
+
     try:
-        engine = create_engine(SQLALCHEMY_DATABASE_URL)
+        engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
     except Exception as e:
         print(f"!!! ERROR: Failed to create engine: {e}")
         # Final fallback just in case
