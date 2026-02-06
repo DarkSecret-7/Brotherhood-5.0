@@ -11,6 +11,12 @@ services:
         fromDatabase:
           name: brotherhood-db
           property: connectionString
+      - key: INTERNAL_DATABASE_URL
+        fromDatabase:
+          name: brotherhood-db
+          property: internalConnectionString
+      - key: RENDER
+        value: true
 
   # The PostgreSQL Database
 databases:

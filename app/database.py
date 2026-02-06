@@ -34,8 +34,8 @@ else:
         print("DEBUG: No environment variables found with 'DATABASE', 'POSTGRES', 'DB', or 'URL' in their name.")
 
     SQLALCHEMY_DATABASE_URL = (
-        os.getenv("DATABASE_URL") or 
         os.getenv("INTERNAL_DATABASE_URL") or
+        os.getenv("DATABASE_URL") or 
         os.getenv("DATABASE_PUBLIC_URL") or
         os.getenv("DB_URL") or
         os.getenv("POSTGRES_URL") or
