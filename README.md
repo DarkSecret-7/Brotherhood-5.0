@@ -15,7 +15,17 @@ Run the following command to start the Database and API using Docker:
 docker-compose up -d --build
 ```
 
-### 2. Configure Environment (Local Development)
+### 2. Database Migrations
+If you are updating from an older version, you can migrate your existing graphs to the new schema using the provided migration script:
+```powershell
+# For local Docker PostgreSQL
+py debug/migrate_docker_postgres.py
+
+# For Render (Remote)
+py debug/migrate_graphs.py
+```
+
+### 3. Configure Environment (Local Development)
 To connect to a remote database (e.g., Render), create a `.env` file in the project root:
 ```text
 DATABASE_URL=postgresql://user:password@hostname:port/database
@@ -32,11 +42,18 @@ The Web UI is now **invite-only**. You must have an invitation code to register.
 - **URL**: [http://localhost:8000](http://localhost:8000)
 - **Authentication**: JWT-based auth with protected routes.
 - **Features**: 
-  - Create, Edit, and Delete nodes with real-time validation.
+  - **Advanced Graph Persistence**:
+    - **Versioning**: Save graphs with unique version labels.
+    - **Base Graph Tracking**: Automatically tracks the source graph for every saved version.
+    - **Smart Conflict Resolution**: Prevents accidental overwrites of existing graphs unless the "Overwrite" toggle is explicitly enabled.
+    - **Authorship Integrity**: Tracks the creator of each graph. Original authorship is preserved even during overwrites to maintain data provenance.
+    - **Timestamping**: Tracks both `Created At` and `Last Updated` timestamps for every graph snapshot.
+    - **Overwrite Toggle**: Intelligent UI toggle that acts as an autofill for existing names and locks the field for safe editing.
   - Automated **Prerequisite Simplification** (Transitive Reduction).
   - **Circularity Detection** to prevent dependency loops.
   - **Mentions Tracking**: See which nodes depend on the current one.
   - **ID Propagation**: Changing a node's Local ID automatically updates all references.
+  - **Compact UI**: Neat display of metadata and timestamps in the database management interface.
 
 ### 4. Use the CLI
 The CLI manages a local graph state and syncs with the backend.
