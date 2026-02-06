@@ -54,18 +54,42 @@ def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
 
 @router.post("/auth/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    user = crud.get_user_by_username(db, username=form_data.username)
-    if not user or not utils.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        user = crud.get_user_by_username(db, username=form_data.username)
+        if not user:
+            print(f"DEBUG LOGIN: User {form_data.username} not found")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        try:
+            is_valid = utils.verify_password(form_data.password, user.hashed_password)
+        except Exception as e:
+            print(f"!!! ERROR LOGIN: Password verification failed for {form_data.username}: {e}")
+            raise HTTPException(status_code=500, detail="Internal error during password verification")
+
+        if not is_valid:
+            print(f"DEBUG LOGIN: Invalid password for {form_data.username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        access_token_expires = timedelta(minutes=utils.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = utils.create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
         )
-    access_token_expires = timedelta(minutes=utils.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = utils.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"!!! CRITICAL LOGIN ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Utility Endpoints (for dev/setup) ---
 
