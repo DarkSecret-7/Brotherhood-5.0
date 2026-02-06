@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brotherhood 5.0 - Graph Management</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Brotherhood 5.0</h1>
+            <div class="version-indicator">Stable Build</div>
+        </div>
+        <div><span id="status-dot" style="color: #34a853;">●</span> Connected to Backend</div>
+        <button class="btn-secondary btn-small" onclick="logout()" style="margin-left: 20px;">Logout</button>
+    </div>
+
+    <div class="nav-tabs">
+        <button id="tab-workspace" class="tab-btn active" onclick="switchTab('workspace')">Workspace Draft</button>
+        <button id="tab-database" class="tab-btn" onclick="switchTab('database')">Database Management</button>
+    </div>
+
+    <div id="view-workspace" class="view-section active">
+        <div id="active-version-info" class="active-version-display">
+            Working on: <span id="current-version-label">None</span>
+        </div>
+        <div class="card">
+            <div class="section-header">
+                <h2>Active Workspace</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-secondary btn-small" onclick="toggleGraph(this)">Show Graph Visualizer</button>
+                    <button id="btn-group-domain" class="btn-primary btn-small" onclick="handleAddDomainClick()">Add Domain</button>
+                    <span id="draft-count" class="badge-count">0 Nodes</span>
+                </div>
+            </div>
+            
+            <div id="graph-visualizer" style="display: none; margin-bottom: 30px; border-bottom: 2px solid #e8f0fe; padding-bottom: 20px;">
+                <div class="visualizer-header">
+                    <h3>Directed Dependency Graph</h3>
+                    <button class="btn-secondary btn-small" onclick="refreshGraph()">Refresh Graph</button>
+                </div>
+                <div id="graph-container"></div>
+                <p style="font-size: 0.8em; color: #5f6368; margin-top: 8px;">
+                    Arrows point from <strong>prerequisite</strong> to <strong>dependent</strong> node.
+                </p>
+            </div>
+            
+            <div id="draft-nodes-list">
+                <p class="empty-state">Loading workspace...</p>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <div class="add-node-header">
+                    <h3>Add New Node</h3>
+                    <div class="inline-form-group">
+                        <label>Under Domain ID</label>
+                        <input type="number" id="node-parent-domain" placeholder="ID (optional)" style="width: 100px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Local ID</label>
+                    <input type="number" id="node-id" placeholder="Integer ID">
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="node-title" placeholder="Node Title">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="node-desc" rows="2" placeholder="Optional description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Prerequisite Expression</label>
+                    <input type="text" id="node-pre" placeholder="e.g. (1 AND 2) OR 3" onblur="autoSimplifyPrerequisites('node-pre')">
+                </div>
+                <div class="form-group">
+                    <label>Sources (URLs)</label>
+                    <div id="new-node-sources" class="sources-container"></div>
+                    <div class="source-input-group">
+                        <input type="text" id="new-source-input" placeholder="https://example.com">
+                        <button class="btn-secondary btn-small" onclick="addSource('new')">Add</button>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="addNode()">Add to Draft</button>
+                    <button class="btn-secondary" onclick="clearWorkspace()">Clear Workspace</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+                <h3>Save to Database</h3>
+                <div class="form-group">
+                    <label>Version Label</label>
+                    <input type="text" id="version-label" placeholder="e.g. Baseline v1.0">
+                </div>
+                <button class="btn-primary" style="width: 100%;" onclick="saveSnapshot()">Create Versioned Snapshot</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-database" class="view-section">
+        <div class="card">
+            <div class="section-header">
+                <h2>Saved Graphs</h2>
+                <button class="btn-secondary btn-small" onclick="refreshSnapshots()">Refresh List</button>
+            </div>
+            
+            <div id="snapshots-list">
+                <p class="empty-state">Loading database snapshots...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Node Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Node <span id="edit-node-id-display"></span></h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="edit-node-id">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="edit-node-title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="edit-node-desc" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Prerequisite Expression</label>
+                <input type="text" id="edit-node-pre" onblur="autoSimplifyPrerequisites('edit-node-pre')">
+            </div>
+            <div class="form-group">
+                <label>Sources (URLs)</label>
+                <div class="source-input-group">
+                    <input type="text" id="edit-source-input" placeholder="https://...">
+                    <button class="btn-secondary" onclick="addSource('edit')">Add</button>
+                </div>
+                <div id="edit-node-sources" class="sources-container"></div>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="updateNode()">Update Node</button>
+                <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Domain Modal -->
+    <div id="createDomainModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Domain</h2>
+                <span class="close" onclick="closeCreateDomainModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="create-domain-id" placeholder="Integer ID">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="create-domain-title" placeholder="Domain Title">
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="submitCreateDomain()">Create Domain</button>
+                <button class="btn-secondary" onclick="closeCreateDomainModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Domain Modal -->
+    <div id="editDomainModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Domain <span id="edit-domain-id-display"></span></h2>
+                <span class="close" onclick="closeEditDomainModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="edit-domain-id">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="edit-domain-title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="edit-domain-desc" rows="3"></textarea>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="updateDomain()">Update Domain</button>
+                <button class="btn-secondary" onclick="closeEditDomainModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Dialog Modal -->
+    <div id="dialogModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="dialog-title">Confirm</h2>
+                <span class="close" onclick="closeDialog(false)">&times;</span>
+            </div>
+            <div id="dialog-body" style="margin-bottom: 20px; line-height: 1.5;">
+                <!-- Message goes here -->
+            </div>
+            <div id="dialog-input-container" class="form-group" style="display: none;">
+                <input type="text" id="dialog-input" style="width: 100%;">
+            </div>
+            <div class="button-group" style="justify-content: flex-end;">
+                <button id="dialog-cancel-btn" class="btn-secondary" onclick="closeDialog(false)">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn-primary" onclick="closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

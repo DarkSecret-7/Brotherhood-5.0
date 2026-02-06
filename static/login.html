@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Brotherhood 5.0</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+        }
+        .login-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #5f6368;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Brotherhood 5.0</h1>
+            <div class="version-indicator">Authorization Required</div>
+        </div>
+    </div>
+
+    <div class="card login-container">
+        <h2>Login</h2>
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <div id="error-message" style="color: #d93025; margin-bottom: 15px; display: none;"></div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Login</button>
+        </form>
+        <div class="login-footer">
+            Don't have an account? <a href="/signup">Sign up with invitation</a>
+        </div>
+    </div>
+
+    <script>
+        // Clear any old tokens when landing on the login page to ensure a clean state
+        localStorage.removeItem('access_token');
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            
+            errorDiv.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Login successful, setting cookies and localStorage');
+                    
+                    // Set cookie for the main page access (set to last for 2 days)
+                    const secure = window.location.protocol === 'https:' ? 'Secure;' : '';
+                    const maxAge = 60 * 60 * 24 * 2; // 2 days in seconds
+                    // Using SameSite=Lax instead of Strict to ensure it works better with redirects
+                    const cookieStr = `access_token=${data.access_token}; path=/; max-age=${maxAge}; samesite=lax; ${secure}`;
+                    document.cookie = cookieStr;
+                    console.log('Cookie set:', cookieStr.split(';')[0]);
+                    
+                    // Also store in localStorage for API calls in script.js
+                    localStorage.setItem('access_token', data.access_token);
+                    
+                    console.log('Redirecting to /');
+                    window.location.href = '/';
+                } else {
+                    const error = await response.json();
+                    console.error('Login failed:', response.status, error);
+                    if (response.status === 401) {
+                        errorDiv.textContent = 'Incorrect username or password.';
+                    } else {
+                        errorDiv.textContent = error.detail || 'Login failed';
+                    }
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'An error occurred. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

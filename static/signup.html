@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Brotherhood 5.0</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .signup-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+        }
+        .signup-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #5f6368;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Brotherhood 5.0</h1>
+            <div class="version-indicator">Invite Only</div>
+        </div>
+    </div>
+
+    <div class="card signup-container">
+        <h2>Create Account</h2>
+        <form id="signup-form" onsubmit="handleSignup(event)">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <div class="form-group">
+                <label for="invitation">Invitation Code</label>
+                <input type="text" id="invitation" placeholder="Enter your invite code" required>
+            </div>
+            <div id="error-message" style="color: #d93025; margin-bottom: 15px; display: none;"></div>
+            <div id="success-message" style="color: #34a853; margin-bottom: 15px; display: none;"></div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Sign Up</button>
+        </form>
+        <div class="signup-footer">
+            Already have an account? <a href="/login">Login here</a>
+        </div>
+    </div>
+
+    <script>
+        async function handleSignup(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const invitation = document.getElementById('invitation').value;
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/v1/auth/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        invitation_code: invitation
+                    })
+                });
+
+                if (response.ok) {
+                    successDiv.textContent = 'Account created successfully! Redirecting to login...';
+                    successDiv.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    const error = await response.json();
+                    errorDiv.textContent = error.detail || 'Signup failed';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'An error occurred. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

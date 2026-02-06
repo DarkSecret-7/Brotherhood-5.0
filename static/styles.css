@@ -1,0 +1,259 @@
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f0f2f5; color: #1c1e21; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+/* Tab Navigation */
+.nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid #dadce0; padding-bottom: 1px; }
+.tab-btn { padding: 12px 24px; border: none; background: none; cursor: pointer; font-weight: 600; color: #5f6368; border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab-btn:hover { background: #e8eaed; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+.tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+
+/* View Management */
+.view-section { display: none; }
+.view-section.active { display: block; }
+
+.card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+h1, h2, h3 { color: #1a73e8; margin-top: 0; }
+.section-header { border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+
+.form-group { margin-bottom: 15px; }
+label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; color: #5f6368; }
+input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #dadce0; border-radius: 6px; font-size: 1em; }
+input:focus, textarea:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+
+.button-group { display: flex; gap: 10px; margin-top: 20px; }
+button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s; }
+.btn-primary { background: #1a73e8; color: white; }
+.btn-primary:hover { background: #1557b0; }
+.btn-secondary { background: #f1f3f4; color: #3c4043; }
+.btn-secondary:hover { background: #e8eaed; }
+.btn-danger { background: #fce8e6; color: #d93025; }
+.btn-danger:hover { background: #fad2cf; }
+.btn-small { padding: 6px 12px; font-size: 0.8em; }
+
+table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; }
+th, td { text-align: left; padding: 12px; border-bottom: 1px solid #f1f3f4; }
+th { background: #f8f9fa; font-weight: 600; color: #5f6368; text-transform: uppercase; font-size: 0.75em; letter-spacing: 0.5px; }
+tr:hover td { background-color: #f8f9fa; cursor: pointer; }
+
+.node-id { font-weight: bold; color: #1a73e8; background: #e8f0fe; padding: 2px 8px; border-radius: 4px; }
+.version-badge { background: #e8f0fe; color: #1a73e8; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+.empty-state { text-align: center; color: #9aa0a6; padding: 40px 0; font-style: italic; }
+
+code { background: #f1f3f4; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+.badge-count { background: #1a73e8; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.8em; margin-left: 8px; }
+
+/* Version Indicator for Debugging */
+.version-indicator { font-size: 0.7em; color: #9aa0a6; text-align: right; }
+
+/* Modal Styles */
+.modal { 
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0,0,0,0.5); 
+    align-items: center; 
+    justify-content: center; 
+}
+.modal-content { 
+    background-color: white; 
+    padding: 30px; 
+    border-radius: 12px; 
+    width: 50%; 
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+.close:hover { color: #000; }
+
+.active-version-display { background: #fff3cd; color: #856404; padding: 8px 15px; border-radius: 6px; font-weight: 600; font-size: 0.9em; margin-bottom: 15px; display: none; border: 1px solid #ffeeba; }
+
+/* Graph Visualizer */
+#graph-container {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    background: #ffffff;
+    margin-top: 15px;
+    display: none;
+}
+.visualizer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.source-tag { background: #e8eaed; color: #3c4043; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; margin-bottom: 5px; display: inline-flex; align-items: center; }
+.source-tag .remove-source { margin-left: 5px; cursor: pointer; color: #d93025; font-weight: bold; }
+.sources-container { display: flex; flex-wrap: wrap; margin-top: 5px; }
+.source-input-group { display: flex; gap: 5px; margin-top: 5px; }
+.source-link { color: #1a73e8; text-decoration: none; font-size: 0.85em; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.source-link:hover { text-decoration: underline; }
+
+/* Domain Grouping Styles */
+.domain-folder {
+    background: #f8f9fa;
+    cursor: pointer;
+    font-weight: bold;
+    color: #1a73e8;
+    user-select: none;
+}
+.domain-folder:hover {
+    background: #e8f0fe;
+}
+.domain-folder td {
+    border-top: 2px solid #e8f0fe;
+    border-bottom: 2px solid #e8f0fe;
+    padding: 10px 15px;
+}
+.folder-icon {
+    margin-right: 10px;
+    font-size: 1.2em;
+    display: inline-block;
+    cursor: pointer;
+    width: 20px;
+    text-align: center;
+}
+.clickable-title {
+    cursor: pointer;
+}
+.clickable-title:hover {
+    text-decoration: underline;
+}
+.domain-folder:hover td {
+    background-color: #f8f9fa;
+}
+.domain-badge {
+    background: #1a73e8;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    margin-right: 8px;
+    text-transform: uppercase;
+}
+.selection-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+.domain-node-row.collapsed {
+    display: none;
+}
+#workspace-list table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto; /* Allow columns to fit content but keep them stable */
+}
+
+#workspace-list th, #workspace-list td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: left;
+}
+
+/* Combined tree control column (Selection + ID/Icon) */
+.tree-column {
+    width: 140px; /* Increased to accommodate depth */
+    min-width: 140px;
+    white-space: nowrap;
+    text-align: left;
+    padding-right: 5px !important;
+}
+
+.domain-actions, .node-actions {
+    float: right;
+    display: flex;
+    gap: 5px;
+}
+
+.tree-column input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.tree-column .folder-icon, .tree-column .node-id {
+    display: inline-block;
+    min-width: 25px;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+/* Node Creation Section Layout */
+.add-node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.add-node-header h3 {
+    margin: 0;
+}
+
+.inline-form-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.inline-form-group label {
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.inline-form-group input {
+    margin-bottom: 0;
+    padding: 5px 10px;
+}
+
+/* Domain ID badge styling */
+.domain-badge {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+}
+
+.domain-folder strong {
+    color: #007bff;
+}
+.domain-description {
+    font-size: 0.8em;
+    color: #666;
+    font-weight: normal;
+    margin-left: 10px;
+}
+.domain-actions {
+    float: right;
+    display: flex;
+    gap: 5px;
+}
+tr.selected-row td {
+    background-color: #e8f0fe !important;
+}
+
+/* Custom Dialog Modal */
+#dialogModal .modal-content {
+    border-top: 5px solid #1a73e8;
+}
+#dialog-body {
+    font-size: 1.1em;
+    color: #3c4043;
+}
+#dialog-input {
+    margin-top: 10px;
+}
