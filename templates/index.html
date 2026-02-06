@@ -91,6 +91,13 @@
 
             <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
                 <h3>Save to Database</h3>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <input type="checkbox" id="overwrite-toggle" style="width: auto; margin: 0;" onchange="handleOverwriteToggle()">
+                    <label for="overwrite-toggle" style="margin: 0; font-weight: 500;">Overwrite base graph</label>
+                </div>
+                <div id="overwrite-hint" style="display: none; font-size: 0.85em; color: #666; margin-bottom: 15px; margin-top: -10px; padding-left: 25px;">
+                    Original creator is preserved. To be credited, turn this off and use a new name.
+                </div>
                 <div class="form-group">
                     <label>Version Label</label>
                     <input type="text" id="version-label" placeholder="e.g. Baseline v1.0">

@@ -1,12 +1,14 @@
 // --- Configuration ---
 var API_BASE = '/api/v1';
 var currentSnapshotLabel = localStorage.getItem('currentSnapshotLabel') || null;
+var baseGraphLabel = localStorage.getItem('baseGraphLabel') || null;
 var newNodeSources = [];
 var editNodeSources = [];
 
 // Domain State (Now handled entirely by browser localStorage)
 var draftDomains = JSON.parse(localStorage.getItem('draftDomains')) || [];
 var draftNodes = JSON.parse(localStorage.getItem('draftNodes')) || [];
+
 var selectedNodes = new Set();
 var selectedDomains = new Set();
 
@@ -14,6 +16,42 @@ var selectedDomains = new Set();
 function persistDraft() {
     localStorage.setItem('draftDomains', JSON.stringify(draftDomains));
     localStorage.setItem('draftNodes', JSON.stringify(draftNodes));
+    if (currentSnapshotLabel) localStorage.setItem('currentSnapshotLabel', currentSnapshotLabel);
+    if (baseGraphLabel) localStorage.setItem('baseGraphLabel', baseGraphLabel);
+}
+
+// Initializing the UI
+window.addEventListener('DOMContentLoaded', function() {
+    var overwriteToggle = document.getElementById('overwrite-toggle');
+    if (overwriteToggle) {
+        // If we have a base graph (loaded or just saved), turn overwrite on
+        // Otherwise (new workspace), turn it off
+        if (baseGraphLabel) {
+            overwriteToggle.checked = true;
+        } else {
+            overwriteToggle.checked = false;
+        }
+        handleOverwriteToggle();
+    }
+});
+
+function handleOverwriteToggle() {
+    var toggle = document.getElementById('overwrite-toggle');
+    var labelInput = document.getElementById('version-label');
+    var hint = document.getElementById('overwrite-hint');
+    
+    if (toggle.checked) {
+        if (baseGraphLabel) {
+            labelInput.value = baseGraphLabel;
+        }
+        labelInput.readOnly = true;
+        labelInput.style.backgroundColor = '#f1f3f4';
+        if (hint) hint.style.display = 'block';
+    } else {
+        labelInput.readOnly = false;
+        labelInput.style.backgroundColor = '';
+        if (hint) hint.style.display = 'none';
+    }
 }
 
 // --- Custom Dialog System ---
@@ -664,9 +702,9 @@ function renderSources(type) {
 function updateVersionDisplay() {
     var infoDiv = document.getElementById('active-version-info');
     var labelSpan = document.getElementById('current-version-label');
-    if (currentSnapshotLabel) {
+    if (baseGraphLabel) {
         infoDiv.style.display = 'block';
-        labelSpan.innerText = currentSnapshotLabel;
+        labelSpan.innerText = baseGraphLabel;
     } else {
         infoDiv.style.display = 'none';
     }
@@ -680,16 +718,23 @@ function refreshSnapshots() {
             return;
         }
 
-        var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Actions</th></tr></thead><tbody>';
+        var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
         for (var i = 0; i < snapshots.length; i++) {
             var s = snapshots[i];
-            var date = new Date(s.created_at).toLocaleDateString();
+            var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+            var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+            
             html += '<tr>' +
                 '<td>' +
                     '<div class="version-badge">' + (s.version_label || 'v' + s.id) + '</div>' +
-                    '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 4px;">' + date + '</div>' +
+                    '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 6px; line-height: 1.3;">' +
+                        '<b>C:</b> ' + createdDate + '<br>' +
+                        '<b>U:</b> ' + updatedDate +
+                    '</div>' +
                 '</td>' +
                 '<td>' + s.node_count + '</td>' +
+                '<td>' + (s.created_by || 'system') + '</td>' +
+                '<td>' + (s.base_graph || 'None') + '</td>' +
                 '<td>' +
                     '<div style="display: flex; gap: 5px;">' +
                         '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ')">Fetch to Workspace</button>' +
@@ -745,7 +790,17 @@ function fetchSnapshotToWorkspace(event, snapshotId) {
                 });
 
                 currentSnapshotLabel = snapshot.version_label || ('v' + snapshot.id);
+                baseGraphLabel = currentSnapshotLabel; // The original graph it was based on
                 localStorage.setItem('currentSnapshotLabel', currentSnapshotLabel);
+                localStorage.setItem('baseGraphLabel', baseGraphLabel);
+                
+                // Update toggle and label
+                var overwriteToggle = document.getElementById('overwrite-toggle');
+                if (overwriteToggle) {
+                    overwriteToggle.checked = true;
+                    handleOverwriteToggle();
+                }
+                
                 persistDraft();
                 switchTab('workspace');
             }).catch(function(err) {
@@ -773,7 +828,16 @@ function clearWorkspace() {
             draftNodes = [];
             draftDomains = [];
             currentSnapshotLabel = null;
+            baseGraphLabel = null;
             localStorage.removeItem('currentSnapshotLabel');
+            localStorage.removeItem('baseGraphLabel');
+
+            var overwriteToggle = document.getElementById('overwrite-toggle');
+            if (overwriteToggle) {
+                overwriteToggle.checked = false;
+                handleOverwriteToggle();
+            }
+
             persistDraft();
             refreshWorkspace();
         }
@@ -786,28 +850,62 @@ function saveSnapshot() {
         return;
     }
     var label = document.getElementById('version-label').value;
-    customConfirm('Save workspace as snapshot?').then(function(confirmed) {
-        if (confirmed) {
-            var payload = {
-                version_label: label || null,
-                nodes: draftNodes,
-                domains: draftDomains
-            };
-            api.postSaveSnapshot(payload).then(function(res) {
-                if (res.ok) {
-                    customAlert('Saved!');
-                    document.getElementById('version-label').value = '';
-                    currentSnapshotLabel = null;
-                    localStorage.removeItem('currentSnapshotLabel');
-                    switchTab('database');
-                } else {
-                    res.json().then(function(data) {
-                        customAlert('Error: ' + (data.detail || 'Could not save snapshot'));
-                    });
+    var overwriteToggle = document.getElementById('overwrite-toggle').checked;
+
+    var performSave = function(isOverwrite) {
+        var payload = {
+            version_label: label || null,
+            base_graph: baseGraphLabel || null,
+            nodes: draftNodes,
+            domains: draftDomains,
+            overwrite: isOverwrite
+        };
+        api.postSaveSnapshot(payload).then(function(res) {
+            if (res.ok) {
+                customAlert('Saved!');
+                document.getElementById('version-label').value = '';
+                
+                // Keep baseGraphLabel consistent - this is what we are "Working on"
+                // If we saved with a new label, that becomes the new base for future edits
+                if (label) {
+                    baseGraphLabel = label;
+                    localStorage.setItem('baseGraphLabel', baseGraphLabel);
                 }
-            });
-        }
-    });
+                
+                currentSnapshotLabel = null;
+                localStorage.removeItem('currentSnapshotLabel');
+                
+                // Refresh the toggle state and display
+                var toggle = document.getElementById('overwrite-toggle');
+                if (toggle) {
+                    toggle.checked = true; // After saving, we are effectively working on the saved version
+                    handleOverwriteToggle();
+                }
+
+                switchTab('database');
+            } else {
+                res.json().then(function(data) {
+                    if (data.detail && data.detail.indexOf("Confirm overwrite") !== -1) {
+                        customConfirm(data.detail + "\n\nNote: The original 'Created By' attribute will be preserved. To be credited as the creator, please turn off 'Overwrite' and provide a new name for your graph.").then(function(confirmed) {
+                            if (confirmed) performSave(true);
+                        });
+                    } else {
+                        customAlert('Error: ' + (data.detail || 'Could not save snapshot'));
+                    }
+                });
+            }
+        });
+    };
+
+    if (overwriteToggle && label && label === baseGraphLabel) {
+        performSave(true);
+    } else {
+        customConfirm('Save workspace as snapshot?').then(function(confirmed) {
+            if (confirmed) {
+                performSave(overwriteToggle);
+            }
+        });
+    }
 }
 
 function addNode() {

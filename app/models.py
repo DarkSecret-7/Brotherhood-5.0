@@ -7,8 +7,11 @@ class GraphSnapshot(Base):
     __tablename__ = "graph_snapshots"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     version_label = Column(String, nullable=True)  # e.g. "v1", "Initial Draft"
+    base_graph = Column(String, nullable=True)     # The name of the graph this was based on
+    created_by = Column(String, nullable=True)     # The user who created this snapshot
     
     nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan")
     domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan")

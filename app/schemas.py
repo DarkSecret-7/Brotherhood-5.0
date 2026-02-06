@@ -40,14 +40,18 @@ class DomainRead(DomainBase):
 
 class GraphSnapshotBase(BaseModel):
     version_label: Optional[str] = None
+    base_graph: Optional[str] = None
+    created_by: Optional[str] = None
 
 class GraphSnapshotCreate(GraphSnapshotBase):
     nodes: List[NodeBase]
     domains: List[DomainBase] = []
+    overwrite: bool = False
 
 class GraphSnapshotRead(GraphSnapshotBase):
     id: int
     created_at: datetime
+    last_updated: datetime
     nodes: List[NodeRead]
     domains: List[DomainRead] = []
     node_count: int  # Computed field
@@ -58,7 +62,10 @@ class GraphSnapshotRead(GraphSnapshotBase):
 class GraphSnapshotSummary(BaseModel):
     id: int
     created_at: datetime
+    last_updated: datetime
     version_label: Optional[str]
+    base_graph: Optional[str] = None
+    created_by: Optional[str] = None
     node_count: int
     
     class Config:

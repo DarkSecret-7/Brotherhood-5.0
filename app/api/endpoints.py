@@ -107,6 +107,28 @@ def simplify_prerequisites(request: schemas.PrerequisiteSimplifyRequest, current
 
 @router.post("/snapshots", response_model=schemas.GraphSnapshotRead)
 def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    # Set created_by to current user for the payload
+    snapshot.created_by = current_user.username
+    
+    # Overwrite Logic:
+    # 1. If name (version_label) is provided, check if it exists.
+    # 2. If it exists AND overwrite=True, update it.
+    # 3. If it exists AND overwrite=False, we return 400 with a specific message for the UI to handle.
+    
+    if snapshot.version_label:
+        existing = crud.get_snapshot_by_label(db, snapshot.version_label)
+        if existing:
+            if snapshot.overwrite:
+                # User explicitly wants to overwrite because the name matches
+                return crud.update_snapshot(db=db, db_snapshot=existing, snapshot_data=snapshot)
+            else:
+                # Name exists but overwrite not confirmed yet. 
+                # Provide specific detail for the UI confirmation dialog.
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Confirm overwrite of existing graph '{snapshot.version_label}'"
+                )
+
     return crud.create_snapshot(db=db, snapshot_data=snapshot)
 
 @router.get("/snapshots", response_model=List[schemas.GraphSnapshotSummary])
@@ -115,10 +137,14 @@ def list_snapshots(skip: int = 0, limit: int = 100, db: Session = Depends(databa
 
 @router.get("/snapshots/{snapshot_id}", response_model=schemas.GraphSnapshotRead)
 def get_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
-    snapshot = crud.get_snapshot(db=db, snapshot_id=snapshot_id)
-    if snapshot is None:
-        raise HTTPException(status_code=404, detail="Snapshot not found")
-    return snapshot
+    try:
+        snapshot = crud.get_snapshot(db=db, snapshot_id=snapshot_id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Snapshot not found")
+        return snapshot
+    except Exception as e:
+        print(f"Error fetching snapshot {snapshot_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.delete("/snapshots/{snapshot_id}")
 def delete_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
