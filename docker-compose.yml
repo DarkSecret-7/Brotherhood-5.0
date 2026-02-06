@@ -17,6 +17,7 @@ services:
     environment:
       PORT: 10000
       DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/brotherhood
+      APP_MODE: docker
     depends_on:
       - db
     volumes:

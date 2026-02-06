@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from urllib.parse import urlparse
 
 # Try to load environment variables from .env file for local development
 try:
@@ -11,85 +12,77 @@ except ImportError:
     pass
 
 # Determine the environment mode
-# Possible values: "production", "local"
+# Possible values: "production", "docker", "local"
 APP_MODE = os.getenv("APP_MODE", "production" if os.getenv("RENDER") else "local")
 print(f"INFO: Application running in {APP_MODE} mode")
 
-# --- SWITCH FOR LOCAL DATABASE (NON-DOCKER) ---
-# Set this to True to use a local SQLite database instead of PostgreSQL/Docker
-# Only use this for static testing and development, does NOT have backend support
-USE_LOCAL_DB = False 
-
-if USE_LOCAL_DB:
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./brotherhood.db"
-    # SQLite requires check_same_thread=False for FastAPI
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-    )
-else:
-    # Get the database URL from environment variable
+# Isolated Pipeline Configurations
+if APP_MODE == "production":
+    # --- PRODUCTION PIPELINE (RENDER) ---
     SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
-
+    
     if not SQLALCHEMY_DATABASE_URL:
-        # Check all env vars for something containing DATABASE_URL or POSTGRES_URL
+        # Check all env vars for fallback (Render sometimes uses different keys)
         for key, value in os.environ.items():
             if "DATABASE_URL" in key.upper() or "POSTGRES_URL" in key.upper():
                 SQLALCHEMY_DATABASE_URL = value
                 break
 
     if not SQLALCHEMY_DATABASE_URL:
-        if APP_MODE == "production":
-            raise RuntimeError("CRITICAL: DATABASE_URL not found in production mode!")
-        else:
-            # Fallback to localhost for local development
-            SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgrespassword@localhost:5432/brotherhood"
-    else:
-        # Render/SQLAlchemy fix for "postgres://" (SQLAlchemy requires "postgresql://")
-        if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-            SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        
-        # Log connection info (safely)
-        from urllib.parse import urlparse
-        try:
-            parsed = urlparse(SQLALCHEMY_DATABASE_URL)
-            host = parsed.hostname or "unknown"
-            port = parsed.port or "5432"
-            path = parsed.path or "/unknown"
-            print(f"INFO: Connecting to database at {host}:{port}{path}")
-        except:
-            pass
+        raise RuntimeError("CRITICAL: DATABASE_URL not found in production mode!")
+
+    # SQLAlchemy requires "postgresql://"
+    if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
     engine_args = {
-        "pool_pre_ping": True,  # Verifies connection is alive before use
-        "pool_recycle": 300,    # Recycle connections every 5 minutes
-        "pool_size": 3,         # Reduced pool size for Render Free Tier
-        "max_overflow": 2,      # Minimal overflow
-        "pool_timeout": 30,     # Timeout after 30 seconds
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+        "pool_size": 3,
+        "max_overflow": 2,
+        "pool_timeout": 30,
     }
-    # If we are in production or on Render, we MUST use sslmode=require
-    if APP_MODE == "production" or os.getenv("RENDER") or "render.com" in SQLALCHEMY_DATABASE_URL:
-        if "sslmode" not in SQLALCHEMY_DATABASE_URL:
-            # For psycopg2 (default for postgresql://), we use connect_args
-            engine_args["connect_args"] = {"sslmode": "require"}
+    
+    # Enforce SSL for production
+    if "sslmode" not in SQLALCHEMY_DATABASE_URL:
+        engine_args["connect_args"] = {"sslmode": "require"}
 
     try:
         engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
+        # Verify connection immediately
+        with engine.connect() as conn:
+            pass
     except Exception as e:
-        print(f"!!! ERROR: Failed to create engine: {e}")
-        if APP_MODE == "production":
-            # In production, we do NOT fall back to localhost. We want to know it failed.
-            raise RuntimeError(f"CRITICAL: Failed to connect to production database: {e}")
-        else:
-            # Final fallback for local development only
-            print("INFO: Falling back to local database for development")
-            engine = create_engine(
-                "postgresql://postgres:postgrespassword@localhost:5432/brotherhood",
-                pool_pre_ping=True,
-                pool_size=3,
-                max_overflow=2
-            )
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        raise RuntimeError(f"CRITICAL: Failed to connect to production database: {e}")
 
+elif APP_MODE == "docker":
+    # --- DOCKER PIPELINE (POSTGRES) ---
+    # In Docker, we expect DATABASE_URL to be set, otherwise default to the service name
+    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgrespassword@db:5432/brotherhood")
+    
+    engine_args = {
+        "pool_pre_ping": True,
+        "pool_size": 5,
+        "max_overflow": 10
+    }
+    
+    try:
+        engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
+    except Exception as e:
+        raise RuntimeError(f"CRITICAL: Failed to connect to Docker database: {e}")
+
+else:
+    # --- LOCAL PIPELINE (SQLITE) ---
+    # Local development uses SQLite for simplicity and zero setup
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./brotherhood.db"
+    print(f"INFO: Using local SQLite database at {SQLALCHEMY_DATABASE_URL}")
+    
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, 
+        connect_args={"check_same_thread": False} # Required for SQLite + FastAPI
+    )
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 def get_db():
