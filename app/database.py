@@ -10,6 +10,11 @@ try:
 except ImportError:
     pass
 
+# Determine the environment mode
+# Possible values: "production", "local"
+APP_MODE = os.getenv("APP_MODE", "production" if os.getenv("RENDER") else "local")
+print(f"INFO: Application running in {APP_MODE} mode")
+
 # --- SWITCH FOR LOCAL DATABASE (NON-DOCKER) ---
 # Set this to True to use a local SQLite database instead of PostgreSQL/Docker
 # Only use this for static testing and development, does NOT have backend support
@@ -33,8 +38,11 @@ else:
                 break
 
     if not SQLALCHEMY_DATABASE_URL:
-        # Fallback to localhost for local development
-        SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgrespassword@localhost:5432/brotherhood"
+        if APP_MODE == "production":
+            raise RuntimeError("CRITICAL: DATABASE_URL not found in production mode!")
+        else:
+            # Fallback to localhost for local development
+            SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgrespassword@localhost:5432/brotherhood"
     else:
         # Render/SQLAlchemy fix for "postgres://" (SQLAlchemy requires "postgresql://")
         if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
@@ -58,9 +66,8 @@ else:
         "max_overflow": 2,      # Minimal overflow
         "pool_timeout": 30,     # Timeout after 30 seconds
     }
-    # If we are on Render, we MUST use sslmode=require for external connections
-    # and it helps with stability even for internal ones.
-    if os.getenv("RENDER") or "render.com" in SQLALCHEMY_DATABASE_URL:
+    # If we are in production or on Render, we MUST use sslmode=require
+    if APP_MODE == "production" or os.getenv("RENDER") or "render.com" in SQLALCHEMY_DATABASE_URL:
         if "sslmode" not in SQLALCHEMY_DATABASE_URL:
             # For psycopg2 (default for postgresql://), we use connect_args
             engine_args["connect_args"] = {"sslmode": "require"}
@@ -69,13 +76,18 @@ else:
         engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
     except Exception as e:
         print(f"!!! ERROR: Failed to create engine: {e}")
-        # Final fallback just in case
-        engine = create_engine(
-            "postgresql://postgres:postgrespassword@localhost:5432/brotherhood",
-            pool_pre_ping=True,
-            pool_size=3,
-            max_overflow=2
-        )
+        if APP_MODE == "production":
+            # In production, we do NOT fall back to localhost. We want to know it failed.
+            raise RuntimeError(f"CRITICAL: Failed to connect to production database: {e}")
+        else:
+            # Final fallback for local development only
+            print("INFO: Falling back to local database for development")
+            engine = create_engine(
+                "postgresql://postgres:postgrespassword@localhost:5432/brotherhood",
+                pool_pre_ping=True,
+                pool_size=3,
+                max_overflow=2
+            )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

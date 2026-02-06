@@ -11,6 +11,8 @@ services:
           property: connectionString
       - key: RENDER
         value: true
+      - key: APP_MODE
+        value: production
       - key: PYTHON_VERSION
         value: 3.11.0
 
