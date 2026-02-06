@@ -60,7 +60,10 @@ else:
         except Exception as e:
             print(f"DEBUG: DB config found but parsing for logs failed: {e}")
 
-    engine_args = {}
+    engine_args = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
     # If we are on Render (detected by environment variables), we might need sslmode
     if os.getenv("RENDER") or "render.com" in SQLALCHEMY_DATABASE_URL:
         # Only add sslmode if it's not already in the URL
@@ -72,7 +75,7 @@ else:
     except Exception as e:
         print(f"!!! ERROR: Failed to create engine: {e}")
         # Final fallback just in case
-        engine = create_engine("postgresql://postgres:postgrespassword@localhost:5432/brotherhood")
+        engine = create_engine("postgresql://postgres:postgrespassword@localhost:5432/brotherhood", pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
