@@ -57,11 +57,14 @@ else:
     engine_args = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
+        "pool_size": 5,
+        "max_overflow": 10,
     }
-    # If we are on Render (detected by environment variables), we might need sslmode
+    # If we are on Render, we MUST use sslmode=require for external connections
+    # and it helps with stability even for internal ones.
     if os.getenv("RENDER") or "render.com" in SQLALCHEMY_DATABASE_URL:
-        # Only add sslmode if it's not already in the URL
         if "sslmode" not in SQLALCHEMY_DATABASE_URL:
+            # For psycopg2 (default for postgresql://), we use connect_args
             engine_args["connect_args"] = {"sslmode": "require"}
 
     try:
