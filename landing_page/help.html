@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How You Can Help - The Brotherhood</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        function toggleNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html">The Crisis</a></li>
+            <li><a href="solution.html">Our Response</a></li>
+            <li><a href="components.html">Components</a></li>
+            <li><a href="help.html" class="active">How You Can Help</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="http://localhost:8000/login" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-layout">
+            <div class="main-content" style="max-width: 1000px; margin: 0 auto; width: 100%;">
+                <section class="landing-section">
+                    <div class="section-header" style="justify-content: center; text-align: center; flex-direction: column;">
+                        <h1 style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 10px;">How You Can Contribute</h1>
+                        <p class="landing-subtitle" style="margin-bottom: 40px;">The Brotherhood is what we build together.</p>
+                    </div>
+
+                    <div class="landing-pillars">
+                        <div class="pillar">
+                            <div class="pillar-icon">🛠</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Technical</div>
+                                <div class="pillar-body">
+                                    Help construct the Skill Graph infrastructure, develop assessment and matching tools, 
+                                    create federation management platforms, and build transparency and auditing systems.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pillar">
+                            <div class="pillar-icon">🤝</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Social</div>
+                                <div class="pillar-body">
+                                    Form early federations in your community/industry, recruit workers who share the vision, 
+                                    document governance processes, and facilitate conflict resolution.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pillar">
+                            <div class="pillar-icon">📚</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Educational</div>
+                                <div class="pillar-body">
+                                    Define skill structures in your domain, create learning resources, 
+                                    validate assessment rubrics, and connect theory to practice.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pillar">
+                            <div class="pillar-icon">💰</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Financial</div>
+                                <div class="pillar-body">
+                                    Fund infrastructure development under structural constraints, support early federations with patient capital, 
+                                    help establish collective assets, and model non-extractive investment.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pillar">
+                            <div class="pillar-icon">📢</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Communication</div>
+                                <div class="pillar-body">
+                                    Explain the vision to different audiences, document successes and failures, 
+                                    create educational content, and build connections with aligned movements.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pillar">
+                            <div class="pillar-icon">🧠</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Visionary</div>
+                                <div class="pillar-body">
+                                    We are reimagining the social contract of work. If you write about labor economics, 
+                                    coordination failure, or decentralized governance, we want to hear your ideas.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 60px; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;">
+                        <p class="lead-text" style="font-size: 1.1rem; margin-bottom: 30px;">
+                            The most important contribution: Use the infrastructure. Learn through the Skill Graph. 
+                            Work through federations. Prove your capability through assessment.
+                        </p>
+                        <a href="contact.html" class="hero-cta-primary">Get In Touch To Contribute</a>
+                    </div>
+                </section>
+            </div>
+            <div class="side-visual">
+                <img src="https://picsum.photos/seed/help/600/1000" alt="Help Illustration">
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
+                    <a href="index.html">Home</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

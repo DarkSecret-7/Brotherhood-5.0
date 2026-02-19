@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact – The Brotherhood</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        function toggleNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html">The Crisis</a></li>
+            <li><a href="solution.html">Our Response</a></li>
+            <li><a href="components.html">Components</a></li>
+            <li><a href="help.html">How You Can Help</a></li>
+            <li><a href="contact.html" class="active">Contact</a></li>
+            <li><a href="http://localhost:8000/login" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-layout">
+            <div class="main-content" style="max-width: 600px; margin: 0 auto;">
+                <section class="landing-section">
+                    <div class="section-header">
+                        <h1>Get in Touch</h1>
+                        <span class="section-icon">✉</span>
+                    </div>
+                    <p class="lead-text">
+                        The Brotherhood is invite-only while we grow slowly and carefully. 
+                        Start a conversation about how this could support your crew.
+                    </p>
+
+                    <form class="landing-contact-form" action="#" method="post" style="background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+                        <div class="form-row">
+                            <label for="contact-name">Name</label>
+                            <input id="contact-name" name="name" type="text" placeholder="Your name">
+                        </div>
+                        <div class="form-row">
+                            <label for="contact-email">Email</label>
+                            <input id="contact-email" name="email" type="email" placeholder="you@example.org">
+                        </div>
+                        <div class="form-row">
+                            <label for="contact-reason">Message</label>
+                            <textarea id="contact-reason" name="reason" rows="6" placeholder="Invitation request, questions, or collaboration ideas"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Send Message</button>
+                    </form>
+                    
+                    <div class="landing-footnote" style="margin-top: 30px; text-align: center;">
+                        Already in touch with a member? Mention their crew name so we can route your request to the right people.
+                    </div>
+                </section>
+            </div>
+            <div class="side-visual">
+                <img src="https://picsum.photos/seed/contact/600/1000" alt="Contact Illustration">
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
+                    <a href="index.html">Home</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

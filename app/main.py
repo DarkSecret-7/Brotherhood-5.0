@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from contextlib import asynccontextmanager
 import os
+import traceback
 
 from .database import engine, Base
 from .api import endpoints
@@ -19,6 +20,20 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Brotherhood 5.0 Graph API", lifespan=lifespan)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = f"Global Error: {exc}\n{traceback.format_exc()}"
+    print(error_msg)
+    with open("server_error.log", "a") as f:
+        f.write(f"Timestamp: {os.times()}\n")
+        f.write(error_msg)
+        f.write("-" * 80 + "\n")
+        
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+    )
 
 # Mount static files - we keep this for CSS/JS which are needed for login too
 static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Components – The Brotherhood</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        function toggleNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html">The Crisis</a></li>
+            <li><a href="solution.html">Our Response</a></li>
+            <li><a href="components.html" class="active">Components</a></li>
+            <li><a href="help.html">How You Can Help</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="http://localhost:8000/login" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-layout">
+            <div class="main-content" style="max-width: 800px; margin: 0 auto;">
+                <section class="landing-section">
+                    <div class="section-header">
+                        <h1>Core Components</h1>
+                    </div>
+                    <p class="lead-text">
+                        The Brotherhood is built on four foundational pillars designed to coordinate labor without centralized control.
+                    </p>
+
+                    <div class="landing-pillars" style="grid-template-columns: 1fr;">
+                        <!-- 1. The Skill Graph -->
+                        <div class="pillar">
+                            <div class="pillar-icon">🕸</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">1. The Skill Graph</div>
+                                <div class="pillar-tagline">Democratizing Knowledge Structure</div>
+                                <div class="pillar-body">
+                                    <p>At the foundation is a comprehensive, open-source map of human capability—what skills exist, how they connect, what prerequisites they require, and how they combine to solve real problems.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Work-Based Assessment -->
+                        <div class="pillar">
+                            <div class="pillar-icon">🛠</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">2. Work-Based Assessment</div>
+                                <div class="pillar-tagline">Proving Capability Without Gatekeepers</div>
+                                <div class="pillar-body">
+                                    <p>Traditional credentials require institutional validation. The Brotherhood replaces this with demonstration through work. Skills are verified through actual collaborative projects, where peers observe and assess specific capabilities.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Federations -->
+                        <div class="pillar">
+                            <div class="pillar-icon">🤝</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">3. Federations</div>
+                                <div class="pillar-tagline">Coordinated Work Without Hierarchy</div>
+                                <div class="pillar-body">
+                                    <p>Workers organize into federations—autonomous, self-governing units that coordinate around shared capabilities, projects, or goals. They take on projects, build collective assets, and set working conditions while remaining free to split or merge.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Unified Work Allocation -->
+                        <div class="pillar">
+                            <div class="pillar-icon">⚖</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">4. Unified Work Allocation</div>
+                                <div class="pillar-tagline">Coordinating Labor Without Central Planning</div>
+                                <div class="pillar-body">
+                                    <p>One of capitalism's core mechanisms of control is the fragmentation of labor markets. The Brotherhood breaks this through unified work allocation—a coordination protocol that matches verified capabilities to actual needs, preventing exploitation and hoarding.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Auxiliaries and Clienteles -->
+                        <div class="pillar">
+                            <div class="pillar-icon">🔗</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">5. Auxiliaries & Clienteles</div>
+                                <div class="pillar-tagline">Absorbing Existing Structures</div>
+                                <div class="pillar-body">
+                                    <p>The Brotherhood absorbs participation through two gradual interfaces: <strong>Auxiliaries</strong> (existing organizations that adopt our standards) and <strong>Clienteles</strong> (organizations that hire Brotherhood workers). This strategy prevents the all-or-nothing dynamic of most alternative models.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SAEP Section -->
+                    <div class="landing-section" style="margin-top: 60px;">
+                        <div class="highlight-bg">
+                            <h2 style="margin-bottom: 24px;">How It Connects: The SAEP System</h2>
+                            <p class="lead-text">These components don't operate in isolation. Together, they form the <strong>Standardised Academic-Economic Protocol (SAEP)</strong>—a self-reinforcing loop that turns labor power into political power.</p>
+                            
+                            <div class="pillar-body" style="margin-top: 20px;">
+                                <p><strong>How it works:</strong> The system replaces the broken "learn then earn" model with a continuous cycle. You learn skills (mapped by the <strong>Skill Graph</strong>) which you immediately apply in <strong>Federations</strong>. Your peers verify your capability through <strong>Work-Based Assessment</strong>, creating a portable record of trust. This verified data allows <strong>Unified Work Allocation</strong> to automatically match you with new opportunities, removing the need for traditional job markets.</p>
+                                
+                                <p style="margin-top: 15px;"><strong>Why it works:</strong> By standardizing how we define and verify skills, we create a liquid labor market owned by workers, not corporations. This coordination prevents exploitation: when we control the data of who can do what, we control the distribution of work itself.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 40px; text-align: center;">
+                        <a href="contact.html" class="hero-cta-primary">Join the Movement →</a>
+                    </div>
+                </section>
+            </div>
+            <div class="side-visual">
+                <img src="https://picsum.photos/seed/components/600/1000" alt="Components Illustration">
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
+                    <a href="index.html">Home</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

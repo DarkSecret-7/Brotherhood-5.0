@@ -17,8 +17,16 @@ def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
     
     # Return with nodes populated
     db.refresh(db_snapshot)
-    # Manually attach node_count
-    db_snapshot.node_count = len(snapshot_data.nodes)
+    
+    # Manually attach node_count (computed field)
+    # Using setattr to ensure it exists on the object for Pydantic
+    node_count = len(snapshot_data.nodes)
+    setattr(db_snapshot, 'node_count', node_count)
+    
+    # Ensure datetime fields are valid for Pydantic
+    if db_snapshot.last_updated is None:
+        db_snapshot.last_updated = db_snapshot.created_at
+        
     return db_snapshot
 
 def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):
@@ -33,8 +41,9 @@ def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_dat
     db_snapshot.last_updated = func.now()
     
     # Clear existing nodes and domains
-    db.query(models.Node).filter(models.Node.snapshot_id == db_snapshot.id).delete()
-    db.query(models.Domain).filter(models.Domain.snapshot_id == db_snapshot.id).delete()
+    # Using delete(synchronize_session=False) for better performance and to avoid session issues
+    db.query(models.Node).filter(models.Node.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
+    db.query(models.Domain).filter(models.Domain.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
     db.commit()
     
     # Re-populate
@@ -42,7 +51,15 @@ def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_dat
     
     db.commit()
     db.refresh(db_snapshot)
-    db_snapshot.node_count = len(snapshot_data.nodes)
+    
+    # Manually attach node_count
+    node_count = len(snapshot_data.nodes)
+    setattr(db_snapshot, 'node_count', node_count)
+    
+    # Ensure datetime fields are valid
+    if db_snapshot.last_updated is None:
+        db_snapshot.last_updated = db_snapshot.created_at
+        
     return db_snapshot
 
 def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):

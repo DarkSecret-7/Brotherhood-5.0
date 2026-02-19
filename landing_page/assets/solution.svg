@@ -1,0 +1,27 @@
+<svg width="800" height="1200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0f7fa;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a73e8" stroke-width="0.5" opacity="0.1"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grad2)" />
+  <rect width="100%" height="100%" fill="url(#grid)" />
+  
+  <!-- Structure/Bridge for Solution -->
+  <g stroke="#1a73e8" stroke-width="2" fill="none" opacity="0.2">
+    <line x1="100" y1="100" x2="700" y2="100" />
+    <line x1="100" y1="200" x2="700" y2="200" />
+    <line x1="100" y1="300" x2="700" y2="300" />
+    <line x1="200" y1="100" x2="200" y2="300" />
+    <line x1="400" y1="100" x2="400" y2="300" />
+    <line x1="600" y1="100" x2="600" y2="300" />
+    
+    <path d="M100,500 L200,400 L300,500 L400,400 L500,500 L600,400 L700,500" />
+  </g>
+  
+  <circle cx="400" cy="200" r="80" fill="#e8f0fe" opacity="0.5" />
+</svg>

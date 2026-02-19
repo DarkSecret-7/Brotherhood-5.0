@@ -1,4 +1,15 @@
 services:
+  # The Landing Page (Default)
+  - type: web
+    name: brotherhood-landing
+    runtime: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: landing_page/Dockerfile
+    envVars:
+      - key: PORT
+        value: 80
+
   # The API Service
   - type: web
     name: brotherhood-api

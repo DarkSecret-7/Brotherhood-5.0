@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Crisis – The Brotherhood</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        function toggleNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html" class="active">The Crisis</a></li>
+            <li><a href="solution.html">Our Response</a></li>
+            <li><a href="components.html">Components</a></li>
+            <li><a href="help.html">How You Can Help</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="http://localhost:8000/login" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-layout">
+            <div class="main-content" style="max-width: 800px; margin: 0 auto;">
+                <section class="landing-section">
+                    <div class="section-header">
+                        <h1>The Crisis of Modern Work</h1>
+                        <span class="section-icon">⚠</span>
+                    </div>
+                    <p class="lead-text">
+                        Workers create value, but do not control how that value is organized or rewarded. 
+                        Skills are everywhere, yet hiring feels random.
+                    </p>
+                    
+                    <h3>A Broken Market for Talent</h3>
+                    <p>
+                        The current labor market is fundamentally inefficient. It relies on crude signals like university degrees and brand-name employers to determine worth. This leaves millions of talented individuals invisible because they lack the "correct" credentials, even if they possess the necessary skills.
+                    </p>
+                    <p>
+                        This isn't just unfair; it's a massive waste of human potential. When we gatekeep opportunity behind expensive and exclusive institutions, we stifle innovation and slow down progress.
+                    </p>
+
+                    <h3>Isolation and Exploitation</h3>
+                    <p>
+                        Without collective bargaining power or a shared infrastructure, workers are isolated. This isolation makes them vulnerable to exploitation. Platforms and corporations can dictate terms, lower wages, and demand more for less because individual workers have little leverage to negotiate.
+                    </p>
+                    <p>
+                        The "gig economy" promised freedom but often delivers precarity. Workers are pitted against each other in a race to the bottom, competing on price rather than quality or capability.
+                    </p>
+
+                    <h3>The Coordination Failure</h3>
+                    <p>
+                        People who could be collaborators are pushed into competing for the same narrow slots.
+                        The Brotherhood treats this as a coordination failure, not a personal failing. 
+                        Instead of asking individual workers to "stand out" in a broken market, we need 
+                        shared tools so crews of workers can see each other, trust each other, and move 
+                        together.
+                    </p>
+                    
+                    <div style="margin-top: 40px; text-align: center;">
+                        <a href="solution.html" class="hero-cta-primary">See Our Response →</a>
+                    </div>
+                </section>
+            </div>
+            <div class="side-visual">
+                <img src="https://picsum.photos/seed/crisis/600/1000" alt="Crisis Illustration">
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
+                    <a href="index.html">Home</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

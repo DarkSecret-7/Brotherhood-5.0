@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Response – The Brotherhood</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        function toggleNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html">The Crisis</a></li>
+            <li><a href="solution.html" class="active">Our Response</a></li>
+            <li><a href="components.html">Components</a></li>
+            <li><a href="help.html">How You Can Help</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="http://localhost:8000/login" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-layout">
+            <div class="main-content" style="max-width: 800px; margin: 0 auto;">
+                <section class="landing-section">
+                    <div class="section-header">
+                        <h1>Our Response</h1>
+                        <span class="section-icon">⚡</span>
+                    </div>
+                    <p class="lead-text">
+                        The Brotherhood is not a platform you use—it's a protocol you adopt. 
+                        It's not a service that's provided—it's a community we build together.
+                    </p>
+
+                    <h3>Infrastructure for Power</h3>
+                    <p>
+                        We are building shared infrastructure for people who create real value but rarely get to shape the systems they work in. Our goal is to turn scattered skills and informal crews into a coordinated network that can learn, work, and negotiate together.
+                    </p>
+                    <p>
+                        By creating a system where reputation is built on actual work and peer verification, we remove the gatekeepers. We empower workers to own their data, their reputation, and their relationships.
+                    </p>
+
+                    <h3>From Individual to Collective</h3>
+                    <p>
+                        The Brotherhood shifts the focus from the individual "rockstar" to the effective crew. We believe that great work is done by teams that trust each other. Our tools are designed to facilitate the formation, management, and compensation of these crews.
+                    </p>
+
+                    <h3>A New Social Contract</h3>
+                    <p>
+                        This is more than just software; it's a new social contract for the digital age. It's a commitment to transparency, fairness, and mutual support. In The Brotherhood, value flows to those who create it, and governance is shared by those who participate.
+                    </p>
+                    <p>
+                        We are replacing competition with coordination. We are replacing exploitation with empowerment.
+                    </p>
+
+                    <div style="margin-top: 40px; text-align: center;">
+                        <a href="components.html" class="hero-cta-primary">Explore the Components →</a>
+                    </div>
+                </section>
+            </div>
+            <div class="side-visual">
+                <img src="https://picsum.photos/seed/solution/600/1000" alt="Solution Illustration">
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
+                    <a href="index.html">Home</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

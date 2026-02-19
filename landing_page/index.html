@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Brotherhood – Worker Coordination Infrastructure</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        function toggleNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">The Brotherhood</div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html">The Crisis</a></li>
+            <li><a href="solution.html">Our Response</a></li>
+            <li><a href="components.html">Components</a></li>
+            <li><a href="help.html">How You Can Help</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="http://localhost:8000/login" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-hero">
+            <div class="hero-content">
+                <div class="landing-tagline">Coordination Infrastructure</div>
+                <h1>Building worker power through coordination, not credential gates</h1>
+                <p class="landing-subtitle">
+                    The Brotherhood is shared infrastructure for people who create real value but rarely 
+                    get to shape the systems they work in. It turns scattered skills and informal crews 
+                    into a coordinated network that can learn, work, and negotiate together.
+                </p>
+                <div class="landing-hero-cta">
+                    <a href="http://localhost:8000/login" class="hero-cta-primary">Enter the Workspace</a>
+                    <a href="contact.html" class="hero-cta-secondary">Request Access →</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="abstract-shape"></div>
+            </div>
+        </div>
+
+        <div class="landing-layout">
+            <div class="main-content">
+                <section id="problem" class="landing-section">
+                    <div class="section-header">
+                        <h2>The Crisis We Face</h2>
+                        <span class="section-icon">⚠</span>
+                    </div>
+                    <p class="lead-text">
+                        Workers create value, but do not control how that value is organized or rewarded. 
+                        Skills are everywhere, yet hiring feels random.
+                    </p>
+                    <p>
+                        People who could be collaborators are pushed into competing for the same narrow slots.
+                        The Brotherhood treats this as a coordination failure, not a personal failing.
+                    </p>
+                    <a href="crisis.html" style="color: #1a73e8; font-weight: 600; text-decoration: none;">Read more about the crisis →</a>
+                </section>
+
+                <section id="solution" class="landing-section highlight-bg">
+                    <div class="section-header">
+                        <h2>Our Response</h2>
+                        <span class="section-icon">⚡</span>
+                    </div>
+                    <p>
+                        The Brotherhood is not a platform you use—it's a protocol you adopt. 
+                        It's not a service that's provided—it's a community we build together.
+                    </p>
+                    <a href="solution.html" style="color: #1a73e8; font-weight: 600; text-decoration: none;">Explore our response →</a>
+                </section>
+
+                <section id="components" class="landing-section">
+                    <h2>Core Components</h2>
+                    <div class="landing-pillars">
+                        <div class="pillar">
+                            <div class="pillar-icon">🕸</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Skill Graph</div>
+                                <div class="pillar-tagline">Democratizing Knowledge Structure</div>
+                                <div class="pillar-body">
+                                    A comprehensive, open-source map of human capability.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pillar">
+                            <div class="pillar-icon">🛠</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Work-Based Assessment</div>
+                                <div class="pillar-tagline">Proving Capability Without Gatekeepers</div>
+                                <div class="pillar-body">
+                                    Skills are verified through actual collaborative projects, not isolated exams.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pillar">
+                            <div class="pillar-icon">🤝</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Federations</div>
+                                <div class="pillar-tagline">Coordinated Work Without Hierarchy</div>
+                                <div class="pillar-body">
+                                    Workers organize into federations—autonomous, self-governing units.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pillar">
+                            <div class="pillar-icon">⚖</div>
+                            <div class="pillar-content">
+                                <div class="pillar-title">Unified Work Allocation</div>
+                                <div class="pillar-tagline">Coordinating Labor Without Central Planning</div>
+                                <div class="pillar-body">
+                                    A coordination protocol that matches verified capabilities to actual needs.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <a href="components.html" style="color: #1a73e8; font-weight: 600; text-decoration: none;">View full component details →</a>
+                    </div>
+                </section>
+            </div>
+
+            <div class="sidebar">
+                <section id="help" class="landing-section">
+                    <div class="section-header">
+                        <h2>How You Can Help</h2>
+                        <span class="section-icon">🤝</span>
+                    </div>
+                    <p>
+                        Building a new infrastructure for work requires many hands and minds. 
+                        Whether you are a developer, an organizer, or a thinker, there is a place for you.
+                    </p>
+                    <a href="help.html" style="color: #1a73e8; font-weight: 600; text-decoration: none;">See contribution opportunities →</a>
+                </section>
+
+                <section id="contact" class="landing-section contact-card">
+                    <div class="landing-contact-header">Join the Movement</div>
+                    <p class="landing-contact-copy">
+                        The Brotherhood is invite-only while we grow slowly and carefully. 
+                        Start a conversation about how this could support your crew.
+                    </p>
+                    <a href="contact.html" class="btn-primary" style="display: block; text-align: center; text-decoration: none;">Contact Us</a>
+                    <div class="landing-footnote">
+                        Already in touch with a member? Mention their crew name.
+                    </div>
+                </section>
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
+                    <a href="index.html">Home</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

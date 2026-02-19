@@ -23,5 +23,14 @@ services:
     volumes:
       - .:/app
 
+  landing:
+    build:
+      context: .
+      dockerfile: landing_page/Dockerfile
+      args:
+        BUILD_DATE: "${BUILD_DATE:-1}"
+    ports:
+      - "8080:80"
+
 volumes:
   postgres_data:
