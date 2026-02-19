@@ -140,8 +140,8 @@ def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends
         existing = crud.get_snapshot_by_label(db, snapshot.version_label)
         if existing:
             # Check ownership before even checking overwrite flag
-            # OPEN ACCESS: If created_by is None, we ALLOW overwrite (legacy/system graphs are public)
-            if existing.created_by and existing.created_by != current_user.username:
+            # OPEN ACCESS: If created_by is None or "Unknown", we ALLOW overwrite (legacy/system graphs are public)
+            if existing.created_by and existing.created_by != "Unknown" and existing.created_by != current_user.username:
                 raise HTTPException(status_code=403, detail="Not authorized to overwrite this snapshot")
 
             if snapshot.overwrite:
@@ -179,8 +179,8 @@ def delete_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), cu
         raise HTTPException(status_code=404, detail="Snapshot not found")
         
     # Only allow deletion if the user is the creator
-    # If created_by is None (legacy), we allow deletion (Open Access)
-    if snapshot.created_by and snapshot.created_by != current_user.username:
+    # If created_by is None or "Unknown" (legacy), we allow deletion (Open Access)
+    if snapshot.created_by and snapshot.created_by != "Unknown" and snapshot.created_by != current_user.username:
         raise HTTPException(status_code=403, detail="Not authorized to delete this snapshot")
 
     success = crud.delete_snapshot(db, snapshot_id)

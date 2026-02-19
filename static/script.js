@@ -47,8 +47,8 @@ function handleOverwriteToggle() {
     // Allowed if baseCreator is unknown/empty or matches current user
     // AND workspace is not empty
     var isWorkspaceEmpty = (draftNodes.length === 0 && draftDomains.length === 0);
-    // OPEN ACCESS: If baseCreator is null/empty, anyone can overwrite (legacy behavior)
-    var canOverwrite = (!baseCreator || baseCreator === currentUser) && !isWorkspaceEmpty;
+    // OPEN ACCESS: If baseCreator is null/empty OR "Unknown", anyone can overwrite
+    var canOverwrite = (!baseCreator || baseCreator === 'Unknown' || baseCreator === currentUser) && !isWorkspaceEmpty;
     
     var container = toggle.parentNode;
     if (container && container.classList.contains('form-group')) {
@@ -744,49 +744,76 @@ function updateVersionDisplay() {
     }
 }
 
-function refreshSnapshots() {
+function refreshSnapshots(force) {
     var listDiv = document.getElementById('snapshots-list');
+    
+    // Cache Check: If force is false/undefined, try to load from localStorage
+    if (!force) {
+        var cached = localStorage.getItem('cachedSnapshots');
+        if (cached) {
+            try {
+                var cachedData = JSON.parse(cached);
+                // Simple cache validation: check if it's an array and not too old (e.g., < 1 hour) - skipping time for now for simplicity
+                if (Array.isArray(cachedData)) {
+                    renderSnapshots(cachedData);
+                    return;
+                }
+            } catch (e) {
+                console.error('Cache parse error', e);
+            }
+        }
+    }
+
     listDiv.innerHTML = '<p>Loading snapshots...</p>';
     
     api.fetchSnapshots().then(function(snapshots) {
         if (snapshots.length === 0) {
             listDiv.innerHTML = '<p class="empty-state">No snapshots found in database.</p>';
+            localStorage.removeItem('cachedSnapshots');
             return;
         }
 
-        var currentUser = getCurrentUser();
-        var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
-        for (var i = 0; i < snapshots.length; i++) {
-            var s = snapshots[i];
-            var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-            var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-            
-            var isCreator = !s.created_by || s.created_by === currentUser;
-            
-            var deleteBtn = isCreator ? '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' : '';
-
-            html += '<tr>' +
-                '<td>' +
-                    '<div class="version-badge">' + (s.version_label || 'v' + s.id) + '</div>' +
-                    '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 6px; line-height: 1.3;">' +
-                        '<b>C:</b> ' + createdDate + '<br>' +
-                        '<b>U:</b> ' + updatedDate +
-                    '</div>' +
-                '</td>' +
-                '<td>' + s.node_count + '</td>' +
-                '<td>' + (s.created_by || 'system') + '</td>' +
-                '<td>' + (s.base_graph || 'None') + '</td>' +
-                '<td>' +
-                    '<div style="display: flex; gap: 5px;">' +
-                        '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ')">Fetch to Workspace</button>' +
-                        deleteBtn +
-                    '</div>' +
-                '</td>' +
-            '</tr>';
-        }
-        html += '</tbody></table>';
-        listDiv.innerHTML = html;
+        // Cache the new data
+        localStorage.setItem('cachedSnapshots', JSON.stringify(snapshots));
+        renderSnapshots(snapshots);
     });
+}
+
+function renderSnapshots(snapshots) {
+    var listDiv = document.getElementById('snapshots-list');
+    var currentUser = getCurrentUser();
+    var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
+    for (var i = 0; i < snapshots.length; i++) {
+        var s = snapshots[i];
+        var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+        var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+        
+        // OPEN ACCESS: If created_by is null/empty OR "Unknown", anyone can delete
+        var isCreator = !s.created_by || s.created_by === 'Unknown' || s.created_by === currentUser;
+        
+        var deleteBtn = isCreator ? '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' : '';
+
+        html += '<tr>' +
+            '<td>' +
+                '<div class="version-badge">' + (s.version_label || 'v' + s.id) + '</div>' +
+                '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 6px; line-height: 1.3;">' +
+                    '<b>C:</b> ' + createdDate + '<br>' +
+                    '<b>U:</b> ' + updatedDate +
+                '</div>' +
+            '</td>' +
+            '<td>' + s.node_count + '</td>' +
+            '<td>' + (s.created_by || 'system') + '</td>' +
+            '<td>' + (s.base_graph || 'None') + '</td>' +
+            '<td>' +
+                '<div style="display: flex; gap: 5px;">' +
+                    '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ')">Fetch to Workspace</button>' +
+                    deleteBtn +
+                '</div>' +
+            '</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table>';
+    listDiv.innerHTML = html;
 }
 
 function switchTab(tabName) {
@@ -799,7 +826,8 @@ function switchTab(tabName) {
     document.getElementById('view-' + tabName).classList.add('active');
 
     if (tabName === 'workspace') refreshWorkspace();
-    if (tabName === 'database') refreshSnapshots();
+    // Use cached snapshots by default when switching tabs
+    if (tabName === 'database') refreshSnapshots(false);
 }
 
 function fetchSnapshotToWorkspace(event, snapshotId) {
@@ -843,6 +871,10 @@ function fetchSnapshotToWorkspace(event, snapshotId) {
                 }
                 handleOverwriteToggle();
                 
+                // Clear version label on fresh load
+                var labelInput = document.getElementById('version-label');
+                if (labelInput) labelInput.value = '';
+                
                 persistDraft();
                 switchTab('workspace');
             }).catch(function(err) {
@@ -857,7 +889,10 @@ function deleteSnapshot(event, snapshotId) {
     customConfirm('PERMANENT DELETE! Are you sure you want to remove snapshot #' + snapshotId + ' from the database?').then(function(confirmed) {
         if (confirmed) {
             api.deleteSnapshot(snapshotId).then(function(res) {
-                if (res.ok) refreshSnapshots();
+                if (res.ok) {
+                    localStorage.removeItem('cachedSnapshots');
+                    refreshSnapshots(true);
+                }
                 else customAlert('Error deleting snapshot');
             });
         }
@@ -874,6 +909,10 @@ function clearWorkspace() {
             localStorage.removeItem('currentSnapshotLabel');
             localStorage.removeItem('baseGraphLabel');
             localStorage.removeItem('baseGraphCreator');
+            
+            // Clear version label
+            var labelInput = document.getElementById('version-label');
+            if (labelInput) labelInput.value = '';
 
             var overwriteToggle = document.getElementById('overwrite-toggle');
             if (overwriteToggle) {
@@ -927,6 +966,8 @@ function saveSnapshot() {
                     handleOverwriteToggle();
                 }
 
+                // Invalidate cache so the new snapshot appears
+                localStorage.removeItem('cachedSnapshots');
                 switchTab('database');
             } else {
                 res.json().then(function(data) {
