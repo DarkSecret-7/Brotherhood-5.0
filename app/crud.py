@@ -23,8 +23,9 @@ def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
 
 def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):
     # Update snapshot metadata
-    db_snapshot.version_label = snapshot_data.version_label
-    db_snapshot.base_graph = snapshot_data.base_graph
+    # version_label is NOT updated on overwrite
+    # db_snapshot.version_label = snapshot_data.version_label
+    # db_snapshot.base_graph = snapshot_data.base_graph  <-- REMOVED: User requested base_graph should NOT change on overwrite
     # CRITICAL: created_by is NEVER updated during overwrite to preserve original authorship,
     # even if the current value is 'Unknown' or null.
     

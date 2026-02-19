@@ -37,8 +37,26 @@ window.addEventListener('DOMContentLoaded', function() {
 
 function handleOverwriteToggle() {
     var toggle = document.getElementById('overwrite-toggle');
+    if (!toggle) return;
+    
     var labelInput = document.getElementById('version-label');
-    var hint = document.getElementById('overwrite-hint');
+    var currentUser = getCurrentUser();
+    var baseCreator = localStorage.getItem('baseGraphCreator');
+    
+    // Allowed if baseCreator is unknown/empty or matches current user
+    // AND workspace is not empty
+    var isWorkspaceEmpty = (draftNodes.length === 0 && draftDomains.length === 0);
+    var canOverwrite = (!baseCreator || baseCreator === currentUser) && !isWorkspaceEmpty;
+    
+    var container = toggle.parentNode;
+    if (container && container.classList.contains('form-group')) {
+        if (canOverwrite) {
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
+            toggle.checked = false;
+        }
+    }
     
     if (toggle.checked) {
         if (baseGraphLabel) {
@@ -46,11 +64,9 @@ function handleOverwriteToggle() {
         }
         labelInput.readOnly = true;
         labelInput.style.backgroundColor = '#f1f3f4';
-        if (hint) hint.style.display = 'block';
     } else {
         labelInput.readOnly = false;
         labelInput.style.backgroundColor = '';
-        if (hint) hint.style.display = 'none';
     }
 }
 
@@ -175,6 +191,21 @@ var api = {
     }
 };
 
+function getCurrentUser() {
+    var token = localStorage.getItem('access_token');
+    if (!token) return null;
+    try {
+        var base64Url = token.split('.')[1];
+        var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload).sub;
+    } catch (e) {
+        return null;
+    }
+}
+
 function logout() {
     // Clear the token from localStorage
     localStorage.removeItem('access_token');
@@ -216,10 +247,11 @@ function autoSimplifyPrerequisites(inputId) {
     });
 }
 
-// --- UI Rendering ---
+// UI Rendering
 function refreshWorkspace() {
     updateVersionDisplay();
     renderWorkspace();
+    handleOverwriteToggle();
 }
 
 function renderWorkspace() {
@@ -718,12 +750,16 @@ function refreshSnapshots() {
             return;
         }
 
+        var currentUser = getCurrentUser();
         var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
         for (var i = 0; i < snapshots.length; i++) {
             var s = snapshots[i];
             var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
             var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
             
+            var isCreator = !s.created_by || s.created_by === currentUser;
+            var deleteBtn = isCreator ? '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' : '';
+
             html += '<tr>' +
                 '<td>' +
                     '<div class="version-badge">' + (s.version_label || 'v' + s.id) + '</div>' +
@@ -738,7 +774,7 @@ function refreshSnapshots() {
                 '<td>' +
                     '<div style="display: flex; gap: 5px;">' +
                         '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ')">Fetch to Workspace</button>' +
-                        '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' +
+                        deleteBtn +
                     '</div>' +
                 '</td>' +
             '</tr>';
@@ -793,6 +829,7 @@ function fetchSnapshotToWorkspace(event, snapshotId) {
                 baseGraphLabel = currentSnapshotLabel; // The original graph it was based on
                 localStorage.setItem('currentSnapshotLabel', currentSnapshotLabel);
                 localStorage.setItem('baseGraphLabel', baseGraphLabel);
+                localStorage.setItem('baseGraphCreator', snapshot.created_by || '');
                 
                 // Update toggle and label
                 var overwriteToggle = document.getElementById('overwrite-toggle');
@@ -831,6 +868,7 @@ function clearWorkspace() {
             baseGraphLabel = null;
             localStorage.removeItem('currentSnapshotLabel');
             localStorage.removeItem('baseGraphLabel');
+            localStorage.removeItem('baseGraphCreator');
 
             var overwriteToggle = document.getElementById('overwrite-toggle');
             if (overwriteToggle) {
@@ -870,6 +908,7 @@ function saveSnapshot() {
                 if (label) {
                     baseGraphLabel = label;
                     localStorage.setItem('baseGraphLabel', baseGraphLabel);
+                    localStorage.setItem('baseGraphCreator', getCurrentUser() || '');
                 }
                 
                 currentSnapshotLabel = null;
@@ -886,7 +925,7 @@ function saveSnapshot() {
             } else {
                 res.json().then(function(data) {
                     if (data.detail && data.detail.indexOf("Confirm overwrite") !== -1) {
-                        customConfirm(data.detail + "\n\nNote: The original 'Created By' attribute will be preserved. To be credited as the creator, please turn off 'Overwrite' and provide a new name for your graph.").then(function(confirmed) {
+                        customConfirm(data.detail).then(function(confirmed) {
                             if (confirmed) performSave(true);
                         });
                     } else {
