@@ -20,6 +20,7 @@ function persistDraft() {
     if (baseGraphLabel) localStorage.setItem('baseGraphLabel', baseGraphLabel);
 }
 
+
 // Initializing the UI
 window.addEventListener('DOMContentLoaded', function() {
     var overwriteToggle = document.getElementById('overwrite-toggle');
@@ -31,7 +32,7 @@ window.addEventListener('DOMContentLoaded', function() {
         } else {
             overwriteToggle.checked = false;
         }
-        handleOverwriteToggle();
+        // Don't call handleOverwriteToggle here because refreshWorkspace() at the end will call it
     }
 });
 
@@ -894,6 +895,7 @@ function saveSnapshot() {
         var payload = {
             version_label: label || null,
             base_graph: baseGraphLabel || null,
+            created_by: getCurrentUser(),
             nodes: draftNodes,
             domains: draftDomains,
             overwrite: isOverwrite
