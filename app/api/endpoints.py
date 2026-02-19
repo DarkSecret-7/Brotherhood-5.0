@@ -168,6 +168,17 @@ def get_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), curre
 
 @router.delete("/snapshots/{snapshot_id}")
 def delete_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    # Check ownership
+    snapshot = crud.get_snapshot(db, snapshot_id)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+        
+    # Only allow deletion if the user is the creator
+    # If created_by is None (legacy), we strictly prevent deletion to be safe,
+    # or we could allow it. Given the user's request, strict is better.
+    if snapshot.created_by != current_user.username:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this snapshot")
+
     success = crud.delete_snapshot(db, snapshot_id)
     if not success:
         raise HTTPException(status_code=404, detail="Snapshot not found")

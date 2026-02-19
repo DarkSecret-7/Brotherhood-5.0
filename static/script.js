@@ -758,7 +758,7 @@ function refreshSnapshots() {
             var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
             var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
             
-            var isCreator = !s.created_by || s.created_by === currentUser;
+            var isCreator = s.created_by === currentUser;
             var deleteBtn = isCreator ? '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' : '';
 
             html += '<tr>' +
