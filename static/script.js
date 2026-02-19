@@ -47,6 +47,7 @@ function handleOverwriteToggle() {
     // Allowed if baseCreator is unknown/empty or matches current user
     // AND workspace is not empty
     var isWorkspaceEmpty = (draftNodes.length === 0 && draftDomains.length === 0);
+    // OPEN ACCESS: If baseCreator is null/empty, anyone can overwrite (legacy behavior)
     var canOverwrite = (!baseCreator || baseCreator === currentUser) && !isWorkspaceEmpty;
     
     var container = toggle.parentNode;
@@ -744,8 +745,10 @@ function updateVersionDisplay() {
 }
 
 function refreshSnapshots() {
+    var listDiv = document.getElementById('snapshots-list');
+    listDiv.innerHTML = '<p>Loading snapshots...</p>';
+    
     api.fetchSnapshots().then(function(snapshots) {
-        var listDiv = document.getElementById('snapshots-list');
         if (snapshots.length === 0) {
             listDiv.innerHTML = '<p class="empty-state">No snapshots found in database.</p>';
             return;
@@ -758,7 +761,8 @@ function refreshSnapshots() {
             var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
             var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
             
-            var isCreator = s.created_by === currentUser;
+            var isCreator = !s.created_by || s.created_by === currentUser;
+            
             var deleteBtn = isCreator ? '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' : '';
 
             html += '<tr>' +
@@ -836,8 +840,8 @@ function fetchSnapshotToWorkspace(event, snapshotId) {
                 var overwriteToggle = document.getElementById('overwrite-toggle');
                 if (overwriteToggle) {
                     overwriteToggle.checked = true;
-                    handleOverwriteToggle();
                 }
+                handleOverwriteToggle();
                 
                 persistDraft();
                 switchTab('workspace');
