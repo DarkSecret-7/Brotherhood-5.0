@@ -8,7 +8,8 @@ function addNode() {
     var title = document.getElementById('node-title').value;
     var desc = document.getElementById('node-desc').value;
     var pre = document.getElementById('node-pre').value;
-    var sources = newNodeSources.join(',');
+    // sources is deprecated, use source_items
+    var sourceItems = JSON.parse(JSON.stringify(newNodeSources));
 
     if (isNaN(localId) || !title) {
         customAlert('Valid ID and Title required');
@@ -32,7 +33,7 @@ function addNode() {
         title: title,
         description: desc,
         prerequisite: pre,
-        sources: sources,
+        source_items: sourceItems,
         domain_id: resolvedDomainId
     });
 
@@ -46,13 +47,39 @@ function addNode() {
     refreshWorkspace();
 }
 
-function openEditModal(node) {
+function openEditModal(nodeOrId) {
+    var node = nodeOrId;
+    if (typeof nodeOrId === 'number' || typeof nodeOrId === 'string') {
+        node = draftNodes.find(function(n) { return n.local_id == nodeOrId; });
+    }
+    
+    if (!node) {
+        console.error('Node not found for editing:', nodeOrId);
+        return;
+    }
+
     document.getElementById('edit-node-id-display').innerText = '#' + node.local_id;
     document.getElementById('edit-node-id').value = node.local_id;
     document.getElementById('edit-node-title').value = node.title;
     document.getElementById('edit-node-desc').value = node.description || '';
     document.getElementById('edit-node-pre').value = node.prerequisite || '';
-    editNodeSources = node.sources ? node.sources.split(',') : [];
+    
+    // Handle legacy sources string if present and source_items is empty
+    if ((!node.source_items || node.source_items.length === 0) && node.sources) {
+        // Migration attempt: convert old URLs to simple Source objects
+        var urls = node.sources.split(',');
+        editNodeSources = urls.map(function(url) {
+            return {
+                title: 'Legacy Source',
+                source_type: 'Other',
+                url: url.trim()
+            };
+        });
+    } else {
+        // Ensure deep copy to avoid modifying draftNodes directly until save
+        editNodeSources = node.source_items ? JSON.parse(JSON.stringify(node.source_items)) : [];
+    }
+    
     renderSources('edit');
     document.getElementById('editModal').dataset.oldLocalId = node.local_id;
     document.getElementById('editModal').style.display = 'flex';
@@ -68,7 +95,7 @@ function updateNode() {
     var title = document.getElementById('edit-node-title').value;
     var desc = document.getElementById('edit-node-desc').value;
     var pre = document.getElementById('edit-node-pre').value;
-    var sources = editNodeSources.join(',');
+    var sourceItems = JSON.parse(JSON.stringify(editNodeSources));
 
     if (isNaN(newLocalId) || !title) {
         customAlert('Valid ID and Title required');
@@ -87,7 +114,9 @@ function updateNode() {
     node.title = title;
     node.description = desc;
     node.prerequisite = pre;
-    node.sources = sources;
+    node.source_items = sourceItems;
+    // Clear legacy field if we are updating
+    node.sources = null; 
 
     persistDraft();
     closeEditModal();

@@ -74,7 +74,7 @@ elif APP_MODE == "docker":
 else:
     # --- LOCAL PIPELINE (SQLITE) ---
     # Local development uses SQLite for simplicity and zero setup
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./brotherhood.db"
+    SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL", "sqlite:///./brotherhood.db")
     print(f"INFO: Using local SQLite database at {SQLALCHEMY_DATABASE_URL}")
     
     engine = create_engine(

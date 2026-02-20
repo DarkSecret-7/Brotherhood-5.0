@@ -2,13 +2,33 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+class SourceBase(BaseModel):
+    title: str
+    author: Optional[str] = None
+    year: Optional[int] = None
+    source_type: str
+    url: Optional[str] = None
+    fragment_start: Optional[str] = None
+    fragment_end: Optional[str] = None
+
+class SourceCreate(SourceBase):
+    pass
+
+class SourceRead(SourceBase):
+    id: int
+    node_id: int
+
+    class Config:
+        from_attributes = True
+
 class NodeBase(BaseModel):
     local_id: int
     title: str
     description: Optional[str] = None
     prerequisite: Optional[str] = None
     mentions: Optional[str] = None
-    sources: Optional[str] = None
+    sources: Optional[str] = None # Deprecated
+    source_items: List[SourceBase] = []
     domain_id: Optional[int] = None
 
 class NodeCreate(NodeBase):
@@ -17,6 +37,7 @@ class NodeCreate(NodeBase):
 class NodeRead(NodeBase):
     id: int
     snapshot_id: int
+    source_items: List[SourceRead] = []
 
     class Config:
         from_attributes = True

@@ -42,8 +42,17 @@ def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_dat
     
     # Clear existing nodes and domains
     # Using delete(synchronize_session=False) for better performance and to avoid session issues
+    
+    # First delete associated sources to avoid ForeignKeyViolation
+    # Get all node IDs for this snapshot
+    node_ids_query = db.query(models.Node.id).filter(models.Node.snapshot_id == db_snapshot.id)
+    # Delete sources where node_id is in the list of node IDs
+    db.query(models.Source).filter(models.Source.node_id.in_(node_ids_query)).delete(synchronize_session=False)
+    
+    # Now delete nodes
     db.query(models.Node).filter(models.Node.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
     db.query(models.Domain).filter(models.Domain.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
+
     db.commit()
     
     # Re-populate
@@ -99,9 +108,54 @@ def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snap
             description=node_data.description,
             prerequisite=node_data.prerequisite,
             mentions=node_data.mentions,
-            sources=node_data.sources,
+            sources=None, # Deprecated: Legacy sources are migrated to Source table
             domain_id=resolved_domain_id
         )
+        
+        # Track existing URLs to prevent duplicates
+        existing_urls = set()
+        if hasattr(node_data, 'source_items') and node_data.source_items:
+            for item in node_data.source_items:
+                if item.url:
+                    existing_urls.add(item.url)
+
+        # Migrate legacy sources string to Source objects
+        if node_data.sources:
+            legacy_urls = [u.strip() for u in node_data.sources.split(',') if u.strip()]
+            for url in legacy_urls:
+                # Skip if already present in source_items
+                if url in existing_urls:
+                    continue
+                
+                # Basic type detection
+                s_type = "PDF" if url.lower().endswith('.pdf') else "Other"
+                
+                legacy_source = models.Source(
+                    title=url, # Use URL as title
+                    author=None,
+                    year=None,
+                    source_type=s_type,
+                    url=url,
+                    fragment_start=None,
+                    fragment_end=None
+                )
+                db_node.source_items.append(legacy_source)
+                existing_urls.add(url) # Prevent duplicates within legacy list too
+        
+        # Populate new source items
+        if hasattr(node_data, 'source_items') and node_data.source_items:
+            for source_data in node_data.source_items:
+                db_source = models.Source(
+                    title=source_data.title,
+                    author=source_data.author,
+                    year=source_data.year,
+                    source_type=source_data.source_type,
+                    url=source_data.url,
+                    fragment_start=source_data.fragment_start,
+                    fragment_end=source_data.fragment_end
+                )
+                db_node.source_items.append(db_source)
+                
         db_nodes.append(db_node)
     
     db.add_all(db_nodes)

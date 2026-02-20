@@ -96,6 +96,21 @@ function renderGraph(nodes, domains) {
 
     if (network) network.destroy();
     network = new vis.Network(container, data, options);
+    
+    network.on("click", function (params) {
+        if (params.nodes.length > 0) {
+            var nodeId = params.nodes[0];
+            // Check if it's a domain (starts with "domain_")
+            if (typeof nodeId === 'string' && nodeId.startsWith('domain_')) {
+                // Optional: handle domain click
+            } else {
+                // It's a node
+                if (typeof openEditModal === 'function') {
+                    openEditModal(parseInt(nodeId));
+                }
+            }
+        }
+    });
 }
 
 function refreshGraph() {

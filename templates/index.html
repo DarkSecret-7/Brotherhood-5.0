@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brotherhood 5.0 - Graph Management</title>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=5">
+    <link rel="stylesheet" href="/static/styles.css?v=7">
 </head>
 <body>
     <div class="header">
@@ -76,12 +76,9 @@
                     <input type="text" id="node-pre" placeholder="e.g. (1 AND 2) OR 3" onblur="autoSimplifyPrerequisites('node-pre')">
                 </div>
                 <div class="form-group">
-                    <label>Sources (URLs)</label>
+                    <label>Sources</label>
                     <div id="new-node-sources" class="sources-container"></div>
-                    <div class="source-input-group">
-                        <input type="text" id="new-source-input" placeholder="https://example.com">
-                        <button class="btn-secondary btn-small" onclick="addSource('new')">Add</button>
-                    </div>
+                    <button class="btn-secondary btn-small" onclick="openSourceModal('new')">Add Source</button>
                 </div>
                 <div class="button-group">
                     <button class="btn-primary" onclick="addNode()">Add to Draft</button>
@@ -141,12 +138,9 @@
                 <input type="text" id="edit-node-pre" onblur="autoSimplifyPrerequisites('edit-node-pre')">
             </div>
             <div class="form-group">
-                <label>Sources (URLs)</label>
-                <div class="source-input-group">
-                    <input type="text" id="edit-source-input" placeholder="https://...">
-                    <button class="btn-secondary" onclick="addSource('edit')">Add</button>
-                </div>
+                <label>Sources</label>
                 <div id="edit-node-sources" class="sources-container"></div>
+                <button class="btn-secondary btn-small" onclick="openSourceModal('edit')">Add Source</button>
             </div>
             <div class="button-group">
                 <button class="btn-primary" onclick="updateNode()">Update Node</button>
@@ -223,13 +217,80 @@
         </div>
     </div>
 
-    <script src="/static/js/globals.js"></script>
-    <script src="/static/js/utils.js"></script>
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/visualization.js"></script>
-    <script src="/static/js/workspace-ui.js"></script>
-    <script src="/static/js/workspace-ops.js"></script>
-    <script src="/static/js/database.js"></script>
-    <script src="/static/js/main.js"></script>
+    <!-- Source Modal -->
+    <div id="sourceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="source-modal-title">Add Source</h2>
+                <span class="close" onclick="closeSourceModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="source-title" placeholder="Source Title">
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="source-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="PDF">PDF</option>
+                    <option value="Video">Video</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="source-author" placeholder="Author Name">
+            </div>
+            <div class="form-group">
+                <label>Year</label>
+                <input type="number" id="source-year" placeholder="Year">
+            </div>
+            <div class="form-group">
+                <label>URL</label>
+                <input type="text" id="source-url" placeholder="https://...">
+            </div>
+            <div class="form-group" style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Fragment Start</label>
+                    <input type="text" id="source-start" placeholder="Page/Time">
+                </div>
+                <div style="flex: 1;">
+                    <label>Fragment End</label>
+                    <input type="text" id="source-end" placeholder="Page/Time">
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button id="btn-delete-source" class="btn-danger btn-small" onclick="deleteCurrentSource()" style="display: none;">Delete</button>
+                <div>
+                    <button class="btn-secondary" onclick="closeSourceModal()">Cancel</button>
+                    <button class="btn-primary" onclick="submitSource()">Save Source</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Source Modal -->
+    <div id="viewSourceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Source Details</h2>
+                <span class="close" onclick="closeViewSourceModal()">&times;</span>
+            </div>
+            <div id="view-source-content">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="closeViewSourceModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/globals.js?v=5.1"></script>
+    <script src="/static/js/utils.js?v=5.1"></script>
+    <script src="/static/js/api.js?v=5.1"></script>
+    <script src="/static/js/visualization.js?v=5.1"></script>
+    <script src="/static/js/workspace-ui.js?v=5.1"></script>
+    <script src="/static/js/workspace-ops.js?v=5.1"></script>
+    <script src="/static/js/database.js?v=5.1"></script>
+    <script src="/static/js/main.js?v=5.1"></script>
 </body>
 </html>

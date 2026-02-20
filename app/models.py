@@ -30,10 +30,29 @@ class Node(Base):
     description = Column(String, nullable=True)
     prerequisite = Column(String, nullable=True)  # Boolean expression e.g. "(1 AND 2) OR 3"
     mentions = Column(String, nullable=True) # Comma-separated list of local_ids that depend on this node
-    sources = Column(String, nullable=True) # Comma-separated list of URLs
+    sources = Column(String, nullable=True) # Deprecated: Comma-separated list of URLs
 
     snapshot = relationship("GraphSnapshot", back_populates="nodes")
     domain = relationship("Domain", back_populates="node_objects")
+    source_items = relationship("Source", back_populates="node", cascade="all, delete-orphan")
+
+class Source(Base):
+    __tablename__ = "sources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    
+    title = Column(String, nullable=False)
+    author = Column(String, nullable=True)
+    year = Column(Integer, nullable=True)
+    source_type = Column(String, nullable=False) # e.g. "Book", "Video", "Article"
+    url = Column(String, nullable=True)
+    
+    # Fragment info
+    fragment_start = Column(String, nullable=True)
+    fragment_end = Column(String, nullable=True)
+
+    node = relationship("Node", back_populates="source_items")
 
 class Domain(Base):
     __tablename__ = "domains"

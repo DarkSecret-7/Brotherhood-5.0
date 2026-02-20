@@ -49,6 +49,10 @@ The Web UI is now **invite-only**. You must have an invitation code to register.
     - **Authorship Integrity**: Tracks the creator of each graph. Original authorship is preserved even during overwrites to maintain data provenance.
     - **Timestamping**: Tracks both `Created At` and `Last Updated` timestamps for every graph snapshot.
     - **Overwrite Toggle**: Intelligent UI toggle that acts as an autofill for existing names and locks the field for safe editing.
+  - **Structured Source Management**:
+    - Add multiple sources per node (PDF, Video, Other).
+    - Track metadata: Title, Author, Year, URL, Fragment (Start/End).
+    - Clean, list-based UI with one source per row for better readability.
   - Automated **Prerequisite Simplification** (Transitive Reduction).
   - **Circularity Detection** to prevent dependency loops.
   - **Mentions Tracking**: See which nodes depend on the current one.

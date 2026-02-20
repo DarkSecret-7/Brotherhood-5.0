@@ -19,6 +19,7 @@ function loadSnapshotIntoWorkspace(snapshot) {
             description: n.description,
             prerequisite: n.prerequisite,
             sources: n.sources,
+            source_items: n.source_items,
             domain_id: n.domain_id ? snapshot.domains.find(pd => pd.id === n.domain_id).local_id : null
         };
     });
@@ -132,6 +133,8 @@ function saveSnapshot() {
                         });
                     }
                 }
+        }).catch(function(err) {
+            customAlert('Error saving snapshot: ' + err.message);
         });
     };
 

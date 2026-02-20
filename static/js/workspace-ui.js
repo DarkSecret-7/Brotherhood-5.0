@@ -170,7 +170,7 @@ function renderNodeRow(node, domainId, depth) {
     var levelIndent = 15;
     var currentPadding = (depth * levelIndent) + 5;
     
-    return '<tr class="' + rowClass + '" onclick="openEditModal(' + JSON.stringify(node).replace(/"/g, '&quot;') + ')">' +
+    return '<tr class="' + rowClass + '" onclick="openEditModal(' + node.local_id + ')">' +
         '<td class="tree-column" onclick="event.stopPropagation()" style="padding-left: ' + currentPadding + 'px;">' +
             '<input type="checkbox" class="selection-checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleNodeSelection(' + node.local_id + ')">' +
             '<span class="node-id">' + node.local_id + '</span>' +
@@ -184,6 +184,14 @@ function renderNodeRow(node, domainId, depth) {
             '</div>' +
         '</td>' +
     '</tr>';
+}
+
+function getSourceIcon(type) {
+    switch (type) {
+        case 'PDF': return '📄';
+        case 'Video': return '🎥';
+        default: return '🔗';
+    }
 }
 
 function updateGroupButtonVisibility() {
@@ -217,24 +225,100 @@ function toggleDomainSelection(localId) {
 }
 
 // Source Management for Forms
-function addSource(type) {
-    var inputId = type === 'new' ? 'new-source-input' : 'edit-source-input';
-    var sourcesList = type === 'new' ? newNodeSources : editNodeSources;
-    var input = document.getElementById(inputId);
-    var url = input.value.trim();
+var currentSourceModalType = null; // 'new' or 'edit'
+var currentSourceIndex = null; // Index of source being edited
+
+function openSourceModal(type, index) {
+    currentSourceModalType = type;
+    currentSourceIndex = (typeof index === 'number') ? index : null;
     
-    if (url) {
-        if (!url.startsWith('http')) url = 'https://' + url;
-        sourcesList.push(url);
-        input.value = '';
-        renderSources(type);
+    var modalTitle = document.getElementById('source-modal-title');
+    var deleteBtn = document.getElementById('btn-delete-source');
+    
+    // Clear or populate fields
+    if (currentSourceIndex !== null) {
+        if (modalTitle) modalTitle.innerText = 'Edit Source';
+        if (deleteBtn) deleteBtn.style.display = 'block';
+        
+        var sourcesList = type === 'new' ? newNodeSources : editNodeSources;
+        var source = sourcesList[currentSourceIndex];
+        console.log('Opening source modal for:', source);
+        
+        if (source) {
+            document.getElementById('source-title').value = source.title || '';
+            document.getElementById('source-type').value = source.source_type || 'Other';
+            document.getElementById('source-author').value = source.author || '';
+            document.getElementById('source-year').value = source.year || '';
+            document.getElementById('source-url').value = source.url || '';
+            document.getElementById('source-start').value = source.fragment_start || '';
+            document.getElementById('source-end').value = source.fragment_end || '';
+        }
+    } else {
+        if (modalTitle) modalTitle.innerText = 'Add Source';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        
+        document.getElementById('source-title').value = '';
+        document.getElementById('source-author').value = '';
+        document.getElementById('source-year').value = '';
+        document.getElementById('source-url').value = '';
+        document.getElementById('source-start').value = '';
+        document.getElementById('source-end').value = '';
+        document.getElementById('source-type').value = 'Other';
     }
+    
+    document.getElementById('sourceModal').style.display = 'flex';
 }
 
-function removeSource(type, index) {
-    var sourcesList = type === 'new' ? newNodeSources : editNodeSources;
-    sourcesList.splice(index, 1);
-    renderSources(type);
+function closeSourceModal() {
+    document.getElementById('sourceModal').style.display = 'none';
+    currentSourceModalType = null;
+    currentSourceIndex = null;
+}
+
+function submitSource() {
+    if (!currentSourceModalType) return;
+    
+    var title = document.getElementById('source-title').value;
+    if (!title) {
+        alert('Title is required');
+        return;
+    }
+    
+    var source = {
+        title: title,
+        source_type: document.getElementById('source-type').value,
+        author: document.getElementById('source-author').value || null,
+        year: document.getElementById('source-year').value ? parseInt(document.getElementById('source-year').value) : null,
+        url: document.getElementById('source-url').value || null,
+        fragment_start: document.getElementById('source-start').value || null,
+        fragment_end: document.getElementById('source-end').value || null
+    };
+    
+    var sourcesList = currentSourceModalType === 'new' ? newNodeSources : editNodeSources;
+    
+    if (currentSourceIndex !== null) {
+        // Update existing
+        if (sourcesList[currentSourceIndex].id) {
+            source.id = sourcesList[currentSourceIndex].id;
+        }
+        sourcesList[currentSourceIndex] = source;
+    } else {
+        // Add new
+        sourcesList.push(source);
+    }
+    
+    renderSources(currentSourceModalType);
+    closeSourceModal();
+}
+
+function deleteCurrentSource() {
+    if (!currentSourceModalType || currentSourceIndex === null) return;
+    
+    var sourcesList = currentSourceModalType === 'new' ? newNodeSources : editNodeSources;
+    sourcesList.splice(currentSourceIndex, 1);
+    
+    renderSources(currentSourceModalType);
+    closeSourceModal();
 }
 
 function renderSources(type) {
@@ -243,11 +327,65 @@ function renderSources(type) {
     var container = document.getElementById(containerId);
     
     var html = '';
-    for (var i = 0; i < sourcesList.length; i++) {
-        html += '<span class="source-tag" title="' + sourcesList[i] + '">' + 
-                '<a href="' + sourcesList[i] + '" target="_blank" class="source-link">' + sourcesList[i] + '</a>' +
-                '<span class="remove-source" onclick="removeSource(\'' + type + '\', ' + i + ')">&times;</span>' +
-                '</span>';
+    if (sourcesList.length === 0) {
+        html = '<p style="color: #888; font-style: italic; font-size: 0.9em;">No sources added.</p>';
+    } else {
+        for (var i = 0; i < sourcesList.length; i++) {
+            var s = sourcesList[i];
+            // Handle legacy strings if any slip through
+            if (typeof s === 'string') {
+                 html += '<span class="source-tag">' + 
+                    '<a href="' + s + '" target="_blank" class="source-link">' + s + '</a>' +
+                    '<span class="remove-source" onclick="removeSource(\'' + type + '\', ' + i + ')">&times;</span>' +
+                    '</span>';
+            } else {
+                var icon = getSourceIcon(s.source_type);
+                // Make the row clickable to edit
+                html += '<div class="source-item-row" onclick="openSourceModal(\'' + type + '\', ' + i + ')">' + 
+                        '<div class="source-icon">' + icon + '</div>' +
+                        '<div class="source-main-info">' + 
+                            '<div class="source-title">' + s.title + '</div>' + 
+                        '</div>' +
+                        '<div class="source-meta-info">' +
+                            (s.author ? '<span class="meta-item meta-author">' + s.author + '</span>' : '') +
+                            (s.year ? '<span class="meta-item meta-year">' + s.year + '</span>' : '') +
+                            '<span class="meta-item meta-type">' + s.source_type + '</span>' +
+                        '</div>' +
+                        '<div class="source-actions">' +
+                            (s.url ? '<a href="' + s.url + '" target="_blank" class="btn-goto" onclick="event.stopPropagation()">Go to ↗</a>' : '') +
+                        '</div>' +
+                        '<div class="source-arrow">›</div>' +
+                        '</div>';
+            }
+        }
     }
     container.innerHTML = html;
+}
+
+function openViewSourceModal(nodeId, sourceIndex) {
+    var node = draftNodes.find(function(n) { return n.local_id === nodeId; });
+    if (!node || !node.source_items || !node.source_items[sourceIndex]) return;
+    
+    var s = node.source_items[sourceIndex];
+    
+    var html = '<div class="view-source-details">' +
+               '<div class="detail-row"><span class="label">Type:</span> <span>' + getSourceIcon(s.source_type) + ' ' + s.source_type + '</span></div>' +
+               '<div class="detail-row"><span class="label">Title:</span> <strong>' + s.title + '</strong></div>' +
+               (s.author ? '<div class="detail-row"><span class="label">Author:</span> <span>' + s.author + '</span></div>' : '') +
+               (s.year ? '<div class="detail-row"><span class="label">Year:</span> <span>' + s.year + '</span></div>' : '') +
+               (s.url ? '<div class="detail-row"><span class="label">URL:</span> <a href="' + s.url + '" target="_blank">' + s.url + '</a></div>' : '') +
+               ((s.fragment_start || s.fragment_end) ? 
+                    '<div class="detail-row"><span class="label">Fragment:</span> <span>' + 
+                    (s.fragment_start ? 'Start: ' + s.fragment_start : '') + 
+                    (s.fragment_start && s.fragment_end ? ' - ' : '') + 
+                    (s.fragment_end ? 'End: ' + s.fragment_end : '') + 
+                    '</span></div>' : '') +
+               '</div>';
+               
+    document.getElementById('view-source-content').innerHTML = html;
+    document.getElementById('viewSourceModal').style.display = 'flex';
+}
+
+function closeViewSourceModal() {
+    document.getElementById('viewSourceModal').style.display = 'none';
 }
