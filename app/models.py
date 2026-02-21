@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, text
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from .database import Base
@@ -10,6 +10,7 @@ class GraphSnapshot(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     version_label = Column(String, nullable=True)  # e.g. "v1", "Initial Draft"
+    is_public = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     
     # Relationships
     base_graph_id = Column(Integer, ForeignKey("graph_snapshots.id"), nullable=True)

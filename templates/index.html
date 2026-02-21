@@ -319,16 +319,43 @@
     <!-- Graph Action Modal -->
     <div id="graphActionModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2>Manage Graph: <span id="graph-action-label"></span></h2>
-                <span class="close" onclick="closeGraphActionModal()">&times;</span>
+            <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 15px; padding-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                    <h2 style="margin: 0; font-size: 1.8em; color: #202124;">Manage Graph</h2>
+                    <span class="close" onclick="closeGraphActionModal()" style="font-size: 2em; line-height: 0.8;">&times;</span>
+                </div>
             </div>
             <div class="modal-body">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <p><strong>Created:</strong> <span id="graph-action-created"></span></p>
-                    <p><strong>Updated:</strong> <span id="graph-action-updated"></span></p>
-                    <p><strong>Nodes:</strong> <span id="graph-action-nodes"></span></p>
+                <div class="form-group">
+                    <label style="display: block; color: #202124; margin-bottom: 5px;">Graph Name</label>
+                    <input type="text" id="graph-action-label-input" style="width: 100%; padding: 10px; font-size: 1.1em; border: 1px solid #dadce0; border-radius: 4px;" placeholder="Graph Name">
                 </div>
+
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #5f6368;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>Created:</strong> <span id="graph-action-created"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>Updated:</strong> <span id="graph-action-updated"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <strong>Nodes:</strong> <span id="graph-action-nodes"></span>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 10px; color: #1a73e8;">Visibility</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
+                    <div>
+                        <strong style="display: block; color: #202124;">Public Access</strong>
+                        <span style="font-size: 0.9em; color: #5f6368;">Make this graph visible in the public gallery.</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="graph-action-public-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <button id="graph-action-save-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1em; margin-bottom: 20px;" onclick="saveGraphChanges()">Save Changes</button>
                 
                 <h3 style="margin-bottom: 10px; color: #1a73e8;">Export</h3>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">

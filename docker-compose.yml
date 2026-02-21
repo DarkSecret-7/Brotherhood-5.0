@@ -18,6 +18,7 @@ services:
       PORT: 10000
       DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/brotherhood
       APP_MODE: docker
+      ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     depends_on:
       - db
     volumes:
@@ -31,6 +32,8 @@ services:
         BUILD_DATE: "${BUILD_DATE:-1}"
     ports:
       - "8080:80"
+    environment:
+      API_URL: "http://localhost:8000"
 
 volumes:
   postgres_data:

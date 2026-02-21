@@ -29,27 +29,19 @@ If you plan to use the CLI tool locally, install the required packages:
 pip install -r requirements.txt
 ```
 
-### 4. Access the Web UI
-The Web UI is now **invite-only**. You must have an invitation code to register.
-- **URL**: [http://localhost:8000](http://localhost:8000)
-- **Authentication**: JWT-based auth with protected routes.
-- **Features**: 
-  - **Advanced Graph Persistence**:
-    - **Versioning**: Save graphs with unique version labels.
-    - **Base Graph Tracking**: Automatically tracks the source graph for every saved version.
-    - **Smart Conflict Resolution**: Prevents accidental overwrites of existing graphs unless the "Overwrite" toggle is explicitly enabled.
-    - **Authorship Integrity**: Tracks the creator of each graph. Original authorship is preserved even during overwrites to maintain data provenance.
-    - **Timestamping**: Tracks both `Created At` and `Last Updated` timestamps for every graph snapshot.
-    - **Overwrite Toggle**: Intelligent UI toggle that acts as an autofill for existing names and locks the field for safe editing.
-  - **Structured Source Management**:
-    - Add multiple sources per node (PDF, Video, Other).
-    - Track metadata: Title, Author, Year, URL, Fragment (Start/End).
-    - Clean, list-based UI with one source per row for better readability.
-  - Automated **Prerequisite Simplification** (Transitive Reduction).
-  - **Circularity Detection** to prevent dependency loops.
-  - **Mentions Tracking**: See which nodes depend on the current one.
-  - **ID Propagation**: Changing a node's Local ID automatically updates all references.
-  - **Compact UI**: Neat display of metadata and timestamps in the database management interface.
+### 4. Access the Web UI & Public Pages
+The system runs on two primary services:
+
+1.  **Workspace Application (Port 8000)**
+    -   **URL**: [http://localhost:8000](http://localhost:8000)
+    -   **Purpose**: The main application for creating, editing, and managing graphs.
+    -   **Access**: Invite-only. Requires authentication (Login/Signup).
+    -   **Behavior**: This is where authenticated users perform graph curating work.
+
+2.  **Public Landing Site (Port 8080)**
+    -   **URL**: [http://localhost:8080](http://localhost:8080)
+    -   **Purpose**: Public information, manifesto, and read-only gallery.
+    -   **Public Gallery**: The read-only graph gallery is accessible at [http://localhost:8080/gallery.html](http://localhost:8080/gallery.html).
 
 ### 5. Import & Export (.knw)
 The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs.
@@ -131,6 +123,17 @@ If the logs show `!!! WARNING: No database environment variable found`, it means
 ## Authentication & Security
 
 - **Invite-Only Signup**: Registration is restricted to users with a valid invitation code.
+
+## Project Structure
+
+- **`app/`**: FastAPI backend application logic (routes, models, database).
+- **`landing_page/`**: Static site for the public landing page and graph gallery.
+  - **`static/`**: Contains HTML, CSS, JS, and assets.
+  - **`Dockerfile`**: Builds the Nginx container for the landing page.
+- **`static/`**: Frontend assets for the main Workspace application (JS, CSS, Login/Signup HTML).
+- **`templates/`**: HTML templates for the Workspace application (index.html, public_gallery.html).
+- **`docker-compose.yml`**: Defines services (API, DB, Landing Page) for local development.
+- **`render.yaml`**: Deployment configuration for Render.com.
 - **JWT Authorization**: Backend endpoints are protected using OAuth2 with Password Flow and JWT tokens.
 - **Secure Access**: The static dashboard is only accessible to authenticated users.
 

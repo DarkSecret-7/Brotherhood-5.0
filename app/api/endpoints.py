@@ -166,8 +166,23 @@ def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends
     return crud.create_snapshot(db=db, snapshot_data=snapshot)
 
 @router.get("/snapshots", response_model=List[schemas.GraphSnapshotSummary])
-def list_snapshots(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
-    return crud.get_snapshots(db=db, skip=skip, limit=limit)
+def read_snapshots(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    snapshots = crud.get_snapshots(db, skip=skip, limit=limit)
+    return snapshots
+
+@router.get("/public/snapshots", response_model=List[schemas.GraphSnapshotSummary])
+def read_public_snapshots(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
+    snapshots = crud.get_public_snapshots(db, skip=skip, limit=limit)
+    return snapshots
+
+@router.get("/public/snapshots/{snapshot_id}", response_model=schemas.GraphSnapshotRead)
+def read_public_snapshot(snapshot_id: int, db: Session = Depends(database.get_db)):
+    snapshot = crud.get_snapshot(db, snapshot_id=snapshot_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    if not snapshot.is_public:
+        raise HTTPException(status_code=403, detail="Snapshot is not public")
+    return snapshot
 
 @router.get("/snapshots/{snapshot_id}", response_model=schemas.GraphSnapshotRead)
 def get_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
@@ -178,6 +193,32 @@ def get_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), curre
         return snapshot
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.patch("/snapshots/{snapshot_id}", response_model=schemas.GraphSnapshotRead)
+def update_snapshot_metadata(
+    snapshot_id: int, 
+    update_data: schemas.GraphSnapshotUpdate, 
+    db: Session = Depends(database.get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    snapshot = crud.get_snapshot(db, snapshot_id)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    
+    # Check ownership
+    # Only allow update if the user is the creator or if it's an "Open" graph (created_by is None/Unknown)
+    # AND the user is claiming it or just editing it.
+    if snapshot.created_by and snapshot.created_by != "Unknown":
+        if snapshot.created_by != current_user.username:
+            raise HTTPException(status_code=403, detail="Not authorized to edit this graph")
+
+    # Check for name conflict if version_label is being changed
+    if update_data.version_label and update_data.version_label != snapshot.version_label:
+        existing = crud.get_snapshot_by_label(db, update_data.version_label)
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Graph with label '{update_data.version_label}' already exists.")
+
+    return crud.update_snapshot_metadata(db, snapshot, update_data)
 
 @router.delete("/snapshots/{snapshot_id}")
 def delete_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):

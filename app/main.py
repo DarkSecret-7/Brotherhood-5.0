@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 import traceback
@@ -20,6 +21,28 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Brotherhood 5.0 Graph API", lifespan=lifespan)
+
+# CORS Configuration
+# Allow origins from environment variable (comma-separated) or default to local development
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+else:
+    origins = [
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "*", # Allow all for development ease
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -52,6 +75,10 @@ def login_page():
 @app.get("/signup")
 def signup_page():
     return FileResponse(os.path.join(static_path, "signup.html"))
+
+@app.get("/gallery")
+def public_gallery():
+    return FileResponse(os.path.join(templates_path, "public_gallery.html"))
 
 @app.get("/")
 async def read_root(request: Request):

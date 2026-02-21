@@ -20,7 +20,8 @@ def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
     db_snapshot = models.GraphSnapshot(
         version_label=snapshot_data.version_label,
         base_graph_id=base_graph_id,
-        created_by_id=creator_id
+        created_by_id=creator_id,
+        is_public=snapshot_data.is_public
     )
     db.add(db_snapshot)
     db.commit()
@@ -93,6 +94,23 @@ def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_dat
     if db_snapshot.last_updated is None:
         db_snapshot.last_updated = db_snapshot.created_at
         
+    return db_snapshot
+
+def update_snapshot_metadata(db: Session, db_snapshot: models.GraphSnapshot, snapshot_update: schemas.GraphSnapshotUpdate):
+    if snapshot_update.version_label is not None:
+        db_snapshot.version_label = snapshot_update.version_label
+    
+    if snapshot_update.is_public is not None:
+        db_snapshot.is_public = snapshot_update.is_public
+    
+    db_snapshot.last_updated = func.now()
+    db.commit()
+    db.refresh(db_snapshot)
+    
+    # Re-fetch node count for consistency
+    node_count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == db_snapshot.id).scalar()
+    setattr(db_snapshot, 'node_count', node_count)
+    
     return db_snapshot
 
 def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):
@@ -206,7 +224,32 @@ def get_snapshots(db: Session, skip: int = 0, limit: int = 100):
             "version_label": s.version_label,
             "base_graph": s.base_graph,
             "created_by": s.created_by,
-            "node_count": count
+            "node_count": count,
+            "is_public": s.is_public
+        })
+    return results
+
+def get_public_snapshots(db: Session, skip: int = 0, limit: int = 100):
+    # Fetch public snapshots
+    snapshots = db.query(models.GraphSnapshot).filter(models.GraphSnapshot.is_public == True).order_by(models.GraphSnapshot.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # Annotate with node count
+    results = []
+    for s in snapshots:
+        count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id).scalar()
+        
+        created_at = s.created_at
+        last_updated = s.last_updated if s.last_updated else s.created_at
+        
+        results.append({
+            "id": s.id,
+            "created_at": created_at,
+            "last_updated": last_updated,
+            "version_label": s.version_label,
+            "base_graph": s.base_graph,
+            "created_by": s.created_by,
+            "node_count": count,
+            "is_public": s.is_public
         })
     return results
 

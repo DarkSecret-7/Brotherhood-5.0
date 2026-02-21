@@ -41,6 +41,13 @@ var api = {
             body: JSON.stringify(snapshotData)
         }).then(this._handleResponse);
     },
+    patchSnapshot: function(id, data) {
+        return fetch(API_BASE + '/snapshots/' + id, {
+            method: 'PATCH',
+            headers: this._getHeaders(),
+            body: JSON.stringify(data)
+        }).then(this._handleResponse).then(function(res) { return res.json(); });
+    },
     postSimplifyPrerequisites: function(expression, currentNodeId, contextNodes) {
         return fetch(API_BASE + '/draft/simplify-prerequisites', {
             method: 'POST',

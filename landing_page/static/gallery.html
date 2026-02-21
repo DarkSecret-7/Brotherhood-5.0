@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brotherhood 5.0 - Public Gallery</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="js/config.js"></script>
+    <link rel="stylesheet" href="css/styles.css?v=8">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            max-width: none;
+            background: #ffffff;
+        }
+        .gallery-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px); /* Adjust for header */
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #dadce0;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .sidebar.collapsed {
+            width: 0;
+            border-right: none;
+        }
+        .sidebar.collapsed .sidebar-header {
+            visibility: hidden;
+        }
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: #fff;
+            font-weight: 600;
+            color: #1a73e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            /* Removed fixed width to allow fluid layout */
+        }
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            /* Removed fixed width to prevent scrollbar overflow */
+        }
+        .graph-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .graph-item:hover {
+            border-color: #1a73e8;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .graph-item.active {
+            background: #e8f0fe;
+            border-color: #1a73e8;
+        }
+        .graph-title {
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 4px;
+        }
+        .graph-meta {
+            font-size: 0.8em;
+            color: #5f6368;
+        }
+        .main-area {
+            flex: 1;
+            position: relative;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        #graph-container {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0;
+            margin: 0;
+            display: block !important;
+        }
+        .toggle-sidebar-btn {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            z-index: 20;
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            padding: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            padding: 10px 20px;
+            background: #fff;
+            border-bottom: 1px solid #dadce0;
+            margin-bottom: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 1.2em;
+            margin: 0;
+        }
+        .node-details-panel {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            width: 300px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 20px;
+            display: none;
+            z-index: 20;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close-details {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: #5f6368;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="index.html" style="text-decoration: none; font-weight: bold; color: #1a73e8;">&larr; Back to Home</a>
+            <h1 style="color: #202124;">Public Graph Gallery</h1>
+        </div>
+        <div class="version-indicator">Read-Only Mode</div>
+    </div>
+
+    <div class="gallery-container">
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <span>Public Graphs</span>
+            </div>
+            <div id="graph-list" class="sidebar-content">
+                <p style="text-align: center; color: #5f6368; margin-top: 20px;">Loading...</p>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
+            <div id="graph-container"></div>
+            
+            <!-- Node Details Panel (Floating) -->
+            <div id="node-details" class="node-details-panel">
+                <span class="close-details" onclick="closeNodeDetails()">&times;</span>
+                <h3 id="detail-title" style="margin-top: 0; color: #1a73e8;">Node Title</h3>
+                <div id="detail-meta" style="font-size: 0.85em; color: #5f6368; margin-bottom: 10px;"></div>
+                <div id="detail-desc" style="line-height: 1.5; margin-bottom: 15px;"></div>
+                
+                <h4 style="font-size: 0.9em; margin-bottom: 8px;">Sources</h4>
+                <div id="detail-sources" class="sources-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = (window.AppConfig && window.AppConfig.API_BASE_URL) || 'http://localhost:8000';
+
+        // Mock globals expected by visualization.js (if any)
+        var draftNodes = [];
+        var draftDomains = [];
+        
+        // --- Sidebar Logic ---
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // --- API Calls ---
+        async function fetchPublicSnapshots() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/public/snapshots`);
+                if (!response.ok) throw new Error('Failed to fetch graphs');
+                const snapshots = await response.json();
+                renderGraphList(snapshots);
+            } catch (err) {
+                document.getElementById('graph-list').innerHTML = `<p style="color: #d93025; padding: 10px;">Error: ${err.message}</p>`;
+            }
+        }
+
+        async function loadGraph(id) {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/public/snapshots/${id}`);
+                if (!response.ok) throw new Error('Failed to fetch graph details');
+                const snapshot = await response.json();
+                
+                // Map to format expected by visualizer
+                draftNodes = snapshot.nodes.map(n => ({
+                    local_id: n.local_id,
+                    title: n.title,
+                    description: n.description,
+                    prerequisite: n.prerequisite,
+                    source_items: n.source_items,
+                    domain_id: n.domain_id 
+                }));
+                
+                const domainDbToLocal = {};
+                snapshot.domains.forEach(d => {
+                    domainDbToLocal[d.id] = d.local_id;
+                });
+                
+                draftDomains = snapshot.domains.map(d => ({
+                    local_id: d.local_id,
+                    title: d.title,
+                    description: d.description,
+                    collapsed: d.collapsed,
+                    parent_id: d.parent_id ? domainDbToLocal[d.parent_id] : null
+                }));
+                
+                // Fix node domain_ids
+                draftNodes.forEach(n => {
+                    if (n.domain_id) {
+                        n.domain_id = domainDbToLocal[n.domain_id];
+                    }
+                });
+                
+                renderGraph(draftNodes, draftDomains);
+                
+                // Highlight active item
+                document.querySelectorAll('.graph-item').forEach(el => el.classList.remove('active'));
+                const activeItem = document.querySelector(`.graph-item[onclick="loadGraph(${id})"]`);
+                if (activeItem) activeItem.classList.add('active');
+                
+            } catch (err) {
+                console.error(err);
+                alert('Error loading graph: ' + err.message);
+            }
+        }
+
+        function renderGraphList(snapshots) {
+            const container = document.getElementById('graph-list');
+            if (snapshots.length === 0) {
+                container.innerHTML = '<p style="padding: 10px; color: #5f6368;">No public graphs available.</p>';
+                return;
+            }
+            
+            let html = '';
+            snapshots.forEach(s => {
+                const date = new Date(s.last_updated).toLocaleDateString();
+                html += `
+                    <div class="graph-item" onclick="loadGraph(${s.id})">
+                        <div class="graph-title">${s.version_label || 'v' + s.id}</div>
+                        <div class="graph-meta">
+                            ${s.node_count} nodes • Updated ${date}<br>
+                            By ${s.created_by || 'Unknown'}
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // --- Interaction ---
+        // Override openEditModal from visualization.js
+        function openEditModal(nodeId) {
+            const node = draftNodes.find(n => n.local_id === nodeId);
+            if (!node) return;
+            
+            document.getElementById('detail-title').textContent = node.title;
+            document.getElementById('detail-meta').textContent = `ID: ${node.local_id}`;
+            document.getElementById('detail-desc').textContent = node.description || 'No description provided.';
+            
+            // Sources
+            const sourcesContainer = document.getElementById('detail-sources');
+            sourcesContainer.innerHTML = '';
+            if (node.source_items && node.source_items.length > 0) {
+                node.source_items.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'source-item-row';
+                    div.style.marginBottom = '8px';
+                    div.style.cursor = 'default';
+                    div.innerHTML = `
+                        <div class="source-icon">📄</div>
+                        <div class="source-main-info">
+                            <div class="source-title" title="${s.title}">${s.title}</div>
+                            <div class="source-meta-info">
+                                ${s.author ? `<span>👤 ${s.author}</span>` : ''}
+                                ${s.year ? `<span>📅 ${s.year}</span>` : ''}
+                            </div>
+                            ${s.url ? `<a href="${s.url}" target="_blank" style="font-size: 0.85em; color: #1a73e8;">Open Link &nearr;</a>` : ''}
+                        </div>
+                    `;
+                    sourcesContainer.appendChild(div);
+                });
+            } else {
+                sourcesContainer.innerHTML = '<span style="color: #9aa0a6; font-size: 0.9em;">No sources linked.</span>';
+            }
+            
+            document.getElementById('node-details').style.display = 'block';
+        }
+        
+        function closeNodeDetails() {
+            document.getElementById('node-details').style.display = 'none';
+        }
+
+        // Initialize
+        fetchPublicSnapshots();
+    </script>
+    
+    <!-- Load shared visualization logic -->
+    <script src="static/js/visualization.js"></script>
+</body>
+</html>

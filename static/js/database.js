@@ -224,14 +224,57 @@ function renderSnapshots(snapshots) {
 function openGraphActionModal(snapshot) {
     currentGraphActionSnapshot = snapshot;
     
-    document.getElementById('graph-action-label').textContent = snapshot.version_label || ('v' + snapshot.id);
+    // Set Graph Name
+    document.getElementById('graph-action-label-input').value = snapshot.version_label || ('v' + snapshot.id);
+    
+    // Set Info
     document.getElementById('graph-action-created').textContent = new Date(snapshot.created_at).toLocaleString();
     document.getElementById('graph-action-updated').textContent = new Date(snapshot.last_updated).toLocaleString();
     document.getElementById('graph-action-nodes').textContent = snapshot.node_count;
     
+    // Set Public Toggle
+    document.getElementById('graph-action-public-toggle').checked = snapshot.is_public || false;
+    
     document.getElementById('import-file-input').value = '';
     
     document.getElementById('graphActionModal').style.display = 'block';
+}
+
+function saveGraphChanges() {
+    if (!currentGraphActionSnapshot) return;
+    
+    var newLabel = document.getElementById('graph-action-label-input').value;
+    var isPublic = document.getElementById('graph-action-public-toggle').checked;
+    
+    if (!newLabel || newLabel.trim() === "") {
+        customAlert("Graph name cannot be empty");
+        return;
+    }
+    
+    var payload = {
+        version_label: newLabel,
+        is_public: isPublic
+    };
+    
+    api.patchSnapshot(currentGraphActionSnapshot.id, payload)
+        .then(function(updatedSnapshot) {
+            if (updatedSnapshot.error || updatedSnapshot.detail) {
+                customAlert("Error saving changes: " + (updatedSnapshot.detail || updatedSnapshot.error));
+                return;
+            }
+            
+            // Update local state
+            currentGraphActionSnapshot = updatedSnapshot;
+            
+            // Refresh list
+            refreshSnapshots(true);
+            
+            customAlert("Changes saved successfully!");
+            closeGraphActionModal();
+        })
+        .catch(function(err) {
+            customAlert("Error saving changes: " + (err.detail || err.message));
+        });
 }
 
 function closeGraphActionModal() {

@@ -63,11 +63,19 @@ class GraphSnapshotBase(BaseModel):
     version_label: Optional[str] = None
     base_graph: Optional[str] = None
     created_by: Optional[str] = None
+    is_public: bool = False
 
 class GraphSnapshotCreate(GraphSnapshotBase):
     nodes: List[NodeBase]
     domains: List[DomainBase] = []
     overwrite: bool = False
+
+class GraphSnapshotUpdate(BaseModel):
+    version_label: Optional[str] = None
+    is_public: Optional[bool] = None
+    
+    class Config:
+        from_attributes = True
 
 class GraphSnapshotRead(GraphSnapshotBase):
     id: int
@@ -88,6 +96,7 @@ class GraphSnapshotSummary(BaseModel):
     base_graph: Optional[str] = None
     created_by: Optional[str] = None
     node_count: int
+    is_public: bool = False
     
     class Config:
         from_attributes = True
