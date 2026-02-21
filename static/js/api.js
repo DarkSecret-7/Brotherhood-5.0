@@ -51,5 +51,40 @@ var api = {
                 context_nodes: contextNodes 
             })
         }).then(this._handleResponse).then(function(res) { return res.json(); });
+    },
+    exportSnapshot: function(id) {
+        // For download, we handle the blob directly in the UI handler usually, 
+        // but here we just return the fetch promise which resolves to the response.
+        // We don't use _handleResponse because we want the blob, not JSON.
+        // But we still want to check status.
+        return fetch(API_BASE + '/snapshots/' + id + '/export', { 
+            headers: this._getHeaders() 
+        }).then(function(res) {
+            if (res.status === 401) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                throw new Error('Unauthorized');
+            }
+            if (!res.ok) throw new Error('Export failed');
+            return res.blob();
+        });
+    },
+    importSnapshot: function(file, overwrite) {
+        var formData = new FormData();
+        formData.append('file', file);
+        
+        var url = API_BASE + '/snapshots/import';
+        if (overwrite) {
+            url += '?overwrite=true';
+        }
+        
+        var headers = this._getHeaders();
+        delete headers['Content-Type']; // Let browser set boundary for multipart
+        
+        return fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: formData
+        }).then(this._handleResponse).then(function(res) { return res.json(); });
     }
 };

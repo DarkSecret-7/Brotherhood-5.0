@@ -15,17 +15,9 @@ Run the following command to start the Database and API using Docker:
 docker-compose up -d --build
 ```
 
-### 2. Database Migrations
-If you are updating from an older version, you can migrate your existing graphs to the new schema using the provided migration script:
-```powershell
-# For local Docker PostgreSQL
-py debug/migrate_docker_postgres.py
 
-# For Render (Remote)
-py debug/migrate_graphs.py
-```
 
-### 3. Configure Environment (Local Development)
+### 2. Configure Environment (Local Development)
 To connect to a remote database (e.g., Render), create a `.env` file in the project root:
 ```text
 DATABASE_URL=postgresql://user:password@hostname:port/database
@@ -59,7 +51,20 @@ The Web UI is now **invite-only**. You must have an invitation code to register.
   - **ID Propagation**: Changing a node's Local ID automatically updates all references.
   - **Compact UI**: Neat display of metadata and timestamps in the database management interface.
 
-### 4. Use the CLI
+### 5. Import & Export (.knw)
+The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs.
+
+**Export:**
+- Open any graph snapshot.
+- Click **"Export Graph (.knw)"** to download the JSON-based file.
+- The file contains all nodes, domains, metadata, and sources.
+
+**Import:**
+- **Global Import**: Use the "Import Graph (.knw)" button on the main dashboard to add a new graph.
+- **Overwrite**: Inside an existing graph's settings, you can import a `.knw` file to completely replace the current graph content (requires confirmation).
+- **Smart Resolution**: The importer automatically resolves user references (creators) and base graph links. If a referenced user or graph is missing, it defaults to safe values ("Unknown" or null) to prevent errors.
+
+### 6. Use the CLI
 The CLI manages a local graph state and syncs with the backend.
 
 **Basic Workflow**:
@@ -89,6 +94,8 @@ When you edit a prerequisite in the Web UI, the system automatically:
 1. **Simplifies** the boolean expression.
 2. Performs **Transitive Reduction** (e.g., if A depends on B and B depends on C, then A depending on C is redundant and removed).
 
+> **CRITICAL**: The simplification triggers when you **unfocus** (click away) from the input field.
+
 ### Reference Integrity
 - **Mentions**: Each node tracks which other nodes reference it in their prerequisites.
 - **Validation**: You cannot reference a non-existent node ID.
@@ -97,6 +104,11 @@ When you edit a prerequisite in the Web UI, the system automatically:
 
 ### Circularity Detection
 The system prevents the creation of circular dependencies (e.g., A -> B -> A) by performing a cycle check during every create or update operation.
+
+### AI-Powered Suggestions
+- **Context-Aware**: The system uses Google Gemini to suggest new nodes based on your prompt and the current graph structure.
+- **Modularity**: Suggestions are tailored to fit the existing granularity and modularity of your graph.
+- **Bulk Import**: Select multiple suggestions and import them directly into your workspace with automatically assigned IDs.
 
 ## Deployment to Render
 

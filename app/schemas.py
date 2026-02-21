@@ -100,6 +100,20 @@ class PrerequisiteSimplifyRequest(BaseModel):
 class PrerequisiteSimplifyResponse(BaseModel):
     simplified_expression: str
     redundant_ids: List[int]
+    
+class LLMQuery(BaseModel):
+    prompt: str
+    context: Optional[str] = None
+    graph_name: Optional[str] = None
+
+class LLMSuggestion(BaseModel):
+    title: str
+    description: str
+
+class LLMResponse(BaseModel):
+    suggestions: List[LLMSuggestion]
+
+# --- Auth Schemas ---
 
 class UserBase(BaseModel):
     username: str
@@ -111,7 +125,8 @@ class UserCreate(UserBase):
 class UserRead(UserBase):
     id: int
     is_active: bool
-
+    created_at: datetime
+    
     class Config:
         from_attributes = True
 
@@ -122,14 +137,16 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-class InvitationCreate(BaseModel):
+class InvitationBase(BaseModel):
     code: str
 
-class InvitationRead(BaseModel):
+class InvitationCreate(InvitationBase):
+    pass
+
+class InvitationRead(InvitationBase):
     id: int
-    code: str
     is_used: bool
     created_at: datetime
-
+    
     class Config:
         from_attributes = True

@@ -1,5 +1,8 @@
 // Database Operations: Snapshots Management
 
+var loadedSnapshots = [];
+var currentGraphActionSnapshot = null;
+
 function loadSnapshotIntoWorkspace(snapshot) {
     // Map domains and nodes to local IDs (backend IDs are not used in browser drafts)
     draftDomains = snapshot.domains.map(function(d) {
@@ -185,6 +188,7 @@ function refreshSnapshots(force) {
 }
 
 function renderSnapshots(snapshots) {
+    loadedSnapshots = snapshots;
     var listDiv = document.getElementById('snapshots-list');
     var currentUser = getCurrentUser();
     var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
@@ -193,13 +197,8 @@ function renderSnapshots(snapshots) {
         var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
         var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
         
-        // OPEN ACCESS: If created_by is null/empty OR "Unknown", anyone can delete
-        var isCreator = !s.created_by || s.created_by === 'Unknown' || s.created_by === currentUser;
-        
-        var deleteBtn = isCreator ? '<button class="btn-danger btn-small" onclick="deleteSnapshot(event, ' + s.id + ')">Delete</button>' : '';
-
         html += '<tr>' +
-            '<td>' +
+            '<td style="cursor: pointer; color: #1a73e8; font-weight: 500;" onclick="openGraphActionModal(loadedSnapshots[' + i + '])">' +
                 '<div class="version-badge">' + (s.version_label || 'v' + s.id) + '</div>' +
                 '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 6px; line-height: 1.3;">' +
                     '<b>C:</b> ' + createdDate + '<br>' +
@@ -212,11 +211,148 @@ function renderSnapshots(snapshots) {
             '<td>' +
                 '<div style="display: flex; gap: 5px;">' +
                     '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ')">Fetch to Workspace</button>' +
-                    deleteBtn +
                 '</div>' +
             '</td>' +
         '</tr>';
     }
     html += '</tbody></table>';
     listDiv.innerHTML = html;
+}
+
+// --- Graph Management Modal ---
+
+function openGraphActionModal(snapshot) {
+    currentGraphActionSnapshot = snapshot;
+    
+    document.getElementById('graph-action-label').textContent = snapshot.version_label || ('v' + snapshot.id);
+    document.getElementById('graph-action-created').textContent = new Date(snapshot.created_at).toLocaleString();
+    document.getElementById('graph-action-updated').textContent = new Date(snapshot.last_updated).toLocaleString();
+    document.getElementById('graph-action-nodes').textContent = snapshot.node_count;
+    
+    document.getElementById('import-file-input').value = '';
+    
+    document.getElementById('graphActionModal').style.display = 'block';
+}
+
+function closeGraphActionModal() {
+    document.getElementById('graphActionModal').style.display = 'none';
+    currentGraphActionSnapshot = null;
+}
+
+function triggerExportGraph() {
+    if (!currentGraphActionSnapshot) return;
+    
+    var snapshotId = currentGraphActionSnapshot.id;
+    var label = currentGraphActionSnapshot.version_label || ('graph_' + snapshotId);
+    
+    api.exportSnapshot(snapshotId).then(function(blob) {
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = label + '.knw';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }).catch(function(err) {
+        customAlert('Export failed: ' + err.message);
+    });
+}
+
+function triggerImportGraph() {
+    var fileInput = document.getElementById('import-file-input');
+    
+    if (fileInput.files.length === 0) {
+        customAlert('Please select a .knw file.');
+        return;
+    }
+    
+    var file = fileInput.files[0];
+    
+    customConfirm('WARNING: This will completely replace the current graph with the imported file. Are you sure?').then(function(confirmed) {
+        if (confirmed) {
+            api.importSnapshot(file, true).then(function(res) {
+                if (res.error || res.detail) {
+                    customAlert('Import failed: ' + (res.detail || res.error));
+                } else {
+                    customAlert('Graph overwritten successfully!');
+                    closeGraphActionModal();
+                    refreshSnapshots(true);
+                }
+            }).catch(function(err) {
+                customAlert('Import error: ' + err.message);
+            });
+        }
+    });
+}
+
+function triggerDeleteGraph() {
+    if (!currentGraphActionSnapshot) return;
+    
+    var snapshotId = currentGraphActionSnapshot.id;
+    
+    customConfirm('PERMANENT DELETE! Are you sure you want to remove this graph?').then(function(confirmed) {
+        if (confirmed) {
+            api.deleteSnapshot(snapshotId).then(function(res) {
+                if (res.ok) {
+                    localStorage.removeItem('cachedSnapshots');
+                    refreshSnapshots(true);
+                    closeGraphActionModal();
+                }
+                else customAlert('Error deleting snapshot');
+            });
+        }
+    });
+}
+
+// --- Global Import Modal ---
+
+function openGlobalImportModal() {
+    document.getElementById('global-import-file').value = '';
+    document.getElementById('global-import-overwrite').checked = false;
+    document.getElementById('globalImportModal').style.display = 'block';
+}
+
+function closeGlobalImportModal() {
+    document.getElementById('globalImportModal').style.display = 'none';
+}
+
+function submitGlobalImport() {
+    var fileInput = document.getElementById('global-import-file');
+    var overwrite = document.getElementById('global-import-overwrite').checked;
+
+    if (fileInput.files.length === 0) {
+        customAlert('Please select a .knw file.');
+        return;
+    }
+
+    var file = fileInput.files[0];
+    
+    api.importSnapshot(file, overwrite).then(function(res) {
+        if (res.error || res.detail) {
+             if (res.detail && typeof res.detail === 'string' && res.detail.indexOf("Confirm overwrite") !== -1) {
+                customConfirm(res.detail).then(function(confirmed) {
+                    if (confirmed) {
+                         api.importSnapshot(file, true).then(function(retryRes) {
+                             if (retryRes.error || retryRes.detail) {
+                                 customAlert('Import failed: ' + (retryRes.detail || retryRes.error));
+                             } else {
+                                 customAlert('Graph imported successfully!');
+                                 closeGlobalImportModal();
+                                 refreshSnapshots(true);
+                             }
+                         });
+                    }
+                });
+            } else {
+                customAlert('Import failed: ' + (res.detail || res.error));
+            }
+        } else {
+            customAlert('Graph imported successfully!');
+            closeGlobalImportModal();
+            refreshSnapshots(true);
+        }
+    }).catch(function(err) {
+        customAlert('Import error: ' + err.message);
+    });
 }

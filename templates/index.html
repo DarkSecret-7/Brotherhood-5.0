@@ -34,6 +34,7 @@
                 <h2>Active Workspace</h2>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <button class="btn-secondary btn-small" onclick="toggleGraph(this)">Show Graph Visualizer</button>
+                    <button id="btn-llm-suggest" class="btn-secondary btn-small" onclick="openLLMModal()">✨ AI Suggest</button>
                     <button id="btn-group-domain" class="btn-primary btn-small" onclick="handleAddDomainClick()">Add Domain</button>
                     <span id="draft-count" class="badge-count">0 Nodes</span>
                 </div>
@@ -108,7 +109,10 @@
         <div class="card">
             <div class="section-header">
                 <h2>Saved Graphs</h2>
-                <button class="btn-secondary btn-small" onclick="refreshSnapshots(true)">Refresh List</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary btn-small" onclick="openGlobalImportModal()">Import Graph (.knw)</button>
+                    <button class="btn-secondary btn-small" onclick="refreshSnapshots(true)">Refresh List</button>
+                </div>
             </div>
             
             <div id="snapshots-list">
@@ -201,7 +205,7 @@
     </div>
 
     <!-- Custom Dialog Modal -->
-    <div id="dialogModal" class="modal">
+    <div id="dialogModal" class="modal" style="z-index: 9999;">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h2 id="dialog-title">Confirm</h2>
@@ -287,6 +291,108 @@
         </div>
     </div>
 
+    <!-- LLM Modal -->
+    <div id="llm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>AI Node Suggestions</h2>
+                <span class="close" onclick="closeLLMModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>What topic do you want suggestions for?</label>
+                    <textarea id="llm-query" rows="3" placeholder="e.g. 'Key concepts in quantum mechanics' or 'Steps to bake a cake'" style="width: 100%;"></textarea>
+                </div>
+                <button class="btn-primary" onclick="queryLLM()">Get Suggestions</button>
+                
+                <div id="llm-loading" style="display: none; margin-top: 20px; text-align: center; color: #5f6368;">
+                    <p>Thinking... 🤖</p>
+                </div>
+                
+                <div id="llm-results" style="margin-top: 20px;">
+                    <!-- Results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Graph Action Modal -->
+    <div id="graphActionModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Manage Graph: <span id="graph-action-label"></span></h2>
+                <span class="close" onclick="closeGraphActionModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p><strong>Created:</strong> <span id="graph-action-created"></span></p>
+                    <p><strong>Updated:</strong> <span id="graph-action-updated"></span></p>
+                    <p><strong>Nodes:</strong> <span id="graph-action-nodes"></span></p>
+                </div>
+                
+                <h3 style="margin-bottom: 10px; color: #1a73e8;">Export</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #5f6368;">Download this graph as a .knw file.</p>
+                    <button class="btn-primary btn-small" onclick="triggerExportGraph()">Download .knw</button>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                
+                <h3 style="margin-bottom: 10px; color: #d93025;">Danger Zone</h3>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="font-size: 1em; margin-bottom: 8px;">Overwrite Graph</h4>
+                    <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 10px;">Upload a .knw file to <strong>permanently replace</strong> this graph.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="file" id="import-file-input" accept=".knw" style="flex: 1; font-size: 0.9em;">
+                        <button class="btn-danger btn-small" onclick="triggerImportGraph()">Overwrite</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="font-size: 1em; margin-bottom: 4px;">Delete Graph</h4>
+                        <p style="font-size: 0.9em; color: #5f6368; margin: 0;">This action cannot be undone.</p>
+                    </div>
+                    <button class="btn-danger btn-small" onclick="triggerDeleteGraph()">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Import Modal -->
+    <div id="globalImportModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Import Graph</h2>
+                <span class="close" onclick="closeGlobalImportModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: #5f6368;">
+                    Upload a .knw file to add a new graph to the database.
+                </p>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select File (.knw)</label>
+                    <input type="file" id="global-import-file" accept=".knw" style="width: 100%; padding: 10px; border: 1px dashed #ccc; background: #f8f9fa; border-radius: 4px;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="global-import-overwrite" style="width: auto; margin: 0;">
+                        <label for="global-import-overwrite" style="margin: 0; user-select: none;">Overwrite if a graph with the same version label exists</label>
+                    </div>
+                </div>
+                
+                <div class="button-group" style="justify-content: flex-end;">
+                    <button class="btn-secondary" onclick="closeGlobalImportModal()">Cancel</button>
+                    <button class="btn-primary" onclick="submitGlobalImport()">Import Graph</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/llm-feature.js"></script>
     <script src="/static/js/globals.js?v=5.1"></script>
     <script src="/static/js/utils.js?v=5.1"></script>
     <script src="/static/js/api.js?v=5.1"></script>

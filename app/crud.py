@@ -3,11 +3,24 @@ from sqlalchemy import func
 from . import models, schemas
 
 def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
+    # Resolve creator and base graph references
+    creator_id = None
+    if snapshot_data.created_by:
+        user = db.query(models.User).filter(models.User.username == snapshot_data.created_by).first()
+        if user:
+            creator_id = user.id
+            
+    base_graph_id = None
+    if snapshot_data.base_graph:
+        base = db.query(models.GraphSnapshot).filter(models.GraphSnapshot.version_label == snapshot_data.base_graph).first()
+        if base:
+            base_graph_id = base.id
+
     # Create the snapshot container
     db_snapshot = models.GraphSnapshot(
         version_label=snapshot_data.version_label,
-        base_graph=snapshot_data.base_graph,
-        created_by=snapshot_data.created_by
+        base_graph_id=base_graph_id,
+        created_by_id=creator_id
     )
     db.add(db_snapshot)
     db.commit()
@@ -40,7 +53,9 @@ def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_dat
     #    we update the base_graph to reflect the new source.
     
     if snapshot_data.base_graph and snapshot_data.base_graph != db_snapshot.version_label:
-        db_snapshot.base_graph = snapshot_data.base_graph
+        base = db.query(models.GraphSnapshot).filter(models.GraphSnapshot.version_label == snapshot_data.base_graph).first()
+        if base:
+            db_snapshot.base_graph_id = base.id
     # Else: base_graph remains unchanged (prevents self-reference loop)
         
     # CRITICAL: created_by is NEVER updated during overwrite to preserve original authorship,

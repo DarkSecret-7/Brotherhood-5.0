@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import timedelta
+import json
+import io
 from .. import crud, schemas, database, utils, models
 
 router = APIRouter()
@@ -193,3 +196,77 @@ def delete_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), cu
         raise HTTPException(status_code=404, detail="Snapshot not found")
     return {"message": "Snapshot deleted"}
 
+@router.get("/snapshots/{snapshot_id}/export")
+def export_snapshot(snapshot_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    snapshot = crud.get_snapshot(db, snapshot_id)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    
+    # Serialize to Pydantic model
+    # Use model_validate for Pydantic v2 compatibility
+    snapshot_data = schemas.GraphSnapshotRead.model_validate(snapshot)
+    
+    # Convert to dict
+    data = snapshot_data.model_dump()
+    
+    # Create file stream
+    file_content = json.dumps(data, indent=2, default=str)
+    
+    filename = f"{snapshot.version_label}.knw"
+    
+    return StreamingResponse(
+        io.StringIO(file_content),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@router.post("/snapshots/import", response_model=schemas.GraphSnapshotRead)
+async def import_snapshot(
+    overwrite: bool = False,
+    file: UploadFile = File(...), 
+    db: Session = Depends(database.get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    if not file.filename.endswith(".knw"):
+        raise HTTPException(status_code=400, detail="Invalid file format. Must be a .knw file")
+    
+    content = await file.read()
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON content")
+        
+    try:
+        # Strip top-level read-only fields that might confuse creation
+        data.pop('id', None)
+        data.pop('created_at', None)
+        data.pop('last_updated', None)
+        data.pop('node_count', None)
+        
+        # Ensure metadata defaults if missing
+        if 'base_graph' not in data:
+            data['base_graph'] = None
+        
+        if 'created_by' not in data:
+            data['created_by'] = "Unknown"
+
+        # Create a new snapshot from the data
+        snapshot_in = schemas.GraphSnapshotCreate(**data)
+        
+        # Apply overwrite flag from query param
+        snapshot_in.overwrite = overwrite
+        
+    except Exception as e:
+         raise HTTPException(status_code=400, detail=f"Invalid graph data: {str(e)}")
+
+    # Check for existing snapshot with same version_label
+    if snapshot_in.version_label:
+        existing = crud.get_snapshot_by_label(db, snapshot_in.version_label)
+        if existing:
+            if overwrite:
+                return crud.update_snapshot(db=db, db_snapshot=existing, snapshot_data=snapshot_in)
+            else:
+                # 409 Conflict is appropriate for resource already exists
+                raise HTTPException(status_code=409, detail=f"Snapshot '{snapshot_in.version_label}' already exists. Confirm overwrite?")
+
+    return crud.create_snapshot(db=db, snapshot_data=snapshot_in)

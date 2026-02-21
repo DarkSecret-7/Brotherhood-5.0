@@ -13,7 +13,8 @@ except ImportError:
 
 # Determine the environment mode
 # Possible values: "production", "docker", "local"
-APP_MODE = os.getenv("APP_MODE", "production" if os.getenv("RENDER") else "local")
+# APP_MODE = os.getenv("APP_MODE", "production" if os.getenv("RENDER") else "local")
+APP_MODE = "docker"
 print(f"INFO: Application running in {APP_MODE} mode")
 
 # Isolated Pipeline Configurations

@@ -6,7 +6,7 @@ import os
 import traceback
 
 from .database import engine, Base
-from .api import endpoints
+from .api import endpoints, llm
 from .api.endpoints import get_current_user
 from . import models
 
@@ -43,6 +43,7 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 app.mount("/docs", StaticFiles(directory=docs_path), name="docs")
 
 app.include_router(endpoints.router, prefix="/api/v1")
+app.include_router(llm.router, prefix="/api/v1/llm")
 
 @app.get("/login")
 def login_page():

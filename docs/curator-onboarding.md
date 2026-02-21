@@ -37,6 +37,7 @@ This is the most powerful part! You can define what needs to be learned *before*
     *   Combined: `1 AND 2` (Need both).
     *   Options: `1 OR 2` (Need either one).
     *   Complex: `(1 AND 2) OR 3`.
+    *   **CRITICAL**: You must **click outside the box** (unfocus) for the system to process and simplify your expression!
 
 ## 4. Visualizing Your Work 👁️
 
@@ -56,8 +57,18 @@ Once you're happy with your draft:
 4.  **Click "Create Versioned Snapshot"**: Your work is now saved safely in the database!
 
 ### 🔒 Ownership & Remixing
-*   **Updating Your Work**: If you are the original creator of the graph, you will see the **Overwrite base graph** checkbox. Check this if you want to update your existing version.
-*   **Remixing Others' Work**: If you are building on top of someone else's graph, the **Overwrite** option will be hidden. This protects their original work! You can still make changes and save, but it will automatically be saved as a **new** graph (your own copy).
+*   **Updating Your Work**: You can overwrite your own graphs by checking the **Overwrite** option during save.
+*   **Remixing Others' Work**: You can save a copy of someone else's graph as a new version (e.g., "My Remix v1"). If you try to overwrite their graph directly, the system will warn you.
+*   **Import/Export**: You can now export your graphs to `.knw` files to share them or back them up. To import a graph, use the "Import Graph" button on the dashboard or inside a graph's settings to overwrite it.
+
+## 6. AI Assistance 🤖
+
+Stuck on what to add next? Let the AI help you!
+
+*   **Click "✨ AI Suggest"**: Located at the top of the workspace.
+*   **Enter a Topic**: Ask for "steps to learn Python" or "key events in WWII".
+*   **Get Suggestions**: The AI analyzes your current graph to provide relevant, modular additions.
+*   **Select & Import**: Check the boxes for the nodes you like and click **"Import Selected"**. They will be automatically added to your draft with the correct IDs!
 
 ---
 **Happy Curating!** 🚀

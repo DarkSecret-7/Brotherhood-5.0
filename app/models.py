@@ -10,8 +10,21 @@ class GraphSnapshot(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     version_label = Column(String, nullable=True)  # e.g. "v1", "Initial Draft"
-    base_graph = Column(String, nullable=True)     # The name of the graph this was based on
-    created_by = Column(String, nullable=True)     # The user who created this snapshot
+    
+    # Relationships
+    base_graph_id = Column(Integer, ForeignKey("graph_snapshots.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    base_snapshot = relationship("GraphSnapshot", remote_side=[id], backref="derived_snapshots")
+    creator = relationship("User", backref="created_snapshots")
+
+    @property
+    def created_by(self):
+        return self.creator.username if self.creator else "Unknown"
+
+    @property
+    def base_graph(self):
+        return self.base_snapshot.version_label if self.base_snapshot else None
     
     nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan")
     domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan")

@@ -26,6 +26,8 @@ services:
         value: production
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: GEMINI_API_KEY
+        sync: false
 
   # The PostgreSQL Database
 databases:
