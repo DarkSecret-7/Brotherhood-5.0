@@ -140,9 +140,14 @@ def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends
         existing = crud.get_snapshot_by_label(db, snapshot.version_label)
         if existing:
             # Check ownership before even checking overwrite flag
-            # OPEN ACCESS: If created_by is None or "Unknown", we ALLOW overwrite (legacy/system graphs are public)
-            if existing.created_by and existing.created_by != "Unknown" and existing.created_by != current_user.username:
-                raise HTTPException(status_code=403, detail="Not authorized to overwrite this snapshot")
+            # CRITICAL: If the graph has a specific creator (not Unknown/None), 
+            # ONLY that creator can overwrite it.
+            if existing.created_by and existing.created_by != "Unknown":
+                if existing.created_by != current_user.username:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail=f"Permission denied: This graph belongs to '{existing.created_by}'. Please save as a new version."
+                    )
 
             if snapshot.overwrite:
                 # User explicitly wants to overwrite because the name matches

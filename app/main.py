@@ -37,8 +37,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Mount static files - we keep this for CSS/JS which are needed for login too
 static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+docs_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs")
 templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 app.mount("/static", StaticFiles(directory=static_path), name="static")
+app.mount("/docs", StaticFiles(directory=docs_path), name="docs")
 
 app.include_router(endpoints.router, prefix="/api/v1")
 

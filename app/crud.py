@@ -31,9 +31,18 @@ def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
 
 def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):
     # Update snapshot metadata
-    # version_label is NOT updated on overwrite
-    # db_snapshot.version_label = snapshot_data.version_label
-    # db_snapshot.base_graph = snapshot_data.base_graph  <-- REMOVED: User requested base_graph should NOT change on overwrite
+    # version_label is NOT updated on overwrite (it's the same graph)
+    
+    # Base Graph Logic:
+    # 1. If user is overwriting the SAME graph (snapshot_data.base_graph == db_snapshot.version_label), 
+    #    we keep the existing base_graph (do NOT update it to point to itself).
+    # 2. If user is overwriting a graph with content FROM ANOTHER graph (snapshot_data.base_graph != db_snapshot.version_label),
+    #    we update the base_graph to reflect the new source.
+    
+    if snapshot_data.base_graph and snapshot_data.base_graph != db_snapshot.version_label:
+        db_snapshot.base_graph = snapshot_data.base_graph
+    # Else: base_graph remains unchanged (prevents self-reference loop)
+        
     # CRITICAL: created_by is NEVER updated during overwrite to preserve original authorship,
     # even if the current value is 'Unknown' or null.
     

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curator Onboarding - Brotherhood 5.0</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .doc-content { line-height: 1.6; }
+        .doc-content h2 { margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .doc-content h3 { margin-top: 25px; color: #444; }
+        .doc-content ul, .doc-content ol { padding-left: 20px; margin-bottom: 15px; }
+        .doc-content li { margin-bottom: 8px; }
+        .doc-content code { background: #f1f3f4; padding: 2px 5px; border-radius: 4px; font-family: monospace; color: #c7254e; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #1a73e8; text-decoration: none; font-weight: 600; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Brotherhood 5.0</h1>
+            <div class="version-indicator">Documentation</div>
+        </div>
+        <a href="/" class="btn-secondary btn-small" style="text-decoration: none;">Back to App</a>
+    </div>
+
+    <div class="card doc-content">
+        <h1>Welcome to the Brotherhood Graph Builder! 🌟</h1>
+        <p>This guide will help you get started with building and curating the knowledge graph. Think of this tool as a digital whiteboard where you can map out ideas, connect them, and organize them into a structured learning path.</p>
+
+        <h2>1. The Workspace: Your Digital Drafting Table 🎨</h2>
+        <p>When you log in, you land on the <strong>Workspace Draft</strong> tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!</p>
+        <ul>
+            <li><strong>Draft Nodes List</strong>: This is where your new ideas (Nodes) and groups (Domains) will appear as you create them.</li>
+            <li><strong>Active Workspace</strong>: Shows you what you're currently working on.</li>
+            <li><strong>Graph Visualizer</strong>: A magic button that draws a picture of your connections. Use this often to see how your ideas link together!</li>
+        </ul>
+
+        <h2>2. Building Blocks: Domains & Nodes 🧱</h2>
+        
+        <h3>Domains (The Big Buckets) 📂</h3>
+        <p>Domains are like chapters in a book or folders on your computer. They help keep things organized.</p>
+        <ul>
+            <li><strong>To Add a Domain</strong>: Click the blue <strong>Add Domain</strong> button at the top.</li>
+            <li><strong>Give it a Name</strong>: Like "History", "Science", or "Chapter 1".</li>
+            <li><strong>Give it an ID</strong>: A simple number (e.g., 100, 200) to keep it sorted.</li>
+        </ul>
+
+        <h3>Nodes (The Ideas) 💡</h3>
+        <p>Nodes are the specific topics, facts, or concepts within those domains.</p>
+        <ul>
+            <li><strong>Scroll down to "Add New Node"</strong>.</li>
+            <li><strong>Local ID</strong>: Pick a unique number for this node (e.g., 1, 2, 3).</li>
+            <li><strong>Title</strong>: What is this concept called?</li>
+            <li><strong>Description</strong>: A short explanation.</li>
+            <li><strong>Under Domain ID</strong>: Type the ID of the Domain this node belongs to (e.g., 100).</li>
+            <li><strong>Sources</strong>: Where can one learn about this? Click <strong>Add Source</strong> to link it to a resource (e.g., a PDF, a video, or others) </li>
+            <li><strong>Click "Add to Draft"</strong>: Watch it appear in your list above!</li>
+        </ul>
+
+        <h2>3. Connecting the Dots (Prerequisites) 🔗</h2>
+        <p>This is the most powerful part! You can define what needs to be learned <em>before</em> something else.</p>
+        <ul>
+            <li><strong>Prerequisite Expression</strong>: In the "Add New Node" section, you can say "To learn Node 3, you must know Node 1 and Node 2".</li>
+            <li><strong>How to write it</strong>:
+                <ul>
+                    <li>Simple: <code>1</code> (Means you need Node 1 first).</li>
+                    <li>Combined: <code>1 AND 2</code> (Need both).</li>
+                    <li>Options: <code>1 OR 2</code> (Need either one).</li>
+                    <li>Complex: <code>(1 AND 2) OR 3</code>.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h2>4. Visualizing Your Work 👁️</h2>
+        <ul>
+            <li>Click <strong>Show Graph Visualizer</strong> at the top.</li>
+            <li>You'll see arrows pointing from the <em>prerequisite</em> to the <em>dependent</em> node.</li>
+            <li>If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.</li>
+        </ul>
+
+        <h2>5. Saving & Publishing 💾</h2>
+        <p>Once you're happy with your draft:</p>
+        <ol>
+            <li>Scroll to the bottom <strong>Save to Database</strong> section.</li>
+            <li><strong>Overwrite Toggle</strong>:
+                <ul>
+                    <li><strong>Unchecked</strong>: Creates a brand new graph.</li>
+                    <li><strong>Checked</strong>: Updates the existing graph (use this if you're editing).</li>
+                </ul>
+            </li>
+            <li><strong>Version Label</strong>: Give it a name like "Draft v1" or "Final Version".</li>
+            <li><strong>Click "Create Versioned Snapshot"</strong>: Your work is now saved safely in the database!</li>
+        </ol>
+
+        <h3>🔒 Ownership & Remixing</h3>
+        <ul>
+            <li><strong>Updating Your Work</strong>: If you are the original creator of the graph, you will see the <strong>Overwrite base graph</strong> checkbox. Check this if you want to update your existing version.</li>
+            <li><strong>Remixing Others' Work</strong>: If you are building on top of someone else's graph, the <strong>Overwrite</strong> option will be hidden. This protects their original work! You can still make changes and save, but it will automatically be saved as a <strong>new</strong> graph (your own copy).</li>
+        </ul>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+        <p><strong>Happy Curating!</strong> 🚀</p>
+    </div>
+</body>
+</html>

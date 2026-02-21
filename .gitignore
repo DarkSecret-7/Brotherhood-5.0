@@ -20,9 +20,12 @@ brotherhood.db
 Thumbs.db
 
 # Admin & Local Debug Tools
-debug/
+admin/
 cli.py
 
 # Docker local logs/states
 *.log
 .docker/
+
+# Database Backups
+RENDER_DATABASE_BACKUPS/
