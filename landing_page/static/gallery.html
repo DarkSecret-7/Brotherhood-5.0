@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brotherhood 5.0 - Public Gallery</title>
+    <title>Brotherhood - Public Gallery for showcasing curated graphs</title>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script src="js/config.js"></script>
     <link rel="stylesheet" href="css/styles.css?v=8">
@@ -239,7 +239,7 @@
                     local_id: d.local_id,
                     title: d.title,
                     description: d.description,
-                    collapsed: d.collapsed,
+                    collapsed: false, // Always uncollapsed on public display
                     parent_id: d.parent_id ? domainDbToLocal[d.parent_id] : null
                 }));
                 
