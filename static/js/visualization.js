@@ -39,13 +39,18 @@ function renderGraph(nodes, domains) {
     nodes.forEach(function(node) {
         var visibleParentId = getVisibleParent(node.local_id, true);
         if (!visibleParentId) {
-            visNodes.push({
+            var visNode = {
                 id: node.local_id,
                 label: '<b>' + node.local_id + '</b>\n' + node.title,
                 title: node.description || 'No description',
                 shape: 'box',
                 font: { multi: 'html' }
-            });
+            };
+            if (node.x !== null && node.x !== undefined && node.y !== null && node.y !== undefined) {
+                visNode.x = node.x;
+                visNode.y = node.y;
+            }
+            visNodes.push(visNode);
         }
     });
 
@@ -115,4 +120,23 @@ function renderGraph(nodes, domains) {
 
 function refreshGraph() {
     renderGraph(draftNodes, draftDomains);
+}
+
+function fixPositions() {
+    if (!network) return;
+    var positions = network.getPositions();
+    
+    var updatedCount = 0;
+    draftNodes.forEach(function(node) {
+        // network.getPositions() returns object with keys as IDs
+        // Our node IDs in vis.js are just the local_id (integer)
+        if (positions[node.local_id]) {
+            node.x = Math.round(positions[node.local_id].x);
+            node.y = Math.round(positions[node.local_id].y);
+            updatedCount++;
+        }
+    });
+    
+    console.log('Fixed positions for ' + updatedCount + ' nodes.');
+    customAlert('Positions recorded! Please save the snapshot to persist these coordinates.');
 }

@@ -27,9 +27,10 @@ class NodeBase(BaseModel):
     description: Optional[str] = None
     prerequisite: Optional[str] = None
     mentions: Optional[str] = None
-    sources: Optional[str] = None # Deprecated
     source_items: List[SourceBase] = []
     domain_id: Optional[int] = None
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 class NodeCreate(NodeBase):
     pass

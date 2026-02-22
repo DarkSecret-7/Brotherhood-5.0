@@ -64,21 +64,8 @@ function openEditModal(nodeOrId) {
     document.getElementById('edit-node-desc').value = node.description || '';
     document.getElementById('edit-node-pre').value = node.prerequisite || '';
     
-    // Handle legacy sources string if present and source_items is empty
-    if ((!node.source_items || node.source_items.length === 0) && node.sources) {
-        // Migration attempt: convert old URLs to simple Source objects
-        var urls = node.sources.split(',');
-        editNodeSources = urls.map(function(url) {
-            return {
-                title: 'Legacy Source',
-                source_type: 'Other',
-                url: url.trim()
-            };
-        });
-    } else {
-        // Ensure deep copy to avoid modifying draftNodes directly until save
-        editNodeSources = node.source_items ? JSON.parse(JSON.stringify(node.source_items)) : [];
-    }
+    // Ensure deep copy to avoid modifying draftNodes directly until save
+    editNodeSources = node.source_items ? JSON.parse(JSON.stringify(node.source_items)) : [];
     
     renderSources('edit');
     document.getElementById('editModal').dataset.oldLocalId = node.local_id;
@@ -115,8 +102,6 @@ function updateNode() {
     node.description = desc;
     node.prerequisite = pre;
     node.source_items = sourceItems;
-    // Clear legacy field if we are updating
-    node.sources = null; 
 
     persistDraft();
     closeEditModal();

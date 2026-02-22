@@ -1,14 +1,14 @@
-# Welcome to the Brotherhood Graph Builder! 🌟
+# Welcome to The Brotherhood Curator Lab! 🌟
 
 This guide will help you get started with building and curating the knowledge graph. Think of this tool as a digital whiteboard where you can map out ideas, connect them, and organize them into a structured learning path.
 
 ## 1. The Workspace: Your Digital Drafting Table 🎨
 
-When you log in, you land on the **Workspace Draft** tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!
+When you log in, you land on the **Node Draft** tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!
 
 *   **Draft Nodes List**: This is where your new ideas (Nodes) and groups (Domains) will appear as you create them.
-*   **Active Workspace**: Shows you what you're currently working on.
-*   **Graph Visualizer**: A magic button that draws a picture of your connections. Use this often to see how your ideas link together!
+*   **Persistent Toolbar**: Located below the tabs, it shows the active version you are working on and provides a **"Clear Workspace"** button to reset your draft.
+*   **Graph Visualizer**: Click the tab to see a picture of your connections. Use this often to see how your ideas link together!
 
 ## 2. Building Blocks: Domains & Nodes 🧱
 
@@ -41,7 +41,7 @@ This is the most powerful part! You can define what needs to be learned *before*
 
 ## 4. Visualizing Your Work 👁️
 
-*   Click **Show Graph Visualizer** at the top.
+*   Click the **Graph Visualizer** tab at the top.
 *   You'll see arrows pointing from the *prerequisite* to the *dependent* node.
 *   If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.
 
@@ -49,7 +49,7 @@ This is the most powerful part! You can define what needs to be learned *before*
 
 Once you're happy with your draft:
 
-1.  Scroll to the bottom **Save to Database** section.
+1.  Switch to the **Save Version** tab.
 2.  **Overwrite Toggle**:
     *   **Unchecked**: Creates a brand new graph.
     *   **Checked**: Updates the existing graph (use this if you're editing).

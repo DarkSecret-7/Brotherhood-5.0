@@ -44,7 +44,8 @@ class Node(Base):
     description = Column(String, nullable=True)
     prerequisite = Column(String, nullable=True)  # Boolean expression e.g. "(1 AND 2) OR 3"
     mentions = Column(String, nullable=True) # Comma-separated list of local_ids that depend on this node
-    sources = Column(String, nullable=True) # Deprecated: Comma-separated list of URLs
+    x = Column(Integer, nullable=True)
+    y = Column(Integer, nullable=True)
 
     snapshot = relationship("GraphSnapshot", back_populates="nodes")
     domain = relationship("Domain", back_populates="node_objects")

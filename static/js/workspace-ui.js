@@ -280,7 +280,7 @@ function submitSource() {
     
     var title = document.getElementById('source-title').value;
     if (!title) {
-        alert('Title is required');
+        customAlert('Title is required');
         return;
     }
     

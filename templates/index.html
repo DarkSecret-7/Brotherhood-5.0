@@ -3,122 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brotherhood 5.0 - Graph Management</title>
+    <title>The Brotherhood Curator Lab - Workspace</title>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=7">
+    <link rel="stylesheet" href="/static/styles.css?v=8">
 </head>
 <body>
     <div class="header">
-        <div>
-            <h1>Brotherhood 5.0</h1>
-            <div class="version-indicator">Stable Build</div>
+        <div style="display: flex; align-items: center;">
+            <div class="hamburger-menu">
+                <button class="hamburger-btn" onclick="openSidePanel()">☰</button>
+            </div>
+            <div style="margin-left: 30px;">
+                <h1 style="margin: 0;">The Brotherhood Curator Lab</h1>
+                <div class="version-indicator">Workspace</div>
+            </div>
         </div>
-        <div>
-            <a href="/docs/curator-onboarding.html" target="_blank" style="color: #1a73e8; margin-right: 20px; text-decoration: none; font-weight: 600;">📖 Curator Guide</a>
-            <span id="status-dot" style="color: #34a853;">●</span> Connected to Backend
+
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <div><span id="status-dot" style="color: #34a853;">●</span> Connected to Backend</div>
         </div>
-        <button class="btn-secondary btn-small" onclick="logout()" style="margin-left: 20px;">Logout</button>
     </div>
 
     <div class="nav-tabs">
-        <button id="tab-workspace" class="tab-btn active" onclick="switchTab('workspace')">Workspace Draft</button>
-        <button id="tab-database" class="tab-btn" onclick="switchTab('database')">Database Management</button>
+        <button id="tab-workspace" class="tab-btn active" onclick="switchTab('workspace')">Node Draft</button>
+        <button id="tab-graph" class="tab-btn" onclick="switchTab('graph')">Graph Visualizer</button>
+        <button id="tab-save" class="tab-btn" onclick="switchTab('save')">Save Version</button>
     </div>
 
-    <div id="view-workspace" class="view-section active">
-        <div id="active-version-info" class="active-version-display">
+    <div class="active-version-display" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <div id="active-version-info">
             Working on: <span id="current-version-label">None</span>
         </div>
-        <div class="card">
-            <div class="section-header">
-                <h2>Active Workspace</h2>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn-secondary btn-small" onclick="toggleGraph(this)">Show Graph Visualizer</button>
-                    <button id="btn-llm-suggest" class="btn-secondary btn-small" onclick="openLLMModal()">✨ AI Suggest</button>
-                    <button id="btn-group-domain" class="btn-primary btn-small" onclick="handleAddDomainClick()">Add Domain</button>
-                    <span id="draft-count" class="badge-count">0 Nodes</span>
-                </div>
-            </div>
-            
-            <div id="graph-visualizer" style="display: none; margin-bottom: 30px; border-bottom: 2px solid #e8f0fe; padding-bottom: 20px;">
-                <div class="visualizer-header">
-                    <h3>Directed Dependency Graph</h3>
-                    <button class="btn-secondary btn-small" onclick="refreshGraph()">Refresh Graph</button>
-                </div>
-                <div id="graph-container"></div>
-                <p style="font-size: 0.8em; color: #5f6368; margin-top: 8px;">
-                    Arrows point from <strong>prerequisite</strong> to <strong>dependent</strong> node.
-                </p>
-            </div>
-            
-            <div id="draft-nodes-list">
-                <p class="empty-state">Loading workspace...</p>
-            </div>
-
-            <div style="margin-top: 30px;">
-                <div class="add-node-header">
-                    <h3>Add New Node</h3>
-                    <div class="inline-form-group">
-                        <label>Under Domain ID</label>
-                        <input type="number" id="node-parent-domain" placeholder="ID (optional)" style="width: 100px;">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Local ID</label>
-                    <input type="number" id="node-id" placeholder="Integer ID">
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="node-title" placeholder="Node Title">
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="node-desc" rows="2" placeholder="Optional description"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Prerequisite Expression</label>
-                    <input type="text" id="node-pre" placeholder="e.g. (1 AND 2) OR 3" onblur="autoSimplifyPrerequisites('node-pre')">
-                </div>
-                <div class="form-group">
-                    <label>Sources</label>
-                    <div id="new-node-sources" class="sources-container"></div>
-                    <button class="btn-secondary btn-small" onclick="openSourceModal('new')">Add Source</button>
-                </div>
-                <div class="button-group">
-                    <button class="btn-primary" onclick="addNode()">Add to Draft</button>
-                    <button class="btn-secondary" onclick="clearWorkspace()">Clear Workspace</button>
-                </div>
-            </div>
-
-            <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-                <h3>Save to Database</h3>
-                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <input type="checkbox" id="overwrite-toggle" style="width: auto; margin: 0;" onchange="handleOverwriteToggle()">
-                    <label for="overwrite-toggle" style="margin: 0; font-weight: 500;">Overwrite base graph</label>
-                </div>
-                <div class="form-group">
-                    <label>Version Label</label>
-                    <input type="text" id="version-label" placeholder="e.g. Baseline v1.0">
-                </div>
-                <button class="btn-primary" style="width: 100%;" onclick="saveSnapshot()">Create Versioned Snapshot</button>
-            </div>
-        </div>
+        <button id="btn-clear-workspace" class="btn-secondary btn-small destructive-hover" onclick="clearWorkspace()">Clear Workspace</button>
     </div>
 
-    <div id="view-database" class="view-section">
-        <div class="card">
-            <div class="section-header">
-                <h2>Saved Graphs</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary btn-small" onclick="openGlobalImportModal()">Import Graph (.knw)</button>
-                    <button class="btn-secondary btn-small" onclick="refreshSnapshots(true)">Refresh List</button>
+    <div class="main-container">
+        <!-- View: Workspace List -->
+        <div id="view-workspace" class="view-section active">
+            <div class="workspace-layout">
+                <div class="workspace-column">
+                    <div class="card">
+                        <div class="section-header">
+                            <h2>Active Workspace</h2>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button id="btn-llm-suggest" class="btn-secondary btn-small" onclick="openLLMModal()">✨ AI Suggest</button>
+                                <button id="btn-group-domain" class="btn-primary btn-small" onclick="handleAddDomainClick()">Add Domain</button>
+                                <span id="draft-count" class="badge-count">0 Nodes</span>
+                            </div>
+                        </div>
+                        
+                        <div id="draft-nodes-list">
+                            <p class="empty-state">Loading workspace...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Sidebar (Add Node) - Only in Workspace View -->
+                <div class="sidebar-column">
+                    <div class="card sticky-sidebar">
+                        <div class="add-node-header">
+                            <h3>Add New Node</h3>
+                            <div class="inline-form-group">
+                                <label>Under Domain ID</label>
+                                <input type="number" id="node-parent-domain" placeholder="ID (optional)" style="width: 100px;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Local ID</label>
+                            <input type="number" id="node-id" placeholder="Integer ID">
+                        </div>
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="node-title" placeholder="Node Title">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="node-desc" rows="2" placeholder="Optional description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Prerequisite Expression</label>
+                            <input type="text" id="node-pre" placeholder="e.g. (1 AND 2) OR 3" onblur="autoSimplifyPrerequisites('node-pre')">
+                        </div>
+                        <div class="form-group">
+                            <label>Sources</label>
+                            <div id="new-node-sources" class="sources-container"></div>
+                            <button class="btn-secondary btn-small" onclick="openSourceModal('new')">Add Source</button>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn-primary" onclick="addNode()">Add to Draft</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div id="snapshots-list">
-                <p class="empty-state">Loading database snapshots...</p>
-            </div>
         </div>
+
+            <!-- View: Graph Visualizer -->
+            <div id="view-graph" class="view-section">
+                <div class="card">
+                    <div class="section-header">
+                        <h2>Graph Visualization</h2>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-primary btn-small" onclick="fixPositions()">Fix Positions</button>
+                            <button class="btn-secondary btn-small" onclick="refreshGraph()">Refresh Graph</button>
+                        </div>
+                    </div>
+                    
+                    <div id="graph-visualizer" style="display: block;">
+                        <div id="graph-container" style="display: block; height: 600px;"></div>
+                        <p style="font-size: 0.8em; color: #5f6368; margin-top: 8px;">
+                            Arrows point from <strong>prerequisite</strong> to <strong>dependent</strong> node.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Save Version -->
+            <div id="view-save" class="view-section">
+                <div class="card">
+                    <div class="section-header">
+                        <h2>Save to Database</h2>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <input type="checkbox" id="overwrite-toggle" style="width: auto; margin: 0;" onchange="handleOverwriteToggle()">
+                        <label for="overwrite-toggle" style="margin: 0; font-weight: 500;">Overwrite base graph</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Version Label</label>
+                        <input type="text" id="version-label" placeholder="e.g. Baseline v1.0">
+                    </div>
+                    <button class="btn-primary" style="width: 100%;" onclick="saveSnapshot()">Create Versioned Snapshot</button>
+                </div>
+            </div>
+
     </div>
 
     <!-- Edit Node Modal -->
@@ -315,77 +331,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- Graph Action Modal -->
-    <div id="graphActionModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 15px; padding-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                    <h2 style="margin: 0; font-size: 1.8em; color: #202124;">Manage Graph</h2>
-                    <span class="close" onclick="closeGraphActionModal()" style="font-size: 2em; line-height: 0.8;">&times;</span>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label style="display: block; color: #202124; margin-bottom: 5px;">Graph Name</label>
-                    <input type="text" id="graph-action-label-input" style="width: 100%; padding: 10px; font-size: 1.1em; border: 1px solid #dadce0; border-radius: 4px;" placeholder="Graph Name">
-                </div>
-
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #5f6368;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <strong>Created:</strong> <span id="graph-action-created"></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <strong>Updated:</strong> <span id="graph-action-updated"></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <strong>Nodes:</strong> <span id="graph-action-nodes"></span>
-                    </div>
-                </div>
-
-                <h3 style="margin-bottom: 10px; color: #1a73e8;">Visibility</h3>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
-                    <div>
-                        <strong style="display: block; color: #202124;">Public Access</strong>
-                        <span style="font-size: 0.9em; color: #5f6368;">Make this graph visible in the public gallery.</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="graph-action-public-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-
-                <button id="graph-action-save-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1em; margin-bottom: 20px;" onclick="saveGraphChanges()">Save Changes</button>
-                
-                <h3 style="margin-bottom: 10px; color: #1a73e8;">Export</h3>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #5f6368;">Download this graph as a .knw file.</p>
-                    <button class="btn-primary btn-small" onclick="triggerExportGraph()">Download .knw</button>
-                </div>
-                
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                
-                <h3 style="margin-bottom: 10px; color: #d93025;">Danger Zone</h3>
-                
-                <div style="margin-bottom: 20px;">
-                    <h4 style="font-size: 1em; margin-bottom: 8px;">Overwrite Graph</h4>
-                    <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 10px;">Upload a .knw file to <strong>permanently replace</strong> this graph.</p>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="file" id="import-file-input" accept=".knw" style="flex: 1; font-size: 0.9em;">
-                        <button class="btn-danger btn-small" onclick="triggerImportGraph()">Overwrite</button>
-                    </div>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h4 style="font-size: 1em; margin-bottom: 4px;">Delete Graph</h4>
-                        <p style="font-size: 0.9em; color: #5f6368; margin: 0;">This action cannot be undone.</p>
-                    </div>
-                    <button class="btn-danger btn-small" onclick="triggerDeleteGraph()">Delete</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Global Import Modal -->
     <div id="globalImportModal" class="modal">
@@ -419,6 +364,15 @@
         </div>
     </div>
     
+    <div id="side-panel-overlay" class="side-panel-overlay"></div>
+    <div id="side-panel" class="side-panel">
+        <button class="side-panel-close" onclick="closeSidePanel()">&times;</button>
+        <a href="/" class="side-panel-link">Workspace</a>
+        <a href="/database" class="side-panel-link">Database Management</a>
+        <a href="/curator-guide" class="side-panel-link">Curator Guide</a>
+        <a href="#" onclick="logout()" class="side-panel-link" style="color: #d93025;">Logout</a>
+    </div>
+
     <script src="/static/js/llm-feature.js"></script>
     <script src="/static/js/globals.js?v=5.1"></script>
     <script src="/static/js/utils.js?v=5.1"></script>
@@ -427,6 +381,7 @@
     <script src="/static/js/workspace-ui.js?v=5.1"></script>
     <script src="/static/js/workspace-ops.js?v=5.1"></script>
     <script src="/static/js/database.js?v=5.1"></script>
+    <script src="/static/js/nav.js"></script>
     <script src="/static/js/main.js?v=5.1"></script>
 </body>
 </html>

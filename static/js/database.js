@@ -21,9 +21,10 @@ function loadSnapshotIntoWorkspace(snapshot) {
             title: n.title,
             description: n.description,
             prerequisite: n.prerequisite,
-            sources: n.sources,
             source_items: n.source_items,
-            domain_id: n.domain_id ? snapshot.domains.find(pd => pd.id === n.domain_id).local_id : null
+            domain_id: n.domain_id ? snapshot.domains.find(pd => pd.id === n.domain_id).local_id : null,
+            x: n.x,
+            y: n.y
         };
     });
 
@@ -45,7 +46,9 @@ function loadSnapshotIntoWorkspace(snapshot) {
     if (labelInput) labelInput.value = '';
     
     persistDraft();
-    switchTab('workspace');
+    
+    // Redirect to the workspace page
+    window.location.href = '/';
 }
 
 function fetchSnapshotToWorkspace(event, snapshotId) {

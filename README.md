@@ -1,4 +1,4 @@
-# Brotherhood 5.0 - Local Graph Workspace
+# The Brotherhood Curator Lab - Local Graph Workspace
 
 A local-first graph management system built with Python, FastAPI, and PostgreSQL. It features an interactive Web UI and a powerful CLI for managing complex node dependencies with automated validation and simplification.
 
@@ -48,11 +48,11 @@ The system supports a custom `.knw` (Knowledge Graph) file format for sharing gr
 
 **Export:**
 - Open any graph snapshot.
-- Click **"Export Graph (.knw)"** to download the JSON-based file.
+- Click **"Download .knw"** inside the "Export" section of the graph details.
 - The file contains all nodes, domains, metadata, and sources.
 
 **Import:**
-- **Global Import**: Use the "Import Graph (.knw)" button on the main dashboard to add a new graph.
+- **Global Import**: Use the "Import Graph (.knw)" button on the Database Management dashboard to add a new graph.
 - **Overwrite**: Inside an existing graph's settings, you can import a `.knw` file to completely replace the current graph content (requires confirmation).
 - **Smart Resolution**: The importer automatically resolves user references (creators) and base graph links. If a referenced user or graph is missing, it defaults to safe values ("Unknown" or null) to prevent errors.
 

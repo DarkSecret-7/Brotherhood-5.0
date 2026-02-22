@@ -88,13 +88,18 @@ window.customPrompt = function(msg, def) {
 };
 
 function switchTab(tabName) {
-    var tabs = document.querySelectorAll('.tab-btn');
-    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
-    document.getElementById('tab-' + tabName).classList.add('active');
+    var tabBtn = document.getElementById('tab-' + tabName);
+    var viewSection = document.getElementById('view-' + tabName);
+    
+    if (tabBtn && viewSection) {
+        var tabs = document.querySelectorAll('.tab-btn');
+        for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+        tabBtn.classList.add('active');
 
-    var sections = document.querySelectorAll('.view-section');
-    for (var j = 0; j < sections.length; j++) sections[j].classList.remove('active');
-    document.getElementById('view-' + tabName).classList.add('active');
+        var sections = document.querySelectorAll('.view-section');
+        for (var j = 0; j < sections.length; j++) sections[j].classList.remove('active');
+        viewSection.classList.add('active');
+    }
 
     if (tabName === 'workspace') {
         if (typeof refreshWorkspace === 'function') refreshWorkspace();

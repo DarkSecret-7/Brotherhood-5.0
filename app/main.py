@@ -15,12 +15,36 @@ from . import models
 async def lifespan(app: FastAPI):
     # Create tables on startup
     try:
+        # Check and add x, y columns if missing
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE nodes ADD COLUMN x INTEGER DEFAULT NULL"))
+                conn.commit()
+                print("Added column x to nodes table")
+            except Exception:
+                pass # Column likely exists
+                
+            try:
+                conn.execute(text("ALTER TABLE nodes ADD COLUMN y INTEGER DEFAULT NULL"))
+                conn.commit()
+                print("Added column y to nodes table")
+            except Exception:
+                pass # Column likely exists
+
+            try:
+                conn.execute(text("ALTER TABLE nodes DROP COLUMN sources"))
+                conn.commit()
+                print("Dropped column sources from nodes table")
+            except Exception:
+                pass # Column likely already dropped
+
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         print(f"ERROR: Database initialization failed: {e}")
     yield
 
-app = FastAPI(title="Brotherhood 5.0 Graph API", lifespan=lifespan)
+app = FastAPI(title="The Brotherhood Curator Lab Graph API", lifespan=lifespan)
 
 # CORS Configuration
 # Allow origins from environment variable (comma-separated) or default to local development
@@ -68,6 +92,10 @@ app.mount("/docs", StaticFiles(directory=docs_path), name="docs")
 app.include_router(endpoints.router, prefix="/api/v1")
 app.include_router(llm.router, prefix="/api/v1/llm")
 
+@app.get("/curator-guide")
+def curator_guide():
+    return FileResponse(os.path.join(templates_path, "curator-onboarding.html"))
+
 @app.get("/login")
 def login_page():
     return FileResponse(os.path.join(static_path, "login.html"))
@@ -76,9 +104,41 @@ def login_page():
 def signup_page():
     return FileResponse(os.path.join(static_path, "signup.html"))
 
+@app.get("/database")
+def database_page():
+    return FileResponse(os.path.join(templates_path, "database.html"))
+
 @app.get("/gallery")
 def public_gallery():
     return FileResponse(os.path.join(templates_path, "public_gallery.html"))
+
+@app.get("/database")
+async def database_page(request: Request):
+    # Check for token in cookie
+    token = request.cookies.get("access_token")
+    if not token:
+        # Check if it's in the Authorization header (though browser won't send this for initial GET)
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+    if not token:
+        response = RedirectResponse(url="/login")
+        # Ensure we clear the cookie if it was somehow invalid/missing
+        response.delete_cookie("access_token")
+        return response
+    
+    # Optional: Verify token here to prevent serving index.html to invalid tokens
+    try:
+        from .utils import SECRET_KEY, ALGORITHM
+        from jose import jwt
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except:
+        response = RedirectResponse(url="/login")
+        response.delete_cookie("access_token")
+        return response
+
+    return FileResponse(os.path.join(templates_path, "database.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
 
 @app.get("/")
 async def read_root(request: Request):

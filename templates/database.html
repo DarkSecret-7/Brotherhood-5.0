@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Brotherhood Curator Lab - Database Management</title>
+    <link rel="stylesheet" href="/static/styles.css?v=7">
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center;">
+            <div class="hamburger-menu">
+                <button class="hamburger-btn" onclick="openSidePanel()">☰</button>
+            </div>
+            <div style="margin-left: 30px;">
+                <h1 style="margin: 0;">The Brotherhood Curator Lab</h1>
+                <div class="version-indicator">Database Management</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="view-section active" style="display: block; padding: 20px;">
+        <div class="card">
+            <div class="section-header">
+                <h2>Saved Graphs</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary btn-small" onclick="openGlobalImportModal()">Import Graph (.knw)</button>
+                    <button class="btn-secondary btn-small" onclick="refreshSnapshots(true)">Refresh List</button>
+                </div>
+            </div>
+            
+            <div id="snapshots-list">
+                <p class="empty-state">Loading database snapshots...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graph Action Modal -->
+    <div id="graphActionModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 15px; padding-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                    <h2 style="margin: 0; font-size: 1.8em; color: #202124;">Manage Graph</h2>
+                    <span class="close" onclick="closeGraphActionModal()" style="font-size: 2em; line-height: 0.8;">&times;</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label style="display: block; color: #202124; margin-bottom: 5px;">Graph Name</label>
+                    <input type="text" id="graph-action-label-input" style="width: 100%; padding: 10px; font-size: 1.1em; border: 1px solid #dadce0; border-radius: 4px;" placeholder="Graph Name">
+                </div>
+
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #5f6368;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>Created:</strong> <span id="graph-action-created"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>Updated:</strong> <span id="graph-action-updated"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <strong>Nodes:</strong> <span id="graph-action-nodes"></span>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 10px; color: #1a73e8;">Visibility</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
+                    <div>
+                        <strong style="display: block; color: #202124;">Public Access</strong>
+                        <span style="font-size: 0.9em; color: #5f6368;">Make this graph visible in the public gallery.</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="graph-action-public-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <button id="graph-action-save-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1em; margin-bottom: 20px;" onclick="saveGraphChanges()">Save Changes</button>
+                
+                <h3 style="margin-bottom: 10px; color: #1a73e8;">Export</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #5f6368;">Download this graph as a .knw file.</p>
+                    <button class="btn-primary btn-small" onclick="triggerExportGraph()">Download .knw</button>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                
+                <h3 style="margin-bottom: 10px; color: #d93025;">Danger Zone</h3>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="font-size: 1em; margin-bottom: 8px;">Overwrite Graph</h4>
+                    <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 10px;">Upload a .knw file to <strong>permanently replace</strong> this graph.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="file" id="import-file-input" accept=".knw" style="flex: 1; font-size: 0.9em;">
+                        <button class="btn-danger btn-small" onclick="triggerImportGraph()">Overwrite</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="font-size: 1em; margin-bottom: 4px;">Delete Graph</h4>
+                        <p style="font-size: 0.9em; color: #5f6368; margin: 0;">This action cannot be undone.</p>
+                    </div>
+                    <button class="btn-danger btn-small" onclick="triggerDeleteGraph()">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Import Modal -->
+    <div id="globalImportModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Import Graph</h2>
+                <span class="close" onclick="closeGlobalImportModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: #5f6368;">
+                    Upload a .knw file to add a new graph to the database.
+                </p>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select File (.knw)</label>
+                    <input type="file" id="global-import-file" accept=".knw" style="width: 100%; padding: 10px; border: 1px dashed #ccc; background: #f8f9fa; border-radius: 4px;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="global-import-overwrite" style="width: auto; margin: 0;">
+                        <label for="global-import-overwrite" style="margin: 0; user-select: none;">Overwrite if a graph with the same version label exists</label>
+                    </div>
+                </div>
+                
+                <div class="button-group" style="justify-content: flex-end;">
+                    <button class="btn-secondary" onclick="closeGlobalImportModal()">Cancel</button>
+                    <button class="btn-primary" onclick="submitGlobalImport()">Import Graph</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Dialog Modal -->
+    <div id="dialogModal" class="modal" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="dialog-title">Confirm</h2>
+                <span class="close" onclick="closeDialog(false)">&times;</span>
+            </div>
+            <div id="dialog-body" style="margin-bottom: 20px; line-height: 1.5;">
+                <!-- Message goes here -->
+            </div>
+            <div id="dialog-input-container" class="form-group" style="display: none;">
+                <input type="text" id="dialog-input" style="width: 100%;">
+            </div>
+            <div class="button-group" style="justify-content: flex-end;">
+                <button id="dialog-cancel-btn" class="btn-secondary" onclick="closeDialog(false)">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn-primary" onclick="closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="side-panel-overlay" class="side-panel-overlay"></div>
+    <div id="side-panel" class="side-panel">
+        <button class="side-panel-close" onclick="closeSidePanel()">&times;</button>
+        <a href="/" class="side-panel-link">Workspace</a>
+        <a href="/database" class="side-panel-link">Database Management</a>
+        <a href="/curator-guide" class="side-panel-link">Curator Guide</a>
+        <a href="#" onclick="logout()" class="side-panel-link" style="color: #d93025;">Logout</a>
+    </div>
+
+    <script src="/static/js/globals.js?v=5.1"></script>
+    <script src="/static/js/utils.js?v=5.1"></script>
+    <script src="/static/js/api.js?v=5.1"></script>
+    <script src="/static/js/workspace-ops.js?v=5.1"></script>
+    <script src="/static/js/database.js?v=5.1"></script>
+    <script src="/static/js/nav.js"></script>
+    <script>
+        // Initialization for standalone database page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof refreshSnapshots === 'function') {
+                refreshSnapshots(false);
+            }
+        });
+    </script>
+</body>
+</html>

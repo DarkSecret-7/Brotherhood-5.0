@@ -150,39 +150,10 @@ def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snap
             description=node_data.description,
             prerequisite=node_data.prerequisite,
             mentions=node_data.mentions,
-            sources=None, # Deprecated: Legacy sources are migrated to Source table
-            domain_id=resolved_domain_id
+            domain_id=resolved_domain_id,
+            x=node_data.x,
+            y=node_data.y
         )
-        
-        # Track existing URLs to prevent duplicates
-        existing_urls = set()
-        if hasattr(node_data, 'source_items') and node_data.source_items:
-            for item in node_data.source_items:
-                if item.url:
-                    existing_urls.add(item.url)
-
-        # Migrate legacy sources string to Source objects
-        if node_data.sources:
-            legacy_urls = [u.strip() for u in node_data.sources.split(',') if u.strip()]
-            for url in legacy_urls:
-                # Skip if already present in source_items
-                if url in existing_urls:
-                    continue
-                
-                # Basic type detection
-                s_type = "PDF" if url.lower().endswith('.pdf') else "Other"
-                
-                legacy_source = models.Source(
-                    title=url, # Use URL as title
-                    author=None,
-                    year=None,
-                    source_type=s_type,
-                    url=url,
-                    fragment_start=None,
-                    fragment_end=None
-                )
-                db_node.source_items.append(legacy_source)
-                existing_urls.add(url) # Prevent duplicates within legacy list too
         
         # Populate new source items
         if hasattr(node_data, 'source_items') and node_data.source_items:

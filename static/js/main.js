@@ -21,4 +21,7 @@ window.onclick = function(event) {
     if (event.target == document.getElementById('editModal')) closeEditModal();
     if (event.target == document.getElementById('editDomainModal')) closeEditDomainModal();
     if (event.target == document.getElementById('createDomainModal')) closeCreateDomainModal();
+
 };
+
+

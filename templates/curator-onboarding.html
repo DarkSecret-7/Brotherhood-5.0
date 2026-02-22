@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Curator Onboarding - Brotherhood 5.0</title>
+    <title>Curator Onboarding - The Brotherhood Curator Lab</title>
     <link rel="stylesheet" href="/static/styles.css">
     <style>
         .doc-content { line-height: 1.6; }
@@ -12,29 +12,31 @@
         .doc-content ul, .doc-content ol { padding-left: 20px; margin-bottom: 15px; }
         .doc-content li { margin-bottom: 8px; }
         .doc-content code { background: #f1f3f4; padding: 2px 5px; border-radius: 4px; font-family: monospace; color: #c7254e; }
-        .back-link { display: inline-block; margin-bottom: 20px; color: #1a73e8; text-decoration: none; font-weight: 600; }
-        .back-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div>
-            <h1>Brotherhood 5.0</h1>
-            <div class="version-indicator">Documentation</div>
+        <div style="display: flex; align-items: center;">
+            <div class="hamburger-menu">
+                <button class="hamburger-btn" onclick="openSidePanel()">☰</button>
+            </div>
+            <div style="margin-left: 30px;">
+                <h1 style="margin: 0;">The Brotherhood Curator Lab</h1>
+                <div class="version-indicator">Documentation</div>
+            </div>
         </div>
-        <a href="/" class="btn-secondary btn-small" style="text-decoration: none;">Back to App</a>
     </div>
 
     <div class="card doc-content">
-        <h1>Welcome to the Brotherhood Graph Builder! 🌟</h1>
+        <h1>Welcome to The Brotherhood Curator Lab! 🌟</h1>
         <p>This guide will help you get started with building and curating the knowledge graph. Think of this tool as a digital whiteboard where you can map out ideas, connect them, and organize them into a structured learning path.</p>
 
         <h2>1. The Workspace: Your Digital Drafting Table 🎨</h2>
-        <p>When you log in, you land on the <strong>Workspace Draft</strong> tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!</p>
+        <p>When you log in, you land on the <strong>Node Draft</strong> tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!</p>
         <ul>
             <li><strong>Draft Nodes List</strong>: This is where your new ideas (Nodes) and groups (Domains) will appear as you create them.</li>
-            <li><strong>Active Workspace</strong>: Shows you what you're currently working on.</li>
-            <li><strong>Graph Visualizer</strong>: A magic button that draws a picture of your connections. Use this often to see how your ideas link together!</li>
+            <li><strong>Persistent Toolbar</strong>: Located below the tabs, it shows the active version you are working on and provides a <strong>"Clear Workspace"</strong> button to reset your draft.</li>
+            <li><strong>Graph Visualizer</strong>: Click the tab to see a picture of your connections. Use this often to see how your ideas link together!</li>
         </ul>
 
         <h2>2. Building Blocks: Domains & Nodes 🧱</h2>
@@ -76,7 +78,7 @@
 
         <h2>4. Visualizing Your Work 👁️</h2>
         <ul>
-            <li>Click <strong>Show Graph Visualizer</strong> at the top.</li>
+            <li>Click the <strong>Graph Visualizer</strong> tab at the top.</li>
             <li>You'll see arrows pointing from the <em>prerequisite</em> to the <em>dependent</em> node.</li>
             <li>If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.</li>
         </ul>
@@ -84,7 +86,7 @@
         <h2>5. Saving & Publishing 💾</h2>
         <p>Once you're happy with your draft:</p>
         <ol>
-            <li>Scroll to the bottom <strong>Save to Database</strong> section.</li>
+            <li>Switch to the <strong>Save Version</strong> tab.</li>
             <li><strong>Overwrite Toggle</strong>:
                 <ul>
                     <li><strong>Unchecked</strong>: Creates a brand new graph.</li>
@@ -113,5 +115,15 @@
         <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
         <p><strong>Happy Curating!</strong> 🚀</p>
     </div>
+    <div id="side-panel-overlay" class="side-panel-overlay"></div>
+    <div id="side-panel" class="side-panel">
+        <button class="side-panel-close" onclick="closeSidePanel()">&times;</button>
+        <a href="/" class="side-panel-link">Workspace</a>
+        <a href="/database" class="side-panel-link">Database Management</a>
+        <a href="/curator-guide" class="side-panel-link">Curator Guide</a>
+        <a href="#" onclick="logout()" class="side-panel-link" style="color: #d93025;">Logout</a>
+    </div>
+
+    <script src="/static/js/nav.js"></script>
 </body>
 </html>
