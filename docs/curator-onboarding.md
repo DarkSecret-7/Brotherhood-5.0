@@ -43,14 +43,31 @@ This is the most powerful part! You can define what needs to be learned *before*
 
 *   Click the **Graph Visualizer** tab at the top.
 *   You'll see arrows pointing from the *prerequisite* to the *dependent* node.
+*   **Moving Groups**: You can collapse a Domain (Right-click -> Collapse) and drag it to a new location. All its nodes and nested domains will move with it!
 *   If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.
+
+### Graph Layout Controls
+
+Use the buttons at the top of the Graph Visualizer to manage your layout:
+
+*   **Fix Positions**: Locks all nodes in their current places. This saves the coordinates to your local workspace, ensuring they stay put even if you refresh.
+*   **Reset Layout**: Restores the last *saved* positions. If you've dragged things around but haven't clicked "Fix Positions", this will snap everything back to the last save.
+*   **Randomise**: Scrambles the graph layout. Useful if you're stuck in a local minimum or just want a fresh start to untangle nodes manually.
+
+### Interactive Pathways (Advanced)
+
+For nodes with complex prerequisites (like "A OR B"), you can interact with the connections:
+
+*   **Click an Edge**: If a node requires "A OR B", clicking the arrow from "A" will highlight the pathway where "A" is the active prerequisite. Clicking the arrow from "B" will switch the active pathway to "B".
+*   This helps visualize different ways a requirement can be met!
 
 ## 5. Saving & Publishing 💾
 
 Once you're happy with your draft:
 
 1.  Switch to the **Save Version** tab.
-2.  **Overwrite Toggle**:
+2.  **Your Layout Matters**: The system saves the exact position of every node. Make sure your graph looks good before saving!
+3.  **Overwrite Toggle**:
     *   **Unchecked**: Creates a brand new graph.
     *   **Checked**: Updates the existing graph (use this if you're editing).
 3.  **Version Label**: Give it a name like "Draft v1" or "Final Version".

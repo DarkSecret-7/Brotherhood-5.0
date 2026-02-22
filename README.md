@@ -74,6 +74,16 @@ python cli.py save-graph --version-label "v1"
 python cli.py load-graph <snapshot_id>
 ```
 
+### 7. Interactive Graph Management
+- **Visual Drag & Drop**: Rearrange nodes freely in the workspace. Your custom layout is saved with the snapshot.
+- **Group Movement**: Collapse a Domain to treat it as a single unit. Dragging a collapsed domain automatically moves all its internal nodes and nested domains, maintaining their relative positions.
+- **Background Rendering**: Domains are visualized as convex hulls that encompass their nodes, providing a clear visual hierarchy.
+- **Layout Controls**:
+  - **Fix Positions**: Saves current node coordinates to the local workspace.
+  - **Reset Layout**: Reverts to the last saved configuration.
+  - **Randomise**: Scrambles the layout to help untangle dense clusters.
+- **Alternative Pathways**: Click on edges to cycle through active prerequisites for nodes with complex logic (e.g., OR conditions).
+
 ## Advanced Features
 
 ### Boolean Prerequisite Logic

@@ -24,26 +24,17 @@ function loadSnapshotIntoWorkspace(snapshot) {
             source_items: n.source_items,
             domain_id: n.domain_id ? snapshot.domains.find(pd => pd.id === n.domain_id).local_id : null,
             x: n.x,
-            y: n.y
+            y: n.y,
+            saved_x: n.x, // Store initial DB coordinate for reset
+            saved_y: n.y
         };
     });
 
-    currentSnapshotLabel = snapshot.version_label || ('v' + snapshot.id);
+    currentSnapshotLabel = snapshot.version_label || ('#' + snapshot.id);
     baseGraphLabel = currentSnapshotLabel; // The original graph it was based on
     localStorage.setItem('currentSnapshotLabel', currentSnapshotLabel);
     localStorage.setItem('baseGraphLabel', baseGraphLabel);
     localStorage.setItem('baseGraphCreator', snapshot.created_by || '');
-    
-    // Update toggle and label
-    var overwriteToggle = document.getElementById('overwrite-toggle');
-    if (overwriteToggle) {
-        overwriteToggle.checked = true;
-    }
-    handleOverwriteToggle();
-    
-    // Clear version label on fresh load
-    var labelInput = document.getElementById('version-label');
-    if (labelInput) labelInput.value = '';
     
     persistDraft();
     
@@ -51,10 +42,12 @@ function loadSnapshotIntoWorkspace(snapshot) {
     window.location.href = '/';
 }
 
-function fetchSnapshotToWorkspace(event, snapshotId) {
+function fetchSnapshotToWorkspace(event, snapshotId, label) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
 
-    customConfirm('STOP! This will clear your current workspace and load snapshot #' + snapshotId + '. Continue?').then(function(userChoice) {
+    var confirmMsg = 'STOP! This will clear your current workspace and load snapshot "' + (label || '#' + snapshotId) + '". Continue?';
+    
+    customConfirm(confirmMsg).then(function(userChoice) {
         if (userChoice === true) {
             api.fetchSnapshot(snapshotId).then(function(snapshot) {
                 loadSnapshotIntoWorkspace(snapshot);
@@ -81,6 +74,28 @@ function deleteSnapshot(event, snapshotId) {
 }
 
 function saveSnapshot() {
+    // 1. Sync latest visual positions from Network if active
+    // This ensures that drag-and-drop changes are captured even if 'renderGraph' wasn't called
+    if (typeof network !== 'undefined' && network) {
+        try {
+            var currentPositions = network.getPositions();
+            draftNodes.forEach(function(node) {
+                if (currentPositions[node.local_id]) {
+                    node.x = Math.round(currentPositions[node.local_id].x);
+                    node.y = Math.round(currentPositions[node.local_id].y);
+                }
+            });
+        } catch (e) {
+            console.warn("Could not sync network positions before save:", e);
+        }
+    }
+
+    // 2. Auto-fix removed. We only save explicit 'saved_x'/'saved_y' to the database.
+    // The working coordinates (x, y) are kept in localStorage (via persistDraft below) but NOT sent to DB unless fixed.
+    
+    // Persist these updates to localStorage so they survive a reload
+    persistDraft();
+
     if (draftNodes.length === 0 && draftDomains.length === 0) {
         customAlert('Cannot save an empty graph.');
         return;
@@ -89,11 +104,19 @@ function saveSnapshot() {
     var overwriteToggle = document.getElementById('overwrite-toggle').checked;
 
     var performSave = function(isOverwrite) {
+        // Use saved_x/saved_y for the database, preserving working x/y in local draft
+        var nodesForDb = draftNodes.map(function(n) {
+             return Object.assign({}, n, {
+                 x: n.saved_x,
+                 y: n.saved_y
+             });
+        });
+
         var payload = {
             version_label: label || null,
             base_graph: baseGraphLabel || null,
             created_by: getCurrentUser(),
-            nodes: draftNodes,
+            nodes: nodesForDb,
             domains: draftDomains,
             overwrite: isOverwrite
         };
@@ -193,12 +216,12 @@ function refreshSnapshots(force) {
 function renderSnapshots(snapshots) {
     loadedSnapshots = snapshots;
     var listDiv = document.getElementById('snapshots-list');
-    var currentUser = getCurrentUser();
     var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
     for (var i = 0; i < snapshots.length; i++) {
         var s = snapshots[i];
         var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
         var updatedDate = new Date(s.last_updated).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+        var versionLabel = s.version_label || '#' + s.id;
         
         html += '<tr>' +
             '<td style="cursor: pointer; color: #1a73e8; font-weight: 500;" onclick="openGraphActionModal(loadedSnapshots[' + i + '])">' +
@@ -213,7 +236,7 @@ function renderSnapshots(snapshots) {
             '<td>' + (s.base_graph || 'None') + '</td>' +
             '<td>' +
                 '<div style="display: flex; gap: 5px;">' +
-                    '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ')">Fetch to Workspace</button>' +
+                    '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ', \'' + versionLabel.replace(/'/g, "\\'") + '\')">Fetch to Workspace</button>' +
                 '</div>' +
             '</td>' +
         '</tr>';

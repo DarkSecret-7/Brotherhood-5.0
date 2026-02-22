@@ -80,13 +80,30 @@
         <ul>
             <li>Click the <strong>Graph Visualizer</strong> tab at the top.</li>
             <li>You'll see arrows pointing from the <em>prerequisite</em> to the <em>dependent</em> node.</li>
+            <li><strong>Moving Groups</strong>: You can collapse a Domain (Right-click -> Collapse) and drag it to a new location. All its nodes and nested domains will move with it!</li>
             <li>If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.</li>
+        </ul>
+
+        <h3>Graph Layout Controls</h3>
+        <p>Use the buttons at the top of the Graph Visualizer to manage your layout:</p>
+        <ul>
+            <li><strong>Fix Positions</strong>: Locks all nodes in their current places. This saves the coordinates to your local workspace, ensuring they stay put even if you refresh.</li>
+            <li><strong>Reset Layout</strong>: Restores the last <em>saved</em> positions. If you've dragged things around but haven't clicked "Fix Positions", this will snap everything back to the last save.</li>
+            <li><strong>Randomise</strong>: Scrambles the graph layout. Useful if you're stuck in a local minimum or just want a fresh start to untangle nodes manually.</li>
+        </ul>
+
+        <h3>Interactive Pathways (Advanced)</h3>
+        <p>For nodes with complex prerequisites (like "A OR B"), you can interact with the connections:</p>
+        <ul>
+            <li><strong>Click an Edge</strong>: If a node requires "A OR B", clicking the arrow from "A" will highlight the pathway where "A" is the active prerequisite. Clicking the arrow from "B" will switch the active pathway to "B".</li>
+            <li>This helps visualize different ways a requirement can be met!</li>
         </ul>
 
         <h2>5. Saving & Publishing 💾</h2>
         <p>Once you're happy with your draft:</p>
         <ol>
             <li>Switch to the <strong>Save Version</strong> tab.</li>
+            <li><strong>Your Layout Matters</strong>: The system saves the exact position of every node. Make sure your graph looks good before saving!</li>
             <li><strong>Overwrite Toggle</strong>:
                 <ul>
                     <li><strong>Unchecked</strong>: Creates a brand new graph.</li>

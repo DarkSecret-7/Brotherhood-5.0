@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Brotherhood - Public Gallery</title>
-    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="/static/styles.css?v=8">
     <style>
         body {
@@ -87,9 +88,13 @@
         #graph-container {
             width: 100%;
             height: 100%;
+            min-height: 600px; /* Ensure visible height */
+            position: relative; /* Context for absolute positioning */
+            background-color: #f9f9f9; /* Debug visibility */
             border: none;
             border-radius: 0;
             margin: 0;
+            overflow: hidden; /* Contain canvas */
         }
         .toggle-sidebar-btn {
             position: absolute;
@@ -151,7 +156,7 @@
         </div>
     </div>
 
-    <div class="gallery-container">
+    <div class="gallery-container" style="height: 100vh; overflow: hidden; display: flex; flex-direction: row;">
         <div id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <span>Public Graphs</span>
@@ -161,9 +166,10 @@
             </div>
         </div>
 
-        <div class="main-area">
+        <div class="main-area" style="flex: 1; position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
-            <div id="graph-container"></div>
+            <!-- Explicitly force block display and size -->
+            <div id="graph-container" style="display: block !important; width: 100% !important; height: 100% !important; min-height: 600px; background-color: #f9f9f9; flex: 1;"></div>
             
             <!-- Node Details Panel (Floating) -->
             <div id="node-details" class="node-details-panel">
@@ -178,165 +184,10 @@
         </div>
     </div>
 
-    <script>
-        // Mock globals expected by visualization.js (if any)
-        var draftNodes = [];
-        var draftDomains = [];
-        
-        // --- Sidebar Logic ---
-        function toggleSidebar() {
-            var sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('collapsed');
-        }
-
-        // --- API Calls ---
-        async function fetchPublicSnapshots() {
-            try {
-                const response = await fetch('/api/v1/public/snapshots');
-                if (!response.ok) throw new Error('Failed to fetch graphs');
-                const snapshots = await response.json();
-                renderGraphList(snapshots);
-            } catch (err) {
-                document.getElementById('graph-list').innerHTML = `<p style="color: #d93025; padding: 10px;">Error: ${err.message}</p>`;
-            }
-        }
-
-        async function loadGraph(id) {
-            try {
-                // Show loading state
-                // document.getElementById('graph-container').innerHTML = '<p style="text-align: center; padding-top: 100px;">Loading graph...</p>';
-                
-                const response = await fetch(`/api/v1/public/snapshots/${id}`);
-                if (!response.ok) throw new Error('Failed to fetch graph details');
-                const snapshot = await response.json();
-                
-                // Map to format expected by visualizer
-                draftNodes = snapshot.nodes.map(n => ({
-                    local_id: n.local_id,
-                    title: n.title,
-                    description: n.description,
-                    prerequisite: n.prerequisite,
-                    source_items: n.source_items,
-                    domain_id: n.domain_id // Note: visualizer expects domain ID mapping or simple ID
-                }));
-                
-                // Domain mapping logic similar to database.js might be needed if visualizer relies on it
-                // But visualization.js seems to use domain_id directly to find parent
-                // Wait, visualization.js line 28: domains.find(pd => pd.id === n.domain_id).local_id ? 
-                // No, visualization.js uses `domainMap[d.local_id]`. 
-                // Let's check how domains are structured in snapshot vs draft.
-                // In snapshot, domain_id is DB ID. In draft, it's local ID.
-                // Visualizer expects local_id.
-                
-                // We need to map DB IDs to local IDs for the visualizer to work correctly if relationships are based on local IDs.
-                // The snapshot data has `local_id` for nodes and domains.
-                // But `node.domain_id` refers to the DB ID of the domain.
-                // We need to resolve `node.domain_id` (DB ID) to `domain.local_id`.
-                
-                const domainDbToLocal = {};
-                snapshot.domains.forEach(d => {
-                    domainDbToLocal[d.id] = d.local_id;
-                });
-                
-                draftDomains = snapshot.domains.map(d => ({
-                    local_id: d.local_id,
-                    title: d.title,
-                    description: d.description,
-                    collapsed: d.collapsed,
-                    parent_id: d.parent_id ? domainDbToLocal[d.parent_id] : null
-                }));
-                
-                // Fix node domain_ids
-                draftNodes.forEach(n => {
-                    if (n.domain_id) {
-                        n.domain_id = domainDbToLocal[n.domain_id];
-                    }
-                });
-                
-                renderGraph(draftNodes, draftDomains);
-                
-                // Highlight active item
-                document.querySelectorAll('.graph-item').forEach(el => el.classList.remove('active'));
-                const activeItem = document.querySelector(`.graph-item[onclick="loadGraph(${id})"]`);
-                if (activeItem) activeItem.classList.add('active');
-                
-            } catch (err) {
-                console.error(err);
-                alert('Error loading graph: ' + err.message);
-            }
-        }
-
-        function renderGraphList(snapshots) {
-            const container = document.getElementById('graph-list');
-            if (snapshots.length === 0) {
-                container.innerHTML = '<p style="padding: 10px; color: #5f6368;">No public graphs available.</p>';
-                return;
-            }
-            
-            let html = '';
-            snapshots.forEach(s => {
-                const date = new Date(s.last_updated).toLocaleDateString();
-                html += `
-                    <div class="graph-item" onclick="loadGraph(${s.id})">
-                        <div class="graph-title">${s.version_label || 'v' + s.id}</div>
-                        <div class="graph-meta">
-                            ${s.node_count} nodes • Updated ${date}<br>
-                            By ${s.created_by || 'Unknown'}
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        // --- Interaction ---
-        // Override openEditModal from visualization.js
-        function openEditModal(nodeId) {
-            const node = draftNodes.find(n => n.local_id === nodeId);
-            if (!node) return;
-            
-            document.getElementById('detail-title').textContent = node.title;
-            document.getElementById('detail-meta').textContent = `ID: ${node.local_id}`;
-            document.getElementById('detail-desc').textContent = node.description || 'No description provided.';
-            
-            // Sources
-            const sourcesContainer = document.getElementById('detail-sources');
-            sourcesContainer.innerHTML = '';
-            if (node.source_items && node.source_items.length > 0) {
-                node.source_items.forEach(s => {
-                    const div = document.createElement('div');
-                    div.className = 'source-item-row';
-                    div.style.marginBottom = '8px';
-                    div.style.cursor = 'default';
-                    div.innerHTML = `
-                        <div class="source-icon">📄</div>
-                        <div class="source-main-info">
-                            <div class="source-title" title="${s.title}">${s.title}</div>
-                            <div class="source-meta-info">
-                                ${s.author ? `<span>👤 ${s.author}</span>` : ''}
-                                ${s.year ? `<span>📅 ${s.year}</span>` : ''}
-                            </div>
-                            ${s.url ? `<a href="${s.url}" target="_blank" style="font-size: 0.85em; color: #1a73e8;">Open Link &nearr;</a>` : ''}
-                        </div>
-                    `;
-                    sourcesContainer.appendChild(div);
-                });
-            } else {
-                sourcesContainer.innerHTML = '<span style="color: #9aa0a6; font-size: 0.9em;">No sources linked.</span>';
-            }
-            
-            document.getElementById('node-details').style.display = 'block';
-        }
-        
-        function closeNodeDetails() {
-            document.getElementById('node-details').style.display = 'none';
-        }
-
-        // Initialize
-        fetchPublicSnapshots();
-    </script>
-    
-    <!-- Load shared visualization logic -->
-    <script src="/static/js/visualization.js"></script>
+    <!-- Shared Logic -->
+    <script src="/static/js/globals.js?v=9"></script>
+    <script src="/static/js/visualization.js?v=9"></script>
+    <!-- Gallery Logic -->
+    <script src="/static/js/public_gallery.js?v=3"></script>
 </body>
 </html>
