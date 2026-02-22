@@ -51,7 +51,7 @@ class DomainBase(BaseModel):
     collapsed: bool = True
 
 class DomainCreate(DomainBase):
-    pass
+    id: Optional[int] = None # Allow ID for import mapping
 
 class DomainRead(DomainBase):
     id: int
@@ -67,8 +67,8 @@ class GraphSnapshotBase(BaseModel):
     is_public: bool = False
 
 class GraphSnapshotCreate(GraphSnapshotBase):
-    nodes: List[NodeBase]
-    domains: List[DomainBase] = []
+    nodes: List[NodeCreate]
+    domains: List[DomainCreate] = []
     overwrite: bool = False
 
 class GraphSnapshotUpdate(BaseModel):

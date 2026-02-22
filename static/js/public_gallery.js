@@ -145,6 +145,12 @@ window.openEditModal = function(nodeId) {
     
     // Sources
     if (sourcesContainer) {
+        // Reset header
+        const sourcesHeader = sourcesContainer.previousElementSibling;
+        if (sourcesHeader && sourcesHeader.tagName === 'H4') {
+            sourcesHeader.textContent = 'Sources';
+        }
+
         sourcesContainer.innerHTML = '';
         if (node.source_items && node.source_items.length > 0) {
             node.source_items.forEach(s => {
@@ -170,6 +176,63 @@ window.openEditModal = function(nodeId) {
         }
     }
     
+    if (panel) panel.style.display = 'block';
+};
+
+// --- Domain Details Logic ---
+window.openDomainDetails = function(domainId) {
+    const domain = window.draftDomains.find(d => String(d.local_id) === String(domainId));
+    if (!domain) return;
+
+    const titleEl = document.getElementById('detail-title');
+    const metaEl = document.getElementById('detail-meta');
+    const descEl = document.getElementById('detail-desc');
+    const sourcesContainer = document.getElementById('detail-sources');
+    const panel = document.getElementById('node-details');
+
+    if (titleEl) titleEl.textContent = domain.title || "Untitled Domain";
+    if (metaEl) metaEl.textContent = `Domain • Level ${domain.level || '?'}`;
+    if (descEl) descEl.textContent = domain.description || 'No description provided.';
+    
+    // Clear sources for domains as they don't have source items
+    if (sourcesContainer) {
+        // Change header to "Actions"
+        const sourcesHeader = sourcesContainer.previousElementSibling;
+        if (sourcesHeader && sourcesHeader.tagName === 'H4') {
+            sourcesHeader.textContent = 'Actions';
+        }
+
+        sourcesContainer.innerHTML = '';
+
+        // Add Expand/Collapse Button
+        const btn = document.createElement('button');
+        // Simple inline style to match theme
+        btn.style.width = '100%';
+        btn.style.padding = '10px';
+        btn.style.background = '#f1f3f4';
+        btn.style.border = '1px solid #dadce0';
+        btn.style.borderRadius = '4px';
+        btn.style.cursor = 'pointer';
+        btn.style.fontWeight = '500';
+        btn.style.color = '#3c4043';
+        btn.style.transition = 'background 0.2s';
+        
+        btn.onmouseover = function() { btn.style.background = '#e8eaed'; };
+        btn.onmouseout = function() { btn.style.background = '#f1f3f4'; };
+
+        btn.textContent = domain.collapsed ? 'Expand Domain' : 'Collapse Domain';
+        
+        btn.onclick = function() {
+            toggleGraphDomain(domainId);
+            // Update button text after toggle (state changes in memory)
+            const updatedDomain = window.draftDomains.find(d => String(d.local_id) === String(domainId));
+            if (updatedDomain) {
+                btn.textContent = updatedDomain.collapsed ? 'Expand Domain' : 'Collapse Domain';
+            }
+        };
+        sourcesContainer.appendChild(btn);
+    }
+
     if (panel) panel.style.display = 'block';
 };
 

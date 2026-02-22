@@ -115,7 +115,9 @@ def update_snapshot_metadata(db: Session, db_snapshot: models.GraphSnapshot, sna
 
 def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):
     # Create all domains linked to this snapshot
-    domain_mapping = {} # local_id -> db_id
+    domain_mapping = {} # local_id -> db_id (for local_id based references)
+    domain_old_id_mapping = {} # old_db_id -> db_id (for db_id based references from import)
+    
     if snapshot_data.domains:
         for d_data in snapshot_data.domains:
             db_domain = models.Domain(
@@ -128,20 +130,46 @@ def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snap
             db.add(db_domain)
             db.commit()
             db.refresh(db_domain)
+            
             domain_mapping[d_data.local_id] = db_domain.id
+            if hasattr(d_data, 'id') and d_data.id is not None:
+                domain_old_id_mapping[d_data.id] = db_domain.id
         
+        # Second pass to link parent/child domains
         for d_data in snapshot_data.domains:
-            if d_data.parent_id is not None and d_data.parent_id in domain_mapping:
-                db_domain = db.query(models.Domain).filter(models.Domain.id == domain_mapping[d_data.local_id]).first()
-                db_domain.parent_id = domain_mapping[d_data.parent_id]
+            if d_data.parent_id is not None:
+                parent_db_id = None
+                
+                # Try to resolve parent via old DB ID (priority for imports)
+                if d_data.parent_id in domain_old_id_mapping:
+                    parent_db_id = domain_old_id_mapping[d_data.parent_id]
+                # Fallback to local_id resolution
+                elif d_data.parent_id in domain_mapping:
+                    parent_db_id = domain_mapping[d_data.parent_id]
+                
+                if parent_db_id:
+                    # We need to update the newly created domain with the parent ID
+                    # We can find it via local_id mapping
+                    current_db_id = domain_mapping.get(d_data.local_id)
+                    if current_db_id:
+                        db_domain = db.query(models.Domain).filter(models.Domain.id == current_db_id).first()
+                        if db_domain:
+                            db_domain.parent_id = parent_db_id
+                            db.add(db_domain)
         db.commit()
 
     # Create all nodes linked to this snapshot
     db_nodes = []
     for node_data in snapshot_data.nodes:
         resolved_domain_id = None
-        if node_data.domain_id is not None and node_data.domain_id in domain_mapping:
-            resolved_domain_id = domain_mapping[node_data.domain_id]
+        
+        if node_data.domain_id is not None:
+            # Try to resolve via old DB ID (priority for imports)
+            if node_data.domain_id in domain_old_id_mapping:
+                resolved_domain_id = domain_old_id_mapping[node_data.domain_id]
+            # Fallback to local_id resolution
+            elif node_data.domain_id in domain_mapping:
+                resolved_domain_id = domain_mapping[node_data.domain_id]
 
         db_node = models.Node(
             snapshot_id=db_snapshot.id,

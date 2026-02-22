@@ -557,18 +557,16 @@ function toggleGraph() {
         menu.style.top = y + 'px';
 
         // Option 1: Edit Domain
-        var editOption = document.createElement('div');
-        editOption.innerText = 'Edit Domain';
-        editOption.classList.add('domain-context-option');
-        editOption.onclick = function() {
-            if (typeof openEditDomainModal === 'function') {
+        if (typeof openEditDomainModal === 'function') {
+            var editOption = document.createElement('div');
+            editOption.innerText = 'Edit Domain';
+            editOption.classList.add('domain-context-option');
+            editOption.onclick = function() {
                 openEditDomainModal(parseInt(domainId));
-            } else {
-                console.warn("openEditDomainModal function not found");
-            }
-            menu.remove();
-        };
-        menu.appendChild(editOption);
+                menu.remove();
+            };
+            menu.appendChild(editOption);
+        }
 
         // Option 2: Collapse/Expand
         var toggleOption = document.createElement('div');
@@ -605,7 +603,12 @@ function toggleGraph() {
                 // Show context menu instead of direct toggle
                 var menuX = params.event.srcEvent.pageX;
                 var menuY = params.event.srcEvent.pageY;
-                showDomainContextMenu(menuX, menuY, domainId);
+
+                if (typeof openDomainDetails === 'function') {
+                    openDomainDetails(domainId);
+                } else {
+                    showDomainContextMenu(menuX, menuY, domainId);
+                }
             } else {
                 // It's a regular node
                 if (typeof openEditModal === 'function') {
@@ -683,8 +686,73 @@ function toggleGraph() {
                 // Show context menu instead of direct toggle
                 var menuX = params.event.srcEvent.pageX;
                 var menuY = params.event.srcEvent.pageY;
-                showDomainContextMenu(menuX, menuY, domain.id);
+
+                if (typeof openDomainDetails === 'function') {
+                    openDomainDetails(domain.id);
+                } else {
+                    showDomainContextMenu(menuX, menuY, domain.id);
+                }
                 return; // Handle only the top-most domain
+            }
+        }
+    });
+
+    // --- Right-Click (Context Menu) Handling ---
+    network.on("oncontext", function (params) {
+        if (params.event) {
+            if (typeof params.event.preventDefault === 'function') {
+                params.event.preventDefault();
+            } else if (params.event.srcEvent && typeof params.event.srcEvent.preventDefault === 'function') {
+                params.event.srcEvent.preventDefault();
+            }
+        }
+        
+        var menuX = 0;
+        var menuY = 0;
+        
+        if (params.event && params.event.srcEvent && params.event.srcEvent.pageX !== undefined) {
+            menuX = params.event.srcEvent.pageX;
+            menuY = params.event.srcEvent.pageY;
+        } else if (params.event && params.event.pageX !== undefined) {
+            menuX = params.event.pageX;
+            menuY = params.event.pageY;
+        } else if (params.pointer && params.pointer.DOM) {
+            // Fallback
+            var rect = container.getBoundingClientRect();
+            menuX = rect.left + params.pointer.DOM.x + window.pageXOffset;
+            menuY = rect.top + params.pointer.DOM.y + window.pageYOffset;
+        }
+
+        // 1. Check for Domain Node
+        var nodeId = this.getNodeAt(params.pointer.DOM);
+        if (nodeId && String(nodeId).startsWith('domain_')) {
+            var domainId = String(nodeId).replace('domain_', '');
+            
+            // Only show context menu if we are NOT in the Gallery (openDomainDetails not defined)
+            // In Gallery, interactions are handled via the Details Panel
+            if (typeof openDomainDetails !== 'function') {
+                showDomainContextMenu(menuX, menuY, domainId);
+            }
+            return;
+        }
+
+        // 2. Check for Domain Hull
+        var clickX = params.pointer.canvas.x;
+        var clickY = params.pointer.canvas.y;
+        var clickPoint = {x: clickX, y: clickY};
+
+        var sortedDomains = Object.values(domainHierarchy).sort(function(a, b) {
+            return b.level - a.level;
+        });
+
+        for (var i = 0; i < sortedDomains.length; i++) {
+            var domain = sortedDomains[i];
+            var hull = currentDomainHulls[domain.id];
+            if (hull && isPointInPolygon(clickPoint, hull)) {
+                if (typeof openDomainDetails !== 'function') {
+                    showDomainContextMenu(menuX, menuY, domain.id);
+                }
+                return;
             }
         }
     });
