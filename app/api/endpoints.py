@@ -212,32 +212,6 @@ def contact_form(payload: schemas.ContactFormRequest):
 
     return {"ok": True}
 
-@router.post("/draft/simplify-prerequisites", response_model=schemas.PrerequisiteSimplifyResponse)
-def simplify_prerequisites(request: schemas.PrerequisiteSimplifyRequest, current_user: models.User = Depends(get_current_user)):
-    # 1. Build nodes_deps mapping from the provided context
-    nodes_deps = {}
-    if request.context_nodes:
-        for node in request.context_nodes:
-            if request.current_node_id and node.local_id == request.current_node_id:
-                continue
-            nodes_deps[node.local_id] = utils.extract_ids(node.prerequisite)
-    
-    # 2. Compute reachability
-    reachability = utils.get_reachability(nodes_deps)
-    
-    # 3. Simplify using the tree-based parser
-    simplified = utils.simplify_expression(request.expression, reachability)
-    
-    # Extract redundant IDs
-    old_ids = set(utils.extract_ids(request.expression))
-    new_ids = set(utils.extract_ids(simplified))
-    redundant_ids = list(old_ids - new_ids)
-    
-    return {
-        "simplified_expression": simplified,
-        "redundant_ids": redundant_ids
-    }
-
 @router.post("/snapshots", response_model=schemas.GraphSnapshotRead)
 def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     # Set created_by to current user for the payload

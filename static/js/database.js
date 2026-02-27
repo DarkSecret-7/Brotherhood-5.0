@@ -15,24 +15,17 @@ function prepareSaveVersionTab() {
         return;
     }
 
-    // Fetch the base graph snapshot to compare
-    // We search by label because baseGraphLabel is a label
-    api.fetchSnapshots().then(function(snapshots) {
-        var baseSnapshot = snapshots.find(function(s) { 
-            return (s.version_label === baseGraphLabel) || ('#' + s.id === baseGraphLabel); 
-        });
-
+    // Simply fetch the base graph snapshot to compare
+    api.fetchSnapshot(baseGraphLabel).then(function(baseSnapshot) {
+        // Check if the base snapshot exists
         if (!baseSnapshot) {
-            console.warn("Base snapshot not found for comparison:", baseGraphLabel);
+            console.warn("Base snapshot not found:", baseGraphLabel);
             section.style.display = 'none';
             saveBtn.disabled = false;
             return;
         }
 
-        // Fetch the full snapshot details (nodes)
-        api.fetchSnapshot(baseSnapshot.id).then(function(fullBaseSnapshot) {
-            detectAssessableChanges(fullBaseSnapshot);
-        });
+        detectAssessableChanges(baseSnapshot);
     });
 }
 
@@ -265,14 +258,14 @@ function loadSnapshotIntoWorkspace(snapshot) {
     window.location.href = '/';
 }
 
-function fetchSnapshotToWorkspace(event, snapshotId, label) {
+function fetchSnapshotToWorkspace(event, versionLabel) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
 
-    var confirmMsg = 'STOP! This will clear your current workspace and load snapshot "' + (label || '#' + snapshotId) + '". Continue?';
+    var confirmMsg = 'STOP! This will clear your current workspace and load snapshot "' + versionLabel + '". Continue?';
     
     customConfirm(confirmMsg).then(function(userChoice) {
         if (userChoice === true) {
-            api.fetchSnapshot(snapshotId).then(function(snapshot) {
+            api.fetchSnapshot(versionLabel).then(function(snapshot) {
                 loadSnapshotIntoWorkspace(snapshot);
             }).catch(function(err) {
                 customAlert('Error fetching snapshot: ' + err.message);
@@ -281,11 +274,11 @@ function fetchSnapshotToWorkspace(event, snapshotId, label) {
     });
 }
 
-function deleteSnapshot(event, snapshotId) {
+function deleteSnapshot(event, versionLabel) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
-    customConfirm('PERMANENT DELETE! Are you sure you want to remove snapshot #' + snapshotId + ' from the database?').then(function(confirmed) {
+    customConfirm('PERMANENT DELETE! Are you sure you want to remove snapshot "' + versionLabel + '" from the database?').then(function(confirmed) {
         if (confirmed) {
-            api.deleteSnapshot(snapshotId).then(function(res) {
+            api.deleteSnapshot(versionLabel).then(function(res) {
                 if (res.ok) {
                     localStorage.removeItem('cachedSnapshots');
                     refreshSnapshots(true);
@@ -358,7 +351,7 @@ function saveSnapshot() {
                     // If savedData contains full graph (nodes/domains), use it. Otherwise fetch it by ID.
                     var promise = (savedData.nodes && savedData.domains) 
                         ? Promise.resolve(savedData) 
-                        : api.fetchSnapshot(savedData.id);
+                        : api.fetchSnapshot(label);
                         
                     promise.then(function(snapshot) {
                         loadSnapshotIntoWorkspace(snapshot);
@@ -452,7 +445,7 @@ function renderSnapshots(snapshots) {
         
         html += '<tr>' +
             '<td style="cursor: pointer; color: #1a73e8; font-weight: 500;" onclick="openGraphActionModal(loadedSnapshots[' + i + '])">' +
-                '<div class="version-badge">' + (s.version_label || 'v' + s.id) + '</div>' +
+                '<div class="version-badge">' + versionLabel + '</div>' +
                 '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 6px; line-height: 1.3;">' +
                     '<b>C:</b> ' + createdDate + '<br>' +
                     '<b>U:</b> ' + updatedDate +
@@ -464,7 +457,7 @@ function renderSnapshots(snapshots) {
             '<td>' + (s.base_graph || 'None') + '</td>' +
             '<td>' +
                 '<div style="display: flex; gap: 5px;">' +
-                    '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, ' + s.id + ', \'' + versionLabel.replace(/'/g, "\\'") + '\')">Fetch to Workspace</button>' +
+                    '<button class="btn-secondary btn-small" onclick="fetchSnapshotToWorkspace(event, \'' + versionLabel + '\')">Fetch to Workspace</button>' +
                 '</div>' +
             '</td>' +
         '</tr>';
@@ -510,7 +503,7 @@ function saveGraphChanges() {
         is_public: isPublic
     };
     
-    api.patchSnapshot(currentGraphActionSnapshot.id, payload)
+    api.patchSnapshot(currentGraphActionSnapshot.version_label || ('graph_' + currentGraphActionSnapshot.id), payload)
         .then(function(updatedSnapshot) {
             if (updatedSnapshot.error || updatedSnapshot.detail) {
                 customAlert("Error saving changes: " + (updatedSnapshot.detail || updatedSnapshot.error));
@@ -539,10 +532,9 @@ function closeGraphActionModal() {
 function triggerExportGraph() {
     if (!currentGraphActionSnapshot) return;
     
-    var snapshotId = currentGraphActionSnapshot.id;
-    var label = currentGraphActionSnapshot.version_label || ('graph_' + snapshotId);
+    var label = currentGraphActionSnapshot.version_label || ('graph_' + currentGraphActionSnapshot.id);
     
-    api.exportSnapshot(snapshotId).then(function(blob) {
+    api.exportSnapshot(label).then(function(blob) {
         var url = window.URL.createObjectURL(blob);
         var a = document.createElement('a');
         a.href = url;
@@ -586,11 +578,11 @@ function triggerImportGraph() {
 function triggerDeleteGraph() {
     if (!currentGraphActionSnapshot) return;
     
-    var snapshotId = currentGraphActionSnapshot.id;
+    var label = currentGraphActionSnapshot.version_label || ('graph_' + currentGraphActionSnapshot.id);
     
     customConfirm('PERMANENT DELETE! Are you sure you want to remove this graph?').then(function(confirmed) {
         if (confirmed) {
-            api.deleteSnapshot(snapshotId).then(function(res) {
+            api.deleteSnapshot(label).then(function(res) {
                 if (res.ok) {
                     localStorage.removeItem('cachedSnapshots');
                     refreshSnapshots(true);

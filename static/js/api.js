@@ -23,13 +23,13 @@ var api = {
             .then(this._handleResponse)
             .then(function(res) { return res.json(); });
     },
-    fetchSnapshot: function(id) {
-        return fetch(API_BASE + '/snapshots/' + id, { headers: this._getHeaders() })
+    fetchSnapshot: function(label) {
+        return fetch(API_BASE + `/snapshots/${label}/read`, { headers: this._getHeaders() })
             .then(this._handleResponse)
             .then(function(res) { return res.json(); });
     },
-    deleteSnapshot: function(id) {
-        return fetch(API_BASE + '/snapshots/' + id, { 
+    deleteSnapshot: function(label) {
+        return fetch(API_BASE + `/snapshots/${label}`, { 
             method: 'DELETE',
             headers: this._getHeaders()
         }).then(this._handleResponse);
@@ -41,30 +41,19 @@ var api = {
             body: JSON.stringify(snapshotData)
         }).then(this._handleResponse);
     },
-    patchSnapshot: function(id, data) {
-        return fetch(API_BASE + '/snapshots/' + id, {
+    patchSnapshot: function(label, data) {
+        return fetch(API_BASE + `/snapshots/${label}`, {
             method: 'PATCH',
             headers: this._getHeaders(),
             body: JSON.stringify(data)
         }).then(this._handleResponse).then(function(res) { return res.json(); });
     },
-    postSimplifyPrerequisites: function(expression, currentNodeId, contextNodes) {
-        return fetch(API_BASE + '/draft/simplify-prerequisites', {
-            method: 'POST',
-            headers: this._getHeaders(),
-            body: JSON.stringify({ 
-                expression: expression, 
-                current_node_id: currentNodeId,
-                context_nodes: contextNodes 
-            })
-        }).then(this._handleResponse).then(function(res) { return res.json(); });
-    },
-    exportSnapshot: function(id) {
+    exportSnapshot: function(label) {
         // For download, we handle the blob directly in the UI handler usually, 
         // but here we just return the fetch promise which resolves to the response.
         // We don't use _handleResponse because we want the blob, not JSON.
         // But we still want to check status.
-        return fetch(API_BASE + '/snapshots/' + id + '/export', { 
+        return fetch(API_BASE + `/snapshots/${label}/export`, { 
             headers: this._getHeaders() 
         }).then(function(res) {
             if (res.status === 401) {

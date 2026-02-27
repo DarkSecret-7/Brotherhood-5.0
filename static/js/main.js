@@ -1,6 +1,7 @@
 // Main Initialization and Event Listeners
 
 document.addEventListener('DOMContentLoaded', function() {
+    if (typeof requireAuth === 'function' && !requireAuth()) return;
     var overwriteToggle = document.getElementById('overwrite-toggle');
     if (overwriteToggle) {
         // If we have a base graph (loaded or just saved), turn overwrite on

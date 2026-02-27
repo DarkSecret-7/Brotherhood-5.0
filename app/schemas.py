@@ -165,15 +165,6 @@ class GraphSnapshotSummary(BaseModel):
     
     class Config:
         from_attributes = True
-
-class PrerequisiteSimplifyRequest(BaseModel):
-    expression: str
-    current_node_id: Optional[int] = None
-    context_nodes: List[NodeBase] = []
-
-class PrerequisiteSimplifyResponse(BaseModel):
-    simplified_expression: str
-    redundant_ids: List[int]
     
 class LLMQuery(BaseModel):
     prompt: str

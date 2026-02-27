@@ -180,6 +180,11 @@ def signup_page():
 def public_gallery():
     return FileResponse(os.path.join(templates_path, "public_gallery.html"))
 
+@app.get("/landing")
+def landing_home():
+    landing_url = os.getenv("LANDING_URL", "http://localhost:8080")
+    return RedirectResponse(url=landing_url)
+
 @app.get("/database")
 async def database_page(request: Request):
     # Check for token in cookie

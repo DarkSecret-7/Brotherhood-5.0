@@ -457,14 +457,12 @@ function autoSimplifyPrerequisites(inputId) {
         if (idVal) currentNodeId = parseInt(idVal);
     }
 
-    api.postSimplifyPrerequisites(expression, currentNodeId, draftNodes).then(function(data) {
-        if (data.simplified_expression !== expression) {
-            console.log('Simplified expression from:', expression, 'to:', data.simplified_expression);
-            input.value = data.simplified_expression;
-            
-            // Optional: highlight the change
-            input.style.backgroundColor = '#e8f0fe';
-            setTimeout(function() { input.style.backgroundColor = ''; }, 1000);
-        }
-    });
+    var simplified = simplifyPrerequisitesInBrowser(expression, currentNodeId, draftNodes);
+    if (simplified !== expression) {
+        input.value = simplified;
+
+        // Optional: highlight the change
+        input.style.backgroundColor = '#e8f0fe';
+        setTimeout(function() { input.style.backgroundColor = ''; }, 1000);
+    }
 }
