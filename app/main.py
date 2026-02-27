@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     try:
         from sqlalchemy import text
         with engine.connect() as conn:
+            dialect_name = engine.dialect.name
             # --- Check and add x, y columns if missing ---
             try:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN x INTEGER DEFAULT NULL"))
@@ -49,6 +50,29 @@ async def lifespan(app: FastAPI):
                 print(f"Error inspecting users table: {e}")
                 conn.rollback()
                 existing_columns = []
+
+            # --- Ensure core user columns exist (older DBs may predate these fields) ---
+            core_user_columns = []
+            if dialect_name == "postgresql":
+                core_user_columns = [
+                    ("created_at", "TIMESTAMPTZ", "now()"),
+                    ("is_active", "BOOLEAN", "true"),
+                ]
+            else:
+                core_user_columns = [
+                    ("created_at", "DATETIME", "CURRENT_TIMESTAMP"),
+                    ("is_active", "BOOLEAN", "1"),
+                ]
+
+            for col_name, col_type, default_expr in core_user_columns:
+                if col_name not in existing_columns:
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type} DEFAULT {default_expr}"))
+                        conn.commit()
+                        print(f"Added column {col_name} to users table")
+                    except Exception as e:
+                        print(f"Failed to add column {col_name}: {e}")
+                        conn.rollback()
 
             user_columns = [
                 ("email", "VARCHAR"),
