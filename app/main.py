@@ -1,7 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 import traceback
@@ -113,28 +112,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="The Brotherhood Curator Lab Graph API", lifespan=lifespan)
 
-# CORS Configuration
-# Allow origins from environment variable (comma-separated) or default to local development
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
-if allowed_origins_env:
-    origins = [origin.strip() for origin in allowed_origins_env.split(",")]
-else:
-    origins = [
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "*", # Allow all for development ease
-    ]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     error_msg = f"Global Error: {exc}\n{traceback.format_exc()}"
@@ -153,8 +130,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 docs_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs")
 templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+landing_static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "landing_page", "static")
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 app.mount("/docs", StaticFiles(directory=docs_path), name="docs")
+app.mount("/landing", StaticFiles(directory=landing_static_path, html=True), name="landing")
 
 # Mount standalone profile
 profile_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "profile")
@@ -179,11 +158,6 @@ def signup_page():
 @app.get("/gallery")
 def public_gallery():
     return FileResponse(os.path.join(templates_path, "public_gallery.html"))
-
-@app.get("/landing")
-def landing_home():
-    landing_url = os.getenv("LANDING_URL", "http://localhost:8080")
-    return RedirectResponse(url=landing_url)
 
 @app.get("/database")
 async def database_page(request: Request):

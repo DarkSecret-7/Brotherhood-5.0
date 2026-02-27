@@ -38,18 +38,18 @@ pip install -r requirements.txt
 ```
 
 ### 4. Access the Web UI & Public Pages
-The system runs on two primary services:
+The system runs as a single web service:
 
-1.  **Workspace Application (Port 8000)**
+1.  **Workspace Application**
     -   **URL**: [http://localhost:8000](http://localhost:8000)
-    -   **Purpose**: The main application for creating, editing, and managing graphs.
     -   **Access**: Invite-only. Requires authentication (Login/Signup).
-    -   **Behavior**: This is where authenticated users perform graph curating work.
 
-2.  **Public Landing Site (Port 8080)**
-    -   **URL**: [http://localhost:8080](http://localhost:8080)
-    -   **Purpose**: Public information, manifesto, and read-only gallery.
-    -   **Public Gallery**: The read-only graph gallery is accessible at [http://localhost:8080/gallery.html](http://localhost:8080/gallery.html).
+2.  **Public Landing Site**
+    -   **URL**: [http://localhost:8000/landing/](http://localhost:8000/landing/)
+    -   **Purpose**: Public information, manifesto, and contact form.
+
+3.  **Public Gallery**
+    -   **URL**: [http://localhost:8000/gallery](http://localhost:8000/gallery)
 
 ### 5. Import & Export (.knw)
 The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs.

@@ -1,21 +1,10 @@
 services:
-  # The Landing Page (Default)
   - type: web
-    name: brotherhood-landing
+    name: brotherhood
     runtime: docker
     plan: free
     dockerContext: .
-    dockerfilePath: landing_page/Dockerfile
-    envVars:
-      - key: PORT
-        value: 80
-      - key: API_URL
-        sync: false
-  # The API Service
-  - type: web
-    name: brotherhood-api
-    runtime: docker
-    plan: free
+    dockerfilePath: Dockerfile
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -25,8 +14,6 @@ services:
         value: true
       - key: APP_MODE
         value: production
-      - key: ALLOWED_ORIGINS
-        sync: false
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: GEMINI_API_KEY
