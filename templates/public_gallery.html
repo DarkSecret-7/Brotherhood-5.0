@@ -6,144 +6,8 @@
     <title>The Brotherhood - Public Gallery</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="/static/styles.css?v=8">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            max-width: none;
-            background: #ffffff;
-        }
-        .gallery-container {
-            display: flex;
-            flex: 1;
-            height: calc(100vh - 60px); /* Adjust for header */
-            overflow: hidden;
-        }
-        .sidebar {
-            width: 300px;
-            background: #f8f9fa;
-            border-right: 1px solid #dadce0;
-            display: flex;
-            flex-direction: column;
-            transition: width 0.3s ease;
-            position: relative;
-            z-index: 10;
-        }
-        .sidebar.collapsed {
-            width: 0;
-            border-right: none;
-        }
-        .sidebar-header {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            background: #fff;
-            font-weight: 600;
-            color: #1a73e8;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .sidebar-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
-        .graph-item {
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .graph-item:hover {
-            border-color: #1a73e8;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .graph-item.active {
-            background: #e8f0fe;
-            border-color: #1a73e8;
-        }
-        .graph-title {
-            font-weight: 600;
-            color: #202124;
-            margin-bottom: 4px;
-        }
-        .graph-meta {
-            font-size: 0.8em;
-            color: #5f6368;
-        }
-        .main-area {
-            flex: 1;
-            position: relative;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-        }
-        #graph-container {
-            width: 100%;
-            height: 100%;
-            min-height: 600px; /* Ensure visible height */
-            position: relative; /* Context for absolute positioning */
-            background-color: #f9f9f9; /* Debug visibility */
-            border: none;
-            border-radius: 0;
-            margin: 0;
-            overflow: hidden; /* Contain canvas */
-        }
-        .toggle-sidebar-btn {
-            position: absolute;
-            left: 10px;
-            top: 10px;
-            z-index: 20;
-            background: #fff;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
-            padding: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            padding: 10px 20px;
-            background: #fff;
-            border-bottom: 1px solid #dadce0;
-            margin-bottom: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header h1 {
-            font-size: 1.2em;
-            margin: 0;
-        }
-        .node-details-panel {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-            width: 300px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            padding: 20px;
-            display: none;
-            z-index: 20;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .close-details {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            cursor: pointer;
-            color: #5f6368;
-            font-size: 1.2em;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/main_styles.css?v=8">
+    <link rel="stylesheet" href="/static/css/gallery_styles.css?v=1">
 </head>
 <body>
     <div class="header">
@@ -160,6 +24,7 @@
         <div id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <span>Public Graphs</span>
+                <button id="refresh-graphs" class="sidebar-refresh-btn" title="Refresh list">↻</button>
             </div>
             <div id="graph-list" class="sidebar-content">
                 <p style="text-align: center; color: #5f6368; margin-top: 20px;">Loading...</p>

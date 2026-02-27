@@ -10,10 +10,6 @@ window.draftDomains = [];
 function toggleSidebar() {
     var sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('collapsed');
-    
-    // Toggle header visibility
-    var hidden = sidebar.classList.contains('collapsed') ? 'none' : 'flex';
-    sidebar.querySelector('.sidebar-header').setAttribute('style', `display: ${hidden} !important`);
 }
 
 // --- API Calls ---
@@ -247,5 +243,11 @@ window.closeNodeDetails = function() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.getElementById('refresh-graphs');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            fetchPublicSnapshots();
+        });
+    }
     fetchPublicSnapshots();
 });

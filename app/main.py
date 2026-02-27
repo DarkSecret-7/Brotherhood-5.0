@@ -143,6 +143,30 @@ app.include_router(endpoints.router, prefix="/api/v1")
 app.include_router(llm.router, prefix="/api/v1/llm")
 app.include_router(assessments.router, prefix="/api/v1")
 
+@app.get("/documents")
+def landing_documents():
+    return FileResponse(os.path.join(landing_static_path, "documents.html"))
+
+@app.get("/contact")
+def landing_contact():
+    return FileResponse(os.path.join(landing_static_path, "contact.html"))
+
+@app.get("/components")
+def landing_components():
+    return FileResponse(os.path.join(landing_static_path, "components.html"))
+
+@app.get("/crisis")
+def landing_crisis():
+    return FileResponse(os.path.join(landing_static_path, "crisis.html"))
+
+@app.get("/solution")
+def landing_solution():
+    return FileResponse(os.path.join(landing_static_path, "solution.html"))
+
+@app.get("/help")
+def landing_help():
+    return FileResponse(os.path.join(landing_static_path, "help.html"))
+
 @app.get("/curator-guide")
 def curator_guide():
     return FileResponse(os.path.join(templates_path, "curator-onboarding.html"))
