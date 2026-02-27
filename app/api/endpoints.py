@@ -301,7 +301,7 @@ def update_snapshot_metadata(
         if existing:
             raise HTTPException(status_code=400, detail=f"Graph with label '{update_data.version_label}' already exists.")
 
-    return crud.update_snapshot_metadata(db=db, snapshot=snapshot, update_data=update_data)
+    return crud.update_snapshot_metadata(db=db, db_snapshot=snapshot, snapshot_update=update_data)  
 
 @router.delete("/snapshots/{graphLabel}")
 def delete_snapshot(graphLabel: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
