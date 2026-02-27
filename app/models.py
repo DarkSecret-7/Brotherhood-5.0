@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, text, JSON
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from .database import Base
@@ -29,6 +29,19 @@ class GraphSnapshot(Base):
     
     nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan")
     domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan")
+    redirects = relationship("NodeRedirect", back_populates="snapshot", cascade="all, delete-orphan")
+
+class NodeRedirect(Base):
+    __tablename__ = "node_redirects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    snapshot_id = Column(Integer, ForeignKey("graph_snapshots.id"))
+    old_local_id = Column(Integer, nullable=False)
+    new_local_id = Column(Integer, nullable=False)
+    # The timestamp of the redirect acts as the version control
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    snapshot = relationship("GraphSnapshot", back_populates="redirects")
 
 class Node(Base):
     __tablename__ = "nodes"
@@ -44,6 +57,7 @@ class Node(Base):
     description = Column(String, nullable=True)
     prerequisite = Column(String, nullable=True)  # Boolean expression e.g. "(1 AND 2) OR 3"
     mentions = Column(String, nullable=True) # Comma-separated list of local_ids that depend on this node
+    assessable = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     x = Column(Integer, nullable=True)
     y = Column(Integer, nullable=True)
 
@@ -91,6 +105,17 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Profile Fields
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    dob = Column(String, nullable=True)  # Store as YYYY-MM-DD
+    bio = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    social_github = Column(String, nullable=True)
+    social_linkedin = Column(String, nullable=True)
+    profile_image = Column(String, nullable=True)  # Store base64 or URL
 
 class Invitation(Base):
     __tablename__ = "invitations"
@@ -98,4 +123,18 @@ class Invitation(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, index=True, nullable=False)
     is_used = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+class Capability(Base):
+    __tablename__ = "capabilities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    assessment_name = Column(String, nullable=False)
+    assessment_type = Column(String, nullable=False)
+    version = Column(String, nullable=False)
+    assessment_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    graph_label = Column(String, ForeignKey("graph_snapshots.version_label"), nullable=False)
+    assessed_nodes = Column(JSON, nullable=False)
+
+    user = relationship("User", backref="capabilities")

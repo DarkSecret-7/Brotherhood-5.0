@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from . import models, schemas
@@ -28,6 +29,7 @@ def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
     db.refresh(db_snapshot)
 
     _populate_snapshot_data(db, db_snapshot, snapshot_data)
+    _populate_redirect_data(db, db_snapshot, snapshot_data)
     
     # Return with nodes populated
     db.refresh(db_snapshot)
@@ -35,7 +37,9 @@ def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate):
     # Manually attach node_count (computed field)
     # Using setattr to ensure it exists on the object for Pydantic
     node_count = len(snapshot_data.nodes)
+    assessable_node_count = sum(1 for n in snapshot_data.nodes if n.assessable)
     setattr(db_snapshot, 'node_count', node_count)
+    setattr(db_snapshot, 'assessable_node_count', assessable_node_count)
     
     # Ensure datetime fields are valid for Pydantic
     if db_snapshot.last_updated is None:
@@ -69,26 +73,35 @@ def update_snapshot(db: Session, db_snapshot: models.GraphSnapshot, snapshot_dat
     # Using delete(synchronize_session=False) for better performance and to avoid session issues
     
     # First delete associated sources to avoid ForeignKeyViolation
-    # Get all node IDs for this snapshot
-    node_ids_query = db.query(models.Node.id).filter(models.Node.snapshot_id == db_snapshot.id)
-    # Delete sources where node_id is in the list of node IDs
-    db.query(models.Source).filter(models.Source.node_id.in_(node_ids_query)).delete(synchronize_session=False)
+    # Fetch IDs first to ensure safe deletion (avoid subquery issues in some contexts)
+    node_ids = [r[0] for r in db.query(models.Node.id).filter(models.Node.snapshot_id == db_snapshot.id).all()]
+    
+    if node_ids:
+        # Delete sources where node_id is in the list
+        # Using explicit chunks if needed, but for now direct IN clause
+        db.query(models.Source).filter(models.Source.node_id.in_(node_ids)).delete(synchronize_session=False)
+        db.flush() # Ensure sources are marked for deletion before nodes
     
     # Now delete nodes
     db.query(models.Node).filter(models.Node.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
     db.query(models.Domain).filter(models.Domain.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
+    db.query(models.NodeRedirect).filter(models.NodeRedirect.snapshot_id == db_snapshot.id).delete(synchronize_session=False)
+
 
     db.commit()
     
     # Re-populate
     _populate_snapshot_data(db, db_snapshot, snapshot_data)
+    _populate_redirect_data(db, db_snapshot, snapshot_data)
     
     db.commit()
     db.refresh(db_snapshot)
     
     # Manually attach node_count
     node_count = len(snapshot_data.nodes)
+    assessable_node_count = sum(1 for n in snapshot_data.nodes if n.assessable)
     setattr(db_snapshot, 'node_count', node_count)
+    setattr(db_snapshot, 'assessable_node_count', assessable_node_count)
     
     # Ensure datetime fields are valid
     if db_snapshot.last_updated is None:
@@ -179,6 +192,7 @@ def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snap
             prerequisite=node_data.prerequisite,
             mentions=node_data.mentions,
             domain_id=resolved_domain_id,
+            assessable=node_data.assessable,
             x=node_data.x,
             y=node_data.y
         )
@@ -202,6 +216,22 @@ def _populate_snapshot_data(db: Session, db_snapshot: models.GraphSnapshot, snap
     db.add_all(db_nodes)
     db.commit()
 
+def _populate_redirect_data(db: Session, db_snapshot: models.GraphSnapshot, snapshot_data: schemas.GraphSnapshotCreate):
+    if snapshot_data.redirects:
+        db_redirects = []
+        for old_id, new_id in snapshot_data.redirects.items():
+            # Only save if new_id exists in the current snapshot's nodes
+            # Note: snapshot_data.nodes is a list of NodeCreate objects
+            if any(n.local_id == new_id for n in snapshot_data.nodes):
+                db_redirect = models.NodeRedirect(
+                    snapshot_id=db_snapshot.id,
+                    old_local_id=int(old_id),
+                    new_local_id=new_id
+                )
+                db_redirects.append(db_redirect)
+        db.add_all(db_redirects)
+        db.commit()
+
 def get_snapshots(db: Session, skip: int = 0, limit: int = 100):
     # Fetch snapshots
     snapshots = db.query(models.GraphSnapshot).order_by(models.GraphSnapshot.created_at.desc()).offset(skip).limit(limit).all()
@@ -210,6 +240,8 @@ def get_snapshots(db: Session, skip: int = 0, limit: int = 100):
     results = []
     for s in snapshots:
         count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id).scalar()
+        assessable_count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id, models.Node.assessable == True).scalar()
+        redirect_count = db.query(func.count(models.NodeRedirect.id)).filter(models.NodeRedirect.snapshot_id == s.id).scalar()
         
         # Ensure dates are JSON serializable and handle potential None values
         # Fallback to created_at if last_updated is somehow null
@@ -224,6 +256,8 @@ def get_snapshots(db: Session, skip: int = 0, limit: int = 100):
             "base_graph": s.base_graph,
             "created_by": s.created_by,
             "node_count": count,
+            "assessable_node_count": assessable_count,
+            "redirect_count": redirect_count,
             "is_public": s.is_public
         })
     return results
@@ -236,6 +270,8 @@ def get_public_snapshots(db: Session, skip: int = 0, limit: int = 100):
     results = []
     for s in snapshots:
         count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id).scalar()
+        assessable_count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id, models.Node.assessable == True).scalar()
+        redirect_count = db.query(func.count(models.NodeRedirect.id)).filter(models.NodeRedirect.snapshot_id == s.id).scalar()
         
         created_at = s.created_at
         last_updated = s.last_updated if s.last_updated else s.created_at
@@ -248,6 +284,8 @@ def get_public_snapshots(db: Session, skip: int = 0, limit: int = 100):
             "base_graph": s.base_graph,
             "created_by": s.created_by,
             "node_count": count,
+            "assessable_node_count": assessable_count,
+            "redirect_count": redirect_count,
             "is_public": s.is_public
         })
     return results
@@ -258,6 +296,10 @@ def get_snapshot(db: Session, snapshot_id: int):
         # Populate computed field
         count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == snapshot.id).scalar()
         snapshot.node_count = count
+        
+        assessable_count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == snapshot.id, models.Node.assessable == True).scalar()
+        snapshot.assessable_node_count = assessable_count
+        
         # Ensure last_updated is not null for serialization
         if snapshot.last_updated is None:
             snapshot.last_updated = snapshot.created_at
@@ -271,14 +313,23 @@ def delete_snapshot(db: Session, snapshot_id: int):
         return True
     return False
 
-def get_snapshot_by_label(db: Session, label: str):
-    snapshot = db.query(models.GraphSnapshot).filter(models.GraphSnapshot.version_label == label).first()
-    if snapshot and snapshot.last_updated is None:
-        snapshot.last_updated = snapshot.created_at
+def get_snapshot_by_label(db: Session, graphLabel: str):
+    snapshot = db.query(models.GraphSnapshot).filter(models.GraphSnapshot.version_label == graphLabel).first()
+    if snapshot:
+        # Populate computed field
+        count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == snapshot.id).scalar()
+        snapshot.node_count = count
+        
+        assessable_count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == snapshot.id, models.Node.assessable == True).scalar()
+        snapshot.assessable_node_count = assessable_count
+        
+        # Ensure last_updated is not null for serialization
+        if snapshot.last_updated is None:
+            snapshot.last_updated = snapshot.created_at
     return snapshot
 
-def delete_snapshot_by_label(db: Session, label: str):
-    snapshot = get_snapshot_by_label(db, label)
+def delete_snapshot_by_label(db: Session, graphLabel: str):
+    snapshot = get_snapshot_by_label(db, graphLabel)
     if snapshot:
         db.delete(snapshot)
         db.commit()
@@ -292,6 +343,16 @@ def get_user_by_username(db: Session, username: str):
 
 def create_user(db: Session, user: schemas.UserCreate, hashed_password: str):
     db_user = models.User(username=user.username, hashed_password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def update_user(db: Session, db_user: models.User, user_update: schemas.UserProfileUpdate):
+    update_data = user_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_user, key, value)
+    
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -333,3 +394,88 @@ def delete_invitation(db: Session, code: str):
         db.commit()
         return True
     return False
+
+# --- Assessment & Capability CRUD ---
+
+def search_snapshots(db: Session, query: str, limit: int = 10):
+    snapshots = db.query(models.GraphSnapshot).filter(
+        models.GraphSnapshot.version_label.ilike(f"%{query}%")
+    ).limit(limit).all()
+    
+    for s in snapshots:
+        # Compute node counts for the summary
+        count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id).scalar()
+        s.node_count = count
+        
+        assessable_count = db.query(func.count(models.Node.id)).filter(models.Node.snapshot_id == s.id, models.Node.assessable == True).scalar()
+        s.assessable_node_count = assessable_count
+        
+        # Add redirect count for GraphSnapshotSummary
+        redirect_count = db.query(func.count(models.NodeRedirect.id)).filter(models.NodeRedirect.snapshot_id == s.id).scalar()
+        s.redirect_count = redirect_count
+        
+        if s.last_updated is None:
+            s.last_updated = s.created_at
+            
+    return snapshots
+
+def create_capability(db: Session, user_id: int, capability_data: schemas.CapabilityCreate):
+    # Ensure assessed_nodes are serialized to JSON-compatible format
+    assessed_nodes_data = []
+    for node in capability_data.assessed_nodes:
+        if hasattr(node, "model_dump"):
+            assessed_nodes_data.append(node.model_dump())
+        elif hasattr(node, "dict"):
+            assessed_nodes_data.append(node.dict())
+        else:
+            assessed_nodes_data.append(node)
+
+    db_capability = models.Capability(
+        user_id=user_id,
+        assessment_name=capability_data.assessment_name,
+        assessment_type=capability_data.assessment_type,
+        version=capability_data.version,
+        graph_label=capability_data.graph_label,
+        assessed_nodes=assessed_nodes_data
+    )
+    db.add(db_capability)
+    db.commit()
+    db.refresh(db_capability)
+    return db_capability
+
+def update_capability(db: Session, user_id: int, assessment_name: str, db_capability: models.Capability, capability_update: schemas.CapabilityUpdate):
+    # Update existing database entry instead of creating a new one
+    # 1. Fetch entry
+    db_capability = db.query(models.Capability).filter(
+        models.Capability.user_id == user_id,
+        models.Capability.assessment_name == assessment_name,
+        models.Capability.graph_label == capability_update.graph_label
+    ).first()
+    if not db_capability:
+        return None
+
+    # 2. Update fields from the schema and serialize assessed_nodes
+    db_capability.assessed_nodes = [node.model_dump() if hasattr(node, "model_dump") else node for node in capability_update.assessed_nodes]
+
+    # 3. Update the assessment_date to now
+    db_capability.assessment_date = datetime.now(timezone.utc)
+    
+    # 4. Commit the transaction (DO NOT add a new row) DOESN'T WORK!!! IT IS CREATING A NEW ROW, WHY???
+    db.commit()
+    db.refresh(db_capability)
+    return db_capability
+
+def delete_capabilities(db: Session, user_id: int, assessment_name: str, graph_label: str):
+    db.query(models.Capability).filter(
+        models.Capability.user_id == user_id,
+        models.Capability.assessment_name == assessment_name,
+        models.Capability.graph_label == graph_label
+    ).delete()
+    db.commit()
+
+def get_latest_capability(db: Session, user_id: int, assessment_name: str, graph_label: str):
+    return db.query(models.Capability).filter(
+        models.Capability.user_id == user_id,
+        models.Capability.assessment_name == assessment_name,
+        models.Capability.graph_label == graph_label
+    ).order_by(models.Capability.assessment_date.desc()).first()

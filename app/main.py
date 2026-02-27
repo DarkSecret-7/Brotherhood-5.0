@@ -7,7 +7,7 @@ import os
 import traceback
 
 from .database import engine, Base
-from .api import endpoints, llm
+from .api import endpoints, llm, assessments
 from .api.endpoints import get_current_user
 from . import models
 
@@ -15,9 +15,9 @@ from . import models
 async def lifespan(app: FastAPI):
     # Create tables on startup
     try:
-        # Check and add x, y columns if missing
         from sqlalchemy import text
         with engine.connect() as conn:
+            # --- Check and add x, y columns if missing ---
             try:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN x INTEGER DEFAULT NULL"))
                 conn.commit()
@@ -38,6 +38,39 @@ async def lifespan(app: FastAPI):
                 print("Dropped column sources from nodes table")
             except Exception:
                 pass # Column likely already dropped
+
+            # --- Check and add user profile columns if missing ---
+            # Inspect existing columns first to avoid transaction errors
+            try:
+                result = conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'"))
+                existing_columns = [row[0] for row in result.fetchall()]
+                print(f"Existing columns in users: {existing_columns}")
+            except Exception as e:
+                print(f"Error inspecting users table: {e}")
+                conn.rollback()
+                existing_columns = []
+
+            user_columns = [
+                ("email", "VARCHAR"),
+                ("phone", "VARCHAR"),
+                ("dob", "VARCHAR"),
+                ("bio", "VARCHAR"),
+                ("location", "VARCHAR"),
+                ("social_github", "VARCHAR"),
+                ("social_linkedin", "VARCHAR"),
+                ("profile_image", "VARCHAR")
+            ]
+            
+            for col_name, col_type in user_columns:
+                if col_name not in existing_columns:
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type} DEFAULT NULL"))
+                        conn.commit()
+                        print(f"Added column {col_name} to users table")
+                    except Exception as e:
+                        print(f"Failed to add column {col_name}: {e}")
+                        conn.rollback() # Ensure transaction is clean for next iteration
+
 
         Base.metadata.create_all(bind=engine)
     except Exception as e:
@@ -89,8 +122,13 @@ templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templ
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 app.mount("/docs", StaticFiles(directory=docs_path), name="docs")
 
+# Mount standalone profile
+profile_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "profile")
+app.mount("/user-profile", StaticFiles(directory=profile_path, html=True), name="user-profile")
+
 app.include_router(endpoints.router, prefix="/api/v1")
 app.include_router(llm.router, prefix="/api/v1/llm")
+app.include_router(assessments.router, prefix="/api/v1")
 
 @app.get("/curator-guide")
 def curator_guide():
@@ -103,10 +141,6 @@ def login_page():
 @app.get("/signup")
 def signup_page():
     return FileResponse(os.path.join(static_path, "signup.html"))
-
-@app.get("/database")
-def database_page():
-    return FileResponse(os.path.join(templates_path, "database.html"))
 
 @app.get("/gallery")
 def public_gallery():

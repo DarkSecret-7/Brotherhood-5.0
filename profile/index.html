@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Brotherhood - User Profile</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <meta name="description" content="Independent user profile page module with full editing capabilities.">
+</head>
+<body>
+    <div class="main-layout">
+        <!-- Global Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>The Brotherhood</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item active" data-section="profile-section">My Profile</a>
+                <a class="sidebar-nav-item" data-section="assessment-section">Self Assessment</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn-sidebar" class="btn btn-ghost" style="color: #bdc3c7; width: 100%; text-align: left;">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Profile Section -->
+            <section id="profile-section" class="view-section active">
+                <div class="container">
+                    <header>
+                        <div class="header-content">
+                            <h1>User Profile</h1>
+                            <div class="header-actions">
+                                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                                <button id="delete-account-btn" class="btn btn-danger">Delete Account</button>
+                            </div>
+                        </div>
+                        <div id="notification-area" class="notification" role="alert" aria-live="polite"></div>
+                    </header>
+
+                    <div class="profile-card">
+                        <!-- Profile Header with Image -->
+                        <section class="profile-header">
+                            <div class="avatar-container">
+                                <img id="profile-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Profile Picture">
+                                <div class="avatar-overlay" hidden>
+                                    <label for="avatar-upload" class="upload-btn" aria-label="Upload profile picture">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                            <circle cx="12" cy="13" r="4"></circle>
+                                        </svg>
+                                    </label>
+                                    <input type="file" id="avatar-upload" accept="image/*" hidden>
+                                </div>
+                            </div>
+                            <div class="profile-summary">
+                                <h2 id="display-name">Loading...</h2>
+                                <p id="display-bio">Loading bio...</p>
+                            </div>
+                            <div class="profile-actions">
+                                <button id="edit-mode-btn" class="btn btn-ghost">Edit Profile</button>
+                                <a href="change-password.html" id="change-password-btn" class="btn btn-ghost">Change Password</a>
+                            </div>
+                        </section>
+
+                        <!-- Profile Form -->
+                        <form id="profile-form" novalidate class="readonly-mode">
+                            <input type="hidden" id="csrf-token" name="csrf-token">
+                            
+                            <!-- Personal Information -->
+                            <fieldset>
+                                <legend>Personal Information</legend>
+                                <div class="form-group">
+                                    <label for="email">Email Address</label>
+                                    <input type="email" id="email" name="email" autocomplete="email" readonly>
+                                    <span class="error-message" id="error-email"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phone">Phone Number</label>
+                                    <input type="tel" id="phone" name="phone" pattern="[0-9+\-\s()]*" autocomplete="tel" readonly>
+                                    <span class="error-message" id="error-phone"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="dob">Date of Birth</label>
+                                    <input type="date" id="dob" name="dob" autocomplete="bday" readonly>
+                                    <span class="error-message" id="error-dob"></span>
+                                </div>
+                            </fieldset>
+
+                            <!-- Additional Details -->
+                            <fieldset>
+                                <legend>About Me</legend>
+                                <div class="form-group">
+                                    <label for="bio">Bio / Description</label>
+                                    <textarea id="bio" name="bio" rows="4" maxlength="500" readonly></textarea>
+                                    <div class="char-count"><span id="bio-count">0</span>/500</div>
+                                    <span class="error-message" id="error-bio"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="location">Location</label>
+                                    <input type="text" id="location" name="location" placeholder="City, Country" readonly>
+                                    <span class="error-message" id="error-location"></span>
+                                </div>
+                            </fieldset>
+
+                            <!-- Social Links -->
+                            <fieldset>
+                                <legend>Social Media</legend>
+                                <div class="form-group">
+                                    <label for="social-github">GitHub URL</label>
+                                    <input type="url" id="social-github" name="socialGithub" placeholder="https://github.com/username" readonly>
+                                    <span class="error-message" id="error-socialGithub"></span>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="social-linkedin">LinkedIn URL</label>
+                                    <input type="url" id="social-linkedin" name="socialLinkedin" placeholder="https://linkedin.com/in/username" readonly>
+                                    <span class="error-message" id="error-socialLinkedin"></span>
+                                </div>
+                            </fieldset>
+
+                            <!-- Actions -->
+                            <div class="form-actions" hidden>
+                                <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+                                <button type="submit" id="save-btn" class="btn btn-primary" disabled>Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Self Assessment Section -->
+            <section id="assessment-section" class="view-section">
+                <div class="assessment-container">
+                    <header>
+                        <h1>Self Assessment</h1>
+                        <p>Evaluate your knowledge on specific graphs to generate capability certificates.</p>
+                    </header>
+
+                    <div class="search-section">
+                        <div class="form-group">
+                            <label for="graph-search-input">Search for a Graph</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="graph-search-input" placeholder="Type graph name (e.g. 'Social Reform')">
+                                <button id="graph-search-btn" class="btn btn-primary">Find Graph</button>
+                            </div>
+                            <div id="search-results" class="search-results-dropdown" hidden></div>
+                        </div>
+                    </div>
+                    <div class="visualization-container">
+                        <div class="graph-visualization-section">
+                            <div class="graph-display-area">
+                                <div id="assessment-graph-container"></div>
+                                <div id="graph-loading-overlay" class="loading-overlay">
+                                    <span>Loading Graph...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="assessment-controls">
+                            <div id="node-detail-panel" class="node-detail-panel">
+                                <h3 id="selected-node-title">Select a node</h3>
+                                <p id="selected-node-desc">Click on a node in the graph to begin your assessment.</p>
+                                
+                                <div id="assessment-input-area" hidden>
+                                    <label>Your Proficiency Level:</label>
+                                    <div class="node-assessment-options">
+                                        <button class="assessment-btn" onclick="gatherProofs(this)" data-value="0">
+                                            <strong>Plan to learn</strong>
+                                            <div style="font-size: 0.75rem; color: #666;">I intend to learn this concept.</div>
+                                        </button>
+                                        <button class="assessment-btn" onclick="gatherProofs(this)" data-value="1">
+                                            <strong>In progress</strong>
+                                            <div style="font-size: 0.75rem; color: #666;">I am currently learning this concept.</div>
+                                        </button>
+                                        <button class="assessment-btn" onclick="gatherProofs(this)" data-value="2">
+                                            <strong>Finished</strong>
+                                            <div style="font-size: 0.75rem; color: #666;">I have succesfully learnt this concept.</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="capability-actions">
+                        <div id="latest-capability-info" class="capability-info" hidden>
+                            <div class="info-row"><strong>Name:</strong> <span id="cap-name">-</span></div>
+                            <div class="info-row"><strong>Type:</strong> <span id="cap-type">-</span></div>
+                            <div class="info-row"><strong>Version:</strong> <span id="cap-version">-</span></div>
+                            <div class="info-row"><strong>Date:</strong> <span id="cap-date">-</span></div>
+                            <div class="info-row" style="font-size: 0.7rem;"><strong>Hash:</strong> <span id="cap-hash" style="font-family: monospace;">-</span></div>
+                        </div>
+                        <button id="generate-capability-btn" class="btn btn-primary" onclick="generateCapability()" style="width: 100%;" disabled>Generate Capability</button>
+                        <button id="delete-capability-btn" class="btn btn-danger" onclick="deleteCapability()" style="width: 100%;" disabled>Delete Capability</button>
+                        <p id="assessment-status" style="font-size: 0.85rem; margin-top: 15px; text-align: center; color: #666;"></p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal" hidden>
+        <div class="modal-content">
+            <h3>Unsaved Changes</h3>
+            <p>You have unsaved changes. Are you sure you want to discard them?</p>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="btn btn-secondary">Keep Editing</button>
+                <button id="modal-confirm" class="btn btn-danger">Discard Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Modal -->
+    <div id="delete-modal" class="modal" hidden>
+        <div class="modal-content">
+            <h3>Delete Account</h3>
+            <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="delete-modal-cancel" class="btn btn-secondary">Cancel</button>
+                <button id="delete-modal-confirm" class="btn btn-danger">Delete Permanently</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js?v=5.2"></script>
+    <script src="globals.js"></script>
+    <script src="script_profile.js"></script>
+    <script src="script_assessment.js"></script>
+</body>
+</html>

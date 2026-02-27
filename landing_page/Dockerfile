@@ -5,4 +5,6 @@ RUN chmod +x /docker-entrypoint.d/40-inject-env.sh
 # Add a build argument to bust the cache
 ARG BUILD_DATE
 RUN echo "Cache bust: $BUILD_DATE"
-COPY ["docs/New Brotherhood Brochure (Social Reform).pdf", "/usr/share/nginx/html/manifesto.pdf"]
+RUN mkdir -p /usr/share/nginx/html/docs
+COPY ["docs/New Brotherhood Brochure (Social Reform).pdf", "/usr/share/nginx/html/docs/New Brotherhood Brochure (Social Reform).pdf"]
+COPY ["docs/New Brotherhood Brochure (Learners).pdf", "/usr/share/nginx/html/docs/New Brotherhood Brochure (Learners).pdf"]

@@ -51,6 +51,12 @@ function handleOverwriteToggle() {
         labelInput.readOnly = false;
         labelInput.style.backgroundColor = '';
     }
+
+    // Trigger redirection validation if we are in the Save tab context
+    if (typeof validateAllRedirects === 'function' && assessableChanges.length > 0) {
+        renderAssessableChanges();
+        validateAllRedirects();
+    }
 }
 
 function renderWorkspace() {
@@ -174,6 +180,7 @@ function renderNodeRow(node, domainId, depth) {
         '<td class="tree-column" onclick="event.stopPropagation()" style="padding-left: ' + currentPadding + 'px;">' +
             '<input type="checkbox" class="selection-checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleNodeSelection(' + node.local_id + ')">' +
             '<span class="node-id">' + node.local_id + '</span>' +
+            (node.assessable ? ' <span class="badge-assessable" title="Assessable Node">⭐</span>' : '') +
         '</td>' +
         '<td style="padding-left: ' + (depth * levelIndent) + 'px;"><strong>' + node.title + '</strong></td>' +
         '<td><code>' + (node.prerequisite || '-') + '</code></td>' +

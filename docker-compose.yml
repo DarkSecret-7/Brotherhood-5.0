@@ -18,7 +18,7 @@ services:
       PORT: 10000
       DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/brotherhood
       APP_MODE: docker
-      ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      ALLOWED_ORIGINS: "http://localhost:8080"
     depends_on:
       - db
     volumes:

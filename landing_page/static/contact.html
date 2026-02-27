@@ -36,20 +36,21 @@
                         Start a conversation about how this could support your crew.
                     </p>
 
-                    <form class="landing-contact-form" action="#" method="post" style="background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+                    <form id="contact-form" class="landing-contact-form" data-api-path="/api/v1/contact" method="post" style="background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
                         <div class="form-row">
                             <label for="contact-name">Name</label>
-                            <input id="contact-name" name="name" type="text" placeholder="Your name">
+                            <input id="contact-name" name="name" type="text" placeholder="Your name" required>
                         </div>
                         <div class="form-row">
                             <label for="contact-email">Email</label>
-                            <input id="contact-email" name="email" type="email" placeholder="you@example.org">
+                            <input id="contact-email" name="email" type="email" placeholder="you@example.org" required>
                         </div>
                         <div class="form-row">
                             <label for="contact-reason">Message</label>
-                            <textarea id="contact-reason" name="reason" rows="6" placeholder="Invitation request, questions, or collaboration ideas"></textarea>
+                            <textarea id="contact-reason" name="message" rows="6" placeholder="Invitation request, questions, or collaboration ideas" required></textarea>
                         </div>
-                        <button type="submit" class="btn-primary">Send Message</button>
+                        <button id="contact-submit" type="submit" class="btn-primary">Send Message</button>
+                        <div id="contact-status" class="landing-footnote" style="margin-top: 14px; text-align: left;"></div>
                     </form>
                     
                     <div class="landing-footnote" style="margin-top: 30px; text-align: center;">
@@ -66,14 +67,16 @@
             <div class="footer-content">
                 <div class="footer-logo">The Brotherhood</div>
                 <div class="footer-links">
-                    <a href="manifesto.pdf" onclick="this.href='manifesto.pdf?v='+new Date().getTime()" target="_blank">Manifesto</a>
                     <a href="index.html">Home</a>
-                    <a href="#" data-api-path="/gallery">Public Gallery</a>
+                    <a href="documents.html">Documents</a>
+                    <a href="gallery.html">Public Gallery</a>
                     <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
                 </div>
                 <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
             </div>
         </footer>
     </div>
+
+    <script src="js/contact.js"></script>
 </body>
 </html>

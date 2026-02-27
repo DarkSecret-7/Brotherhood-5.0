@@ -68,10 +68,14 @@ Once you're happy with your draft:
 1.  Switch to the **Save Version** tab.
 2.  **Your Layout Matters**: The system saves the exact position of every node. Make sure your graph looks good before saving!
 3.  **Overwrite Toggle**:
-    *   **Unchecked**: Creates a brand new graph.
-    *   **Checked**: Updates the existing graph (use this if you're editing).
-3.  **Version Label**: Give it a name like "Draft v1" or "Final Version".
-4.  **Click "Create Versioned Snapshot"**: Your work is now saved safely in the database!
+    *   **Unchecked**: Creates a brand new graph. Redirection for assessable nodes is **optional** but recommended.
+    *   **Checked**: Updates the existing graph (use this if you're editing). Redirection for any changed or removed assessable nodes is **mandatory** to ensure capability trail stability.
+
+### 🔒 Assessable Nodes & Stability
+Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a **Redirect ID**. This tells the system where the "capability" formerly represented by that node has moved to. 
+
+*   **Mandatory Overwrite Protection**: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.
+*   **Version Control**: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved.
 
 ### 🔒 Ownership & Remixing
 *   **Updating Your Work**: You can overwrite your own graphs by checking the **Overwrite** option during save.

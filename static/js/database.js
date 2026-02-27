@@ -2,6 +2,228 @@
 
 var loadedSnapshots = [];
 var currentGraphActionSnapshot = null;
+var activeRedirects = {}; // Maps old_id -> new_id
+var assessableChanges = [];
+
+function prepareSaveVersionTab() {
+    var section = document.getElementById('assessable-changes-section');
+    var saveBtn = document.getElementById('btn-save-snapshot');
+    
+    if (!baseGraphLabel) {
+        section.style.display = 'none';
+        saveBtn.disabled = false;
+        return;
+    }
+
+    // Fetch the base graph snapshot to compare
+    // We search by label because baseGraphLabel is a label
+    api.fetchSnapshots().then(function(snapshots) {
+        var baseSnapshot = snapshots.find(function(s) { 
+            return (s.version_label === baseGraphLabel) || ('#' + s.id === baseGraphLabel); 
+        });
+
+        if (!baseSnapshot) {
+            console.warn("Base snapshot not found for comparison:", baseGraphLabel);
+            section.style.display = 'none';
+            saveBtn.disabled = false;
+            return;
+        }
+
+        // Fetch the full snapshot details (nodes)
+        api.fetchSnapshot(baseSnapshot.id).then(function(fullBaseSnapshot) {
+            detectAssessableChanges(fullBaseSnapshot);
+        });
+    });
+}
+
+function detectAssessableChanges(baseSnapshot) {
+    var baseNodes = baseSnapshot.nodes;
+    assessableChanges = [];
+    activeRedirects = {};
+
+    var baseAssessableNodes = baseNodes.filter(function(n) { return n.assessable; });
+    
+    baseAssessableNodes.forEach(function(baseNode) {
+        var currentEquivalent = draftNodes.find(function(n) { return n.local_id === baseNode.local_id; });
+        
+        if (!currentEquivalent) {
+            // Node was removed or ID changed
+            // Try to find it by title to see if it's an ID change
+            var byTitle = draftNodes.find(function(n) { return n.title === baseNode.title; });
+            
+            if (byTitle) {
+                assessableChanges.push({
+                    type: 'id_change',
+                    old_id: baseNode.local_id,
+                    old_title: baseNode.title,
+                    new_id: byTitle.local_id,
+                    suggested_id: byTitle.local_id
+                });
+                activeRedirects[baseNode.local_id] = byTitle.local_id;
+            } else {
+                assessableChanges.push({
+                    type: 'removed',
+                    old_id: baseNode.local_id,
+                    old_title: baseNode.title
+                });
+            }
+        } else if (currentEquivalent.title !== baseNode.title) {
+            // Title changed
+            assessableChanges.push({
+                type: 'title_change',
+                old_id: baseNode.local_id,
+                old_title: baseNode.title,
+                new_title: currentEquivalent.title
+            });
+        } else if (!currentEquivalent.assessable) {
+            // Assessable property toggled off
+            assessableChanges.push({
+                type: 'assessable_off',
+                old_id: baseNode.local_id,
+                old_title: baseNode.title
+            });
+        }
+    });
+
+    renderAssessableChanges();
+}
+
+function renderAssessableChanges() {
+    var section = document.getElementById('assessable-changes-section');
+    var listDiv = document.getElementById('assessable-changes-list');
+    var saveBtn = document.getElementById('btn-save-snapshot');
+    var overwriteToggle = document.getElementById('overwrite-toggle');
+    var versionLabelInput = document.getElementById('version-label');
+    
+    // An overwrite is happening if the toggle is checked OR if the label manually matches the base graph
+    var isOverwrite = (overwriteToggle && overwriteToggle.checked) || 
+                      (versionLabelInput && baseGraphLabel && versionLabelInput.value === baseGraphLabel);
+
+    if (assessableChanges.length === 0) {
+        section.style.display = 'none';
+        saveBtn.disabled = false;
+        return;
+    }
+
+    section.style.display = 'block';
+    
+    // Add explanation about mandatory vs optional redirects
+    var explanationHtml = '<div style="background: #e8f0fe; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em; color: #1a73e8; border: 1px solid #d2e3fc;">' +
+        '<strong>Capability Trail Protection:</strong> ' + 
+        (isOverwrite 
+            ? 'Since you are <strong>overwriting</strong> the base graph, redirects are <strong>mandatory</strong> to ensure stability. Redirect targets must themselves be assessable nodes.' 
+            : 'Since you are saving a <strong>new version</strong>, redirects are <strong>optional</strong> but recommended. If provided, targets must be assessable nodes.') +
+        '</div>';
+    
+    var html = explanationHtml;
+
+    assessableChanges.forEach(function(change, index) {
+        var typeLabel = '';
+        var color = '#d93025';
+        var desc = '';
+
+        if (change.type === 'id_change') {
+            typeLabel = 'ID CHANGED';
+            desc = 'Node "' + change.old_title + '" (#' + change.old_id + ') ID changed to #' + change.new_id;
+        } else if (change.type === 'removed') {
+            typeLabel = 'REMOVED';
+            desc = 'Node "' + change.old_title + '" (#' + change.old_id + ') was removed.';
+        } else if (change.type === 'title_change') {
+            typeLabel = 'TITLE CHANGED';
+            desc = 'Node #' + change.old_id + ' title changed from "' + change.old_title + '" to "' + change.new_title + '"';
+        } else if (change.type === 'assessable_off') {
+            typeLabel = 'ASSESSABLE OFF';
+            desc = 'Node "' + change.old_title + '" (#' + change.old_id + ') is no longer assessable.';
+        }
+
+        html += '<div class="assessable-change-item">' +
+            '<div class="assessable-change-header">' +
+                '<span class="assessable-change-title">' + typeLabel + '</span>' +
+                '<span class="assessable-change-id">#' + change.old_id + '</span>' +
+            '</div>' +
+            '<div style="font-size: 0.9em; margin-bottom: 10px;">' + desc + '</div>' +
+            '<div class="redirect-selector">' +
+                '<label style="margin-bottom: 2px;">Redirect to Node ID:</label>' +
+                '<div class="redirect-option">' +
+                    '<input type="number" class="redirect-input" id="redirect-' + change.old_id + '" ' +
+                    'value="' + (activeRedirects[change.old_id] || '') + '" ' +
+                    'oninput="updateRedirect(' + change.old_id + ', this.value)" placeholder="Enter target Node ID">' +
+                    '<span id="redirect-status-' + change.old_id + '" class="redirect-status"></span>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    });
+
+    listDiv.innerHTML = html;
+    validateAllRedirects();
+}
+
+function updateRedirect(oldId, newIdStr) {
+    var newId = parseInt(newIdStr);
+    if (!isNaN(newId)) {
+        activeRedirects[oldId] = newId;
+    } else {
+        delete activeRedirects[oldId];
+    }
+    validateAllRedirects();
+}
+
+function validateAllRedirects() {
+    var allValid = true;
+    var saveBtn = document.getElementById('btn-save-snapshot');
+    var overwriteToggle = document.getElementById('overwrite-toggle');
+    var versionLabelInput = document.getElementById('version-label');
+    
+    // An overwrite is happening if the toggle is checked OR if the label manually matches the base graph
+    var isOverwrite = (overwriteToggle && overwriteToggle.checked) || 
+                      (versionLabelInput && baseGraphLabel && versionLabelInput.value === baseGraphLabel);
+
+    assessableChanges.forEach(function(change) {
+        var statusSpan = document.getElementById('redirect-status-' + change.old_id);
+        var targetId = activeRedirects[change.old_id];
+        
+        // Check if targetId exists in draftNodes
+        var targetNode = draftNodes.find(function(n) { return n.local_id === targetId; });
+
+        if (targetNode) {
+            // Target exists, now check if it is assessable
+            if (targetNode.assessable) {
+                statusSpan.innerText = '✓ Valid (Assessable)';
+                statusSpan.className = 'redirect-status status-valid';
+            } else {
+                statusSpan.innerText = '✗ Target must be assessable';
+                statusSpan.className = 'redirect-status status-invalid';
+                allValid = false;
+            }
+        } else if (targetId === undefined || isNaN(targetId)) {
+            // Field is empty
+            if (isOverwrite) {
+                statusSpan.innerText = '✗ Mandatory for Overwrite';
+                statusSpan.className = 'redirect-status status-invalid';
+                allValid = false;
+            } else {
+                statusSpan.innerText = '○ Optional (New Version)';
+                statusSpan.className = 'redirect-status';
+            }
+        } else {
+            // targetId is provided but does NOT exist
+            statusSpan.innerText = '✗ Target ID #' + targetId + ' not found';
+            statusSpan.className = 'redirect-status status-invalid';
+            allValid = false;
+        }
+    });
+
+    saveBtn.disabled = !allValid;
+    if (!allValid) {
+        saveBtn.title = isOverwrite ? 'Redirection is mandatory when overwriting.' : 'One or more redirect targets do not exist.';
+        saveBtn.style.opacity = '0.5';
+        saveBtn.style.cursor = 'not-allowed';
+    } else {
+        saveBtn.title = '';
+        saveBtn.style.opacity = '1';
+        saveBtn.style.cursor = 'pointer';
+    }
+}
 
 function loadSnapshotIntoWorkspace(snapshot) {
     // Map domains and nodes to local IDs (backend IDs are not used in browser drafts)
@@ -23,6 +245,7 @@ function loadSnapshotIntoWorkspace(snapshot) {
             prerequisite: n.prerequisite,
             source_items: n.source_items,
             domain_id: n.domain_id ? snapshot.domains.find(pd => pd.id === n.domain_id).local_id : null,
+            assessable: n.assessable || false,
             x: n.x,
             y: n.y,
             saved_x: n.x, // Store initial DB coordinate for reset
@@ -118,7 +341,8 @@ function saveSnapshot() {
             created_by: getCurrentUser(),
             nodes: nodesForDb,
             domains: draftDomains,
-            overwrite: isOverwrite
+            overwrite: isOverwrite,
+            redirects: activeRedirects
         };
         api.postSaveSnapshot(payload).then(function(res) {
             if (res.ok) {
@@ -180,6 +404,7 @@ function saveSnapshot() {
 
 function refreshSnapshots(force) {
     var listDiv = document.getElementById('snapshots-list');
+    if (!listDiv) return; // Exit if element doesn't exist on current page
     
     // Cache Check: If force is false/undefined, try to load from localStorage
     if (!force) {
@@ -216,7 +441,9 @@ function refreshSnapshots(force) {
 function renderSnapshots(snapshots) {
     loadedSnapshots = snapshots;
     var listDiv = document.getElementById('snapshots-list');
-    var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
+    if (!listDiv) return; // Exit if element doesn't exist on current page
+    
+    var html = '<table><thead><tr><th>Version</th><th>Nodes</th><th>Assessable</th><th>Created By</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
     for (var i = 0; i < snapshots.length; i++) {
         var s = snapshots[i];
         var createdDate = new Date(s.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
@@ -232,6 +459,7 @@ function renderSnapshots(snapshots) {
                 '</div>' +
             '</td>' +
             '<td>' + s.node_count + '</td>' +
+            '<td>' + (s.assessable_node_count || 0) + '</td>' +
             '<td>' + (s.created_by || 'system') + '</td>' +
             '<td>' + (s.base_graph || 'None') + '</td>' +
             '<td>' +

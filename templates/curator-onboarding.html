@@ -106,13 +106,18 @@
             <li><strong>Your Layout Matters</strong>: The system saves the exact position of every node. Make sure your graph looks good before saving!</li>
             <li><strong>Overwrite Toggle</strong>:
                 <ul>
-                    <li><strong>Unchecked</strong>: Creates a brand new graph.</li>
-                    <li><strong>Checked</strong>: Updates the existing graph (use this if you're editing).</li>
+                    <li><strong>Unchecked</strong>: Creates a brand new graph. Redirection for assessable nodes is <strong>optional</strong> but recommended.</li>
+                    <li><strong>Checked</strong>: Updates the existing graph (use this if you're editing). Redirection for any changed or removed assessable nodes is <strong>mandatory</strong> to ensure capability trail stability.</li>
                 </ul>
             </li>
-            <li><strong>Version Label</strong>: Give it a name like "Draft v1" or "Final Version".</li>
-            <li><strong>Click "Create Versioned Snapshot"</strong>: Your work is now saved safely in the database!</li>
         </ol>
+
+        <h3>🔒 Assessable Nodes & Stability</h3>
+        <p>Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a <strong>Redirect ID</strong>. This tells the system where the "capability" formerly represented by that node has moved to.</p>
+        <ul>
+            <li><strong>Mandatory Overwrite Protection</strong>: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.</li>
+            <li><strong>Version Control</strong>: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved.</li>
+        </ul>
 
         <h3>🔒 Ownership & Remixing</h3>
         <ul>

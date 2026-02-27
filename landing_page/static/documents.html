@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents – The Brotherhood</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="js/config.js"></script>
+    <script src="js/link-manager.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
+        <div class="hamburger" onclick="toggleNav()">☰</div>
+        <ul class="nav-links" id="main-nav">
+            <li><a href="crisis.html">The Crisis</a></li>
+            <li><a href="solution.html">Our Response</a></li>
+            <li><a href="components.html">Components</a></li>
+            <li><a href="help.html">How You Can Help</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="#" data-api-path="/" class="nav-login-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="landing-page">
+        <div class="landing-layout">
+            <div class="main-content" style="max-width: 900px; margin: 0 auto;">
+                <section class="landing-section">
+                    <div class="section-header">
+                        <h1>Documents & Resources</h1>
+                        <span class="section-icon">📚</span>
+                    </div>
+                    <p class="lead-text">
+                        Explore our collection of documents that explain the Brotherhood's vision, methodology, and technical foundations.
+                    </p>
+
+                    <div class="documents-grid">
+                        <!-- Document 1: Social Reform Brochure -->
+                        <div class="document-card">
+                            <div class="document-icon">📖</div>
+                            <div class="document-content">
+                                <h3>New Brotherhood Brochure (Social Reform)</h3>
+                                <p class="document-description">
+                                    A comprehensive overview of the Brotherhood's approach to social reform through worker coordination infrastructure. This document explains how we're building protocols to transform labor power into political power.
+                                </p>
+                                <div class="document-meta">
+                                    <span class="document-type">PDF</span>
+                                    <span class="document-size">345 KB</span>
+                                </div>
+                                <div class="document-actions">
+                                    <a href="docs/New%20Brotherhood%20Brochure%20(Social%20Reform).pdf" target="_blank" class="doc-btn-secondary">View PDF</a>
+                                    <a href="docs/New%20Brotherhood%20Brochure%20(Social%20Reform).pdf" download class="doc-btn-primary">Download PDF</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document 2: Learners Brochure -->
+                        <div class="document-card">
+                            <div class="document-icon">🎓</div>
+                            <div class="document-content">
+                                <h3>New Brotherhood Brochure (Learners)</h3>
+                                <p class="document-description">
+                                    Focused on how the Brotherhood serves learners and skill development. This brochure explains our approach to work-based assessment, skill verification, and creating alternative pathways to capability recognition.
+                                </p>
+                                <div class="document-meta">
+                                    <span class="document-type">PDF</span>
+                                    <span class="document-size">285 KB</span>
+                                </div>
+                                <div class="document-actions">
+                                    <a href="docs/New%20Brotherhood%20Brochure%20(Learners).pdf" target="_blank" class="doc-btn-secondary">View PDF</a>
+                                    <a href="docs/New%20Brotherhood%20Brochure%20(Learners).pdf" download class="doc-btn-primary">Download PDF</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 60px; text-align: center;">
+                        <h3>Additional Resources</h3>
+                        <p style="margin-top: 15px; color: #5f6368;">
+                            For technical documentation, API references, and development guides, 
+                            visit our <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank" style="color: #1a73e8;">GitHub repository</a>.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-links">
+                    <a href="index.html">Home</a>
+                    <a href="documents.html" class="active">Documents</a>
+                    <a href="#" data-api-path="/gallery">Public Gallery</a>
+                    <a href="https://github.com/DarkSecret-7/Brotherhood-5.0" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-copy">© 2026 The Brotherhood Protocol. Open Infrastructure.</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

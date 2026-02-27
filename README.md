@@ -1,6 +1,14 @@
-# The Brotherhood Curator Lab - Local Graph Workspace
+# The Brotherhood
+The official code for The Brotherhood project
 
-A local-first graph management system built with Python, FastAPI, and PostgreSQL. It features an interactive Web UI and a powerful CLI for managing complex node dependencies with automated validation and simplification.
+## Project Overview
+The project currently functions with two main components:
+
+### The Brotherhood Curator Lab
+A local-first graph management system built with Python, FastAPI, and PostgreSQL. It features an interactive Web UI and a powerful CLI for managing complex node dependencies with automated validation and simplification. Currently invite-only.
+
+### The Brotherhood Public Site
+A static, public-facing website built with HTML, CSS, and JavaScript. It features a manifesto, read-only graph gallery, and contact forms.
 
 ## Prerequisites
 

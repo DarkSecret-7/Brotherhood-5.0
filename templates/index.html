@@ -89,6 +89,10 @@
                             <div id="new-node-sources" class="sources-container"></div>
                             <button class="btn-secondary btn-small" onclick="openSourceModal('new')">Add Source</button>
                         </div>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="node-assessable" style="width: auto; margin: 0;">
+                            <label for="node-assessable" style="margin: 0;">Assessable Node</label>
+                        </div>
                         <div class="button-group">
                             <button class="btn-primary" onclick="addNode()">Add to Draft</button>
                         </div>
@@ -131,9 +135,20 @@
                     </div>
                     <div class="form-group">
                         <label>Version Label</label>
-                        <input type="text" id="version-label" placeholder="e.g. Baseline v1.0">
+                        <input type="text" id="version-label" placeholder="e.g. Baseline v1.0" oninput="if(typeof validateAllRedirects === 'function') { renderAssessableChanges(); validateAllRedirects(); }">
                     </div>
-                    <button class="btn-primary" style="width: 100%;" onclick="saveSnapshot()">Create Versioned Snapshot</button>
+
+                    <div id="assessable-changes-section" style="display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                        <h3 style="color: #d93025; margin-bottom: 10px;">Assessable Node Changes</h3>
+                        <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 15px;">
+                            Changes to assessable nodes must be redirected to ensure capability trail stability.
+                        </p>
+                        <div id="assessable-changes-list">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <button id="btn-save-snapshot" class="btn-primary" style="width: 100%; margin-top: 20px;" onclick="saveSnapshot()">Create Versioned Snapshot</button>
                 </div>
             </div>
 
@@ -166,6 +181,10 @@
                 <label>Sources</label>
                 <div id="edit-node-sources" class="sources-container"></div>
                 <button class="btn-secondary btn-small" onclick="openSourceModal('edit')">Add Source</button>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="edit-node-assessable" style="width: auto; margin: 0;">
+                <label for="edit-node-assessable" style="margin: 0;">Assessable Node</label>
             </div>
             <div class="button-group">
                 <button class="btn-primary" onclick="updateNode()">Update Node</button>
@@ -372,12 +391,13 @@
         <a href="/" class="side-panel-link">Workspace</a>
         <a href="/database" class="side-panel-link">Database Management</a>
         <a href="/curator-guide" class="side-panel-link">Curator Guide</a>
+        <a href="/user-profile" class="side-panel-link">My Profile</a>
         <a href="#" onclick="logout()" class="side-panel-link" style="color: #d93025;">Logout</a>
     </div>
 
     <script src="/static/js/llm-feature.js"></script>
-    <script src="/static/js/globals.js?v=5.1"></script>
-    <script src="/static/js/utils.js?v=5.1"></script>
+    <script src="/static/js/globals.js?v=5.2"></script>
+    <script src="/static/js/utils.js?v=5.2"></script>
     <script src="/static/js/api.js?v=5.1"></script>
     <script src="/static/js/visualization.js?v=5.1"></script>
     <script src="/static/js/workspace-ui.js?v=5.1"></script>

@@ -1,6 +1,14 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Union, Dict, Any
 from datetime import datetime
+
+class ContactFormRequest(BaseModel):
+    name: str
+    email: str
+    message: str
+
+class ContactFormResponse(BaseModel):
+    ok: bool
 
 class SourceBase(BaseModel):
     title: str
@@ -21,6 +29,44 @@ class SourceRead(SourceBase):
     class Config:
         from_attributes = True
 
+# --- Assessment & Capability ---
+    
+class Assessment(BaseModel):
+    node_id: int
+    evaluation: Dict[str, Any]           # Flexible evaluation data, expected to be a dict (per node)
+
+class ProofInput(BaseModel):
+    node_id: int
+    value: int
+
+class SelfAssessmentRequest(BaseModel):
+    graph_label: str
+    proof_inputs: List[ProofInput]
+
+class CapabilityCreate(BaseModel):
+    assessment_name: str
+    assessment_type: str
+    version: str
+    graph_label: str
+    assessed_nodes: List[Assessment] # Flexible evaluation data, expected to be a list of assessments
+
+class CapabilityUpdate(BaseModel):
+    graph_label: Optional[str] = None
+    assessed_nodes: Optional[List[Assessment]] = None # Flexible evaluation data, expected to be a list of assessments
+
+class CapabilityRead(BaseModel):
+    id: int
+    user_id: int
+    assessment_name: str
+    assessment_type: str
+    version: str
+    assessment_date: datetime
+    graph_label: str
+    assessed_nodes: List[Assessment] # Flexible evaluation data, expected to be a list of assessments
+
+    class Config:
+        from_attributes = True
+
 class NodeBase(BaseModel):
     local_id: int
     title: str
@@ -31,6 +77,7 @@ class NodeBase(BaseModel):
     domain_id: Optional[int] = None
     x: Optional[int] = None
     y: Optional[int] = None
+    assessable: bool = False
 
 class NodeCreate(NodeBase):
     pass
@@ -66,10 +113,23 @@ class GraphSnapshotBase(BaseModel):
     created_by: Optional[str] = None
     is_public: bool = False
 
+class NodeRedirectBase(BaseModel):
+    old_local_id: int
+    new_local_id: int
+    created_at: datetime = None
+
+class NodeRedirectRead(NodeRedirectBase):
+    id: int
+    snapshot_id: int
+
+    class Config:
+        from_attributes = True
+
 class GraphSnapshotCreate(GraphSnapshotBase):
     nodes: List[NodeCreate]
     domains: List[DomainCreate] = []
     overwrite: bool = False
+    redirects: Optional[Dict[str, int]] = None # old_id -> new_id map from frontend
 
 class GraphSnapshotUpdate(BaseModel):
     version_label: Optional[str] = None
@@ -84,7 +144,9 @@ class GraphSnapshotRead(GraphSnapshotBase):
     last_updated: datetime
     nodes: List[NodeRead]
     domains: List[DomainRead] = []
+    redirects: List[NodeRedirectRead] = []
     node_count: int  # Computed field
+    assessable_node_count: int = 0  # Computed field
 
     class Config:
         from_attributes = True
@@ -97,7 +159,9 @@ class GraphSnapshotSummary(BaseModel):
     base_graph: Optional[str] = None
     created_by: Optional[str] = None
     node_count: int
+    assessable_node_count: int = 0
     is_public: bool = False
+    redirect_count: int = 0
     
     class Config:
         from_attributes = True
@@ -128,17 +192,41 @@ class LLMResponse(BaseModel):
 class UserBase(BaseModel):
     username: str
 
-class UserCreate(UserBase):
-    password: str
-    invitation_code: str
+class UserProfileUpdate(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    dob: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    social_github: Optional[str] = None
+    social_linkedin: Optional[str] = None
+    profile_image: Optional[str] = None
+
+class UserPasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
 
 class UserRead(UserBase):
     id: int
     is_active: bool
     created_at: datetime
     
+    # Profile Fields
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    dob: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    social_github: Optional[str] = None
+    social_linkedin: Optional[str] = None
+    profile_image: Optional[str] = None
+    
     class Config:
         from_attributes = True
+
+class UserCreate(UserBase):
+    password: str
+    invitation_code: str
 
 class Token(BaseModel):
     access_token: str

@@ -10,8 +10,7 @@ services:
       - key: PORT
         value: 80
       - key: API_URL
-        value: https://brotherhood-api-22jq.onrender.com
-
+        sync: false
   # The API Service
   - type: web
     name: brotherhood-api
@@ -27,7 +26,7 @@ services:
       - key: APP_MODE
         value: production
       - key: ALLOWED_ORIGINS
-        value: https://brotherhood-landing.onrender.com,http://localhost:8080
+        sync: false
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: GEMINI_API_KEY

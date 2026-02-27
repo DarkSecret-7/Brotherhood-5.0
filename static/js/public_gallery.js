@@ -10,6 +10,10 @@ window.draftDomains = [];
 function toggleSidebar() {
     var sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('collapsed');
+    
+    // Toggle header visibility
+    var hidden = sidebar.classList.contains('collapsed') ? 'none' : 'flex';
+    sidebar.querySelector('.sidebar-header').setAttribute('style', `display: ${hidden} !important`);
 }
 
 // --- API Calls ---
@@ -25,12 +29,12 @@ async function fetchPublicSnapshots() {
     }
 }
 
-async function loadGraph(id) {
+async function loadGraph(label) {
     try {
         // Show loading state (optional)
         // document.getElementById('graph-container').innerHTML = '<p style="text-align: center; padding-top: 100px;">Loading graph...</p>';
         
-        const response = await fetch(`/api/v1/public/snapshots/${id}`);
+        const response = await fetch(`/api/v1/public/snapshots/${label}`);
         if (!response.ok) throw new Error('Failed to fetch graph details');
         const snapshot = await response.json();
         
@@ -92,7 +96,7 @@ async function loadGraph(id) {
         
         // Highlight active item
         document.querySelectorAll('.graph-item').forEach(el => el.classList.remove('active'));
-        const activeItem = document.querySelector(`.graph-item[onclick="loadGraph(${id})"]`);
+        const activeItem = document.querySelector(`.graph-item[onclick="loadGraph('${label}')"]`);
         if (activeItem) activeItem.classList.add('active');
         
     } catch (err) {
@@ -114,8 +118,8 @@ function renderGraphList(snapshots) {
     snapshots.forEach(s => {
         const date = new Date(s.last_updated).toLocaleDateString();
         html += `
-            <div class="graph-item" onclick="loadGraph(${s.id})">
-                <div class="graph-title">${s.version_label || 'v' + s.id}</div>
+            <div class="graph-item" onclick="loadGraph('${s.version_label}')">
+                <div class="graph-title">${s.version_label || 'v' + s.label}</div>
                 <div class="graph-meta">
                     ${s.node_count} nodes • Updated ${date}<br>
                     By ${s.created_by || 'Unknown'}

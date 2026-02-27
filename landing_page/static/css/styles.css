@@ -490,3 +490,120 @@ footer {
         text-align: center;
     }
 }
+
+/* Documents Page */
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.document-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.document-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.document-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.document-content h3 {
+    margin: 0 0 15px 0;
+    color: #202124;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.document-description {
+    color: #5f6368;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    flex-grow: 1;
+}
+
+.document-meta {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+}
+
+.document-type {
+    background: #e8f0fe;
+    color: #1a73e8;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.document-size {
+    color: #5f6368;
+}
+
+.document-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.doc-btn-primary,
+.doc-btn-secondary {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.doc-btn-primary {
+    background: #1a73e8;
+    color: white;
+    border: 1px solid #1a73e8;
+}
+
+.doc-btn-primary:hover {
+    background: #1557b0;
+    border-color: #1557b0;
+}
+
+.doc-btn-primary:visited {
+    color: white;
+}
+
+.doc-btn-secondary {
+    background: #f1f3f4;
+    color: #5f6368;
+    border: 1px solid #dadce0;
+}
+
+.doc-btn-secondary:hover {
+    background: #e8eaed;
+}
+
+.doc-btn-secondary:visited {
+    color: #5f6368;
+}
+
+@media (max-width: 768px) {
+    .documents-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .document-card {
+        padding: 20px;
+    }
+}

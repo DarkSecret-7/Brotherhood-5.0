@@ -15,12 +15,33 @@ function getCurrentUser() {
     }
 }
 
-function logout() {
-    localStorage.removeItem('access_token');
-    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; samesite=lax;";
-    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; samesite=strict;";
-    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-    window.location.replace('/login');
+async function logout() {
+    console.log('Logging out...');
+    // Post backend request to invalidate token
+    await handleLogout().then(() => {
+        // On success, clear local storage and cookies
+        localStorage.removeItem('access_token');
+        document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; samesite=lax;";
+        document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; samesite=strict;";
+        document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        window.location.replace('/login');
+    });
+}
+
+async function handleLogout() {
+    try {
+        const response = await fetch('/api/v1/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        });
+        if (!response.ok) throw new Error('Log out failed');
+        return await response.json();
+    } catch (error) {
+        console.error('Logout error:', error);
+        throw error;
+    }
 }
 
 // --- Custom Dialog System ---
@@ -103,6 +124,9 @@ function switchTab(tabName) {
 
     if (tabName === 'workspace') {
         if (typeof refreshWorkspace === 'function') refreshWorkspace();
+    }
+    if (tabName === 'save') {
+        if (typeof prepareSaveVersionTab === 'function') prepareSaveVersionTab();
     }
     // Use cached snapshots by default when switching tabs
     if (tabName === 'database') {

@@ -8,6 +8,7 @@ function addNode() {
     var title = document.getElementById('node-title').value;
     var desc = document.getElementById('node-desc').value;
     var pre = document.getElementById('node-pre').value;
+    var assessable = document.getElementById('node-assessable').checked;
     // sources is deprecated, use source_items
     var sourceItems = JSON.parse(JSON.stringify(newNodeSources));
 
@@ -34,7 +35,8 @@ function addNode() {
         description: desc,
         prerequisite: pre,
         source_items: sourceItems,
-        domain_id: resolvedDomainId
+        domain_id: resolvedDomainId,
+        assessable: assessable
     });
 
     persistDraft();
@@ -42,6 +44,7 @@ function addNode() {
     document.getElementById('node-title').value = '';
     document.getElementById('node-desc').value = '';
     document.getElementById('node-pre').value = '';
+    document.getElementById('node-assessable').checked = false;
     newNodeSources = [];
     renderSources('new');
     refreshWorkspace();
@@ -63,6 +66,7 @@ function openEditModal(nodeOrId) {
     document.getElementById('edit-node-title').value = node.title;
     document.getElementById('edit-node-desc').value = node.description || '';
     document.getElementById('edit-node-pre').value = node.prerequisite || '';
+    document.getElementById('edit-node-assessable').checked = node.assessable || false;
     
     // Ensure deep copy to avoid modifying draftNodes directly until save
     editNodeSources = node.source_items ? JSON.parse(JSON.stringify(node.source_items)) : [];
@@ -82,6 +86,7 @@ function updateNode() {
     var title = document.getElementById('edit-node-title').value;
     var desc = document.getElementById('edit-node-desc').value;
     var pre = document.getElementById('edit-node-pre').value;
+    var assessable = document.getElementById('edit-node-assessable').checked;
     var sourceItems = JSON.parse(JSON.stringify(editNodeSources));
 
     if (isNaN(newLocalId) || !title) {
@@ -102,6 +107,7 @@ function updateNode() {
     node.description = desc;
     node.prerequisite = pre;
     node.source_items = sourceItems;
+    node.assessable = assessable;
 
     persistDraft();
     closeEditModal();

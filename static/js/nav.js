@@ -20,9 +20,3 @@ document.addEventListener('click', function(event) {
         closeSidePanel();
     }
 });
-
-// Logout function (global)
-function logout() {
-    // For now, just reload or redirect to home as there's no real auth yet
-    window.location.href = '/';
-}
