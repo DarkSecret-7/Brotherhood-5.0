@@ -9,7 +9,7 @@ class GraphSnapshot(Base):
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    version_label = Column(String, nullable=True)  # e.g. "v1", "Initial Draft"
+    version_label = Column(String, unique=True, index=True, nullable=True)  # e.g. "v1", "Initial Draft"
     is_public = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     
     # Relationships

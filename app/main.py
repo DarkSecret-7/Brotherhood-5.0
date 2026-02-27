@@ -71,6 +71,16 @@ async def lifespan(app: FastAPI):
                         print(f"Failed to add column {col_name}: {e}")
                         conn.rollback() # Ensure transaction is clean for next iteration
 
+            # --- Ensure version_label can be referenced by foreign keys ---
+            # Postgres requires the referenced column(s) to be covered by a UNIQUE constraint or unique index.
+            try:
+                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_graph_snapshots_version_label ON graph_snapshots (version_label)"))
+                conn.commit()
+                print("Ensured unique index on graph_snapshots.version_label")
+            except Exception as e:
+                print(f"Failed to ensure unique index on graph_snapshots.version_label: {e}")
+                conn.rollback()
+
 
         Base.metadata.create_all(bind=engine)
     except Exception as e:
