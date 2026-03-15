@@ -22,7 +22,6 @@ Thumbs.db
 
 # Admin & Local Debug Tools
 admin/
-cli.py
 test/
 
 # Docker local logs/states
