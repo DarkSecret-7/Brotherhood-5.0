@@ -1,0 +1,93 @@
+1. Core principles
+Before naming tools, these rules matter more than the stack itself:
+* Convention over cleverness
+* Stateless services
+* Everything versioned
+* Everything inspectable
+* Zero magic
+If someone new joins, they should think:
+“Oh, I’ve seen this before.”
+
+2. Tech Stack
+* Language and Framework – Python + FastAPI
+* Database – PostgreSQL
+* ORM/DB Layer – SQLAlchemy 2.x + Alembic
+* Auth – JWT + OAuth2
+
+3. Version control inside the product (critical)
+This is where your system becomes Wikipedia-grade.
+Conceptually:
+* Append-only tables
+* No hard deletes
+* Every change = new row
+* Old versions remain addressable
+Implementation pattern:
+* entity
+* entity_version
+* change_log
+* user
+This maps perfectly to Postgres + SQLAlchemy.
+
+4. API design (handoff-friendly)
+REST first, even if you add GraphQL later.
+Rules:
+* No deeply nested endpoints
+* Explicit resource boundaries
+* Stable URLs
+Example:
+POST   /nodes
+POST   /nodes/{id}/versions
+GET    /nodes/{id}
+GET    /nodes/{id}/history
+This screams “serious system” to experienced devs.
+
+5. Background jobs / automation (QoL only)
+Celery + Redis
+Use it for:
+* Validation checks
+* Index updates
+* Diff generation
+* Notifications
+
+6. Infrastructure (everyone knows this)
+Containerization
+Docker + Docker Compose
+Mandatory.
+No debate.
+Deployment (pick one)
+* AWS (ECS or EC2)
+* DigitalOcean
+* Fly.io
+Avoid Kubernetes until forced.
+
+7. Dev hygiene (this is how you attract contributors)
+* Black + Ruff (formatting & linting)
+* mypy (typing)
+* pre-commit hooks
+* pytest
+* .env.example
+This signals:
+“This project is safe to work on.”
+
+8. What NOT to do (important)
+Avoid:
+* Custom DSLs
+* Experimental DBs
+* Heavy LLM dependencies in core logic
+* Over-abstracted service layers
+* “Smart” pipelines no one understands
+9. What “local-first” should mean (important distinction)
+? Yes to:
+* Dockerized API
+* Dockerized Postgres
+* Versioned migrations
+* Seed scripts
+* Fake auth / single admin
+* Local file storage (for now)
+? No to:
+* Hardcoded paths
+* Dev-only hacks
+* “We’ll fix this later” shortcuts
+* Logic that assumes one user forever
+Local-first ? sloppy-first.
+

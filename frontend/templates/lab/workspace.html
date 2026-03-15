@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Brotherhood Curator Lab - Workspace</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="/frontend/css/main_styles.css?v=8">
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center;">
+            <div class="hamburger-menu">
+                <button class="hamburger-btn" onclick="openSidePanel()">☰</button>
+            </div>
+            <div style="margin-left: 30px;">
+                <h1 style="margin: 0;">The Brotherhood Curator Lab</h1>
+                <div class="version-indicator">Workspace</div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <div style="margin-bottom: 6px;"><a href="/landing" style="text-decoration: none; font-weight: 600; color: #1a73e8;">Home</a></div>
+            <div><span id="status-dot" style="color: #34a853;">●</span> Connected to Backend</div>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button id="tab-workspace" class="tab-btn active" onclick="labStateManager.setActiveTab('workspace')">Node Draft</button>
+        <button id="tab-graph" class="tab-btn" onclick="labStateManager.setActiveTab('graph')">Graph Visualizer</button>
+        <button id="tab-save" class="tab-btn" onclick="labStateManager.setActiveTab('save')">Save Version</button>
+    </div>
+
+    <div class="active-version-display" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <div id="active-version-info">
+            Working on: <span id="current-version-label">None</span>
+        </div>
+        <button id="btn-clear-workspace" class="btn-secondary btn-small destructive-hover" onclick="workspaceOpsController.handleClearWorkspace()">Clear Workspace</button>
+    </div>
+
+    <div class="main-container">
+        <!-- View: Workspace List -->
+        <div id="view-workspace" class="view-section active">
+            <div class="workspace-layout">
+                <div class="workspace-column">
+                    <div class="card">
+                        <div class="section-header">
+                            <h2>Active Workspace</h2>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button id="btn-llm-suggest" class="btn-secondary btn-small" onclick="labUIController.openLLMModal()">✨ AI Suggest</button>
+                                <button id="btn-group-domain" class="btn-primary btn-small" onclick="workspaceOpsController.handleAddDomain()">Add Domain</button>
+                                <span id="draft-count" class="badge-count">0 Nodes</span>
+                            </div>
+                        </div>
+                        
+                        <div id="draft-nodes-list">
+                            <p class="empty-state">Loading workspace...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Sidebar (Add Node) - Only in Workspace View -->
+                <div class="sidebar-column">
+                    <div class="card sticky-sidebar">
+                        <div class="add-node-header">
+                            <h3>Add New Node</h3>
+                            <div class="inline-form-group">
+                                <label>Under Domain ID</label>
+                                <input type="number" id="node-parent-domain" placeholder="ID (optional)" style="width: 100px;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Local ID</label>
+                            <input type="number" id="node-id" placeholder="Integer ID">
+                        </div>
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="node-title" placeholder="Node Title">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="node-desc" rows="2" placeholder="Optional description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Prerequisite Expression</label>
+                            <input type="text" id="node-pre" placeholder="e.g. (1 AND 2) OR 3">
+                        </div>
+                        <div class="form-group">
+                            <label>Sources</label>
+                            <div id="new-node-sources" class="sources-container"></div>
+                            <button class="btn-secondary btn-small">Add Source</button>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="node-assessable" style="width: auto; margin: 0;">
+                            <label for="node-assessable" style="margin: 0;">Assessable Node</label>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn-primary" onclick="workspaceOpsController.addNode()">Add to Draft</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- View: Graph Visualizer -->
+            <div id="view-graph" class="view-section">
+                <div class="card">
+                    <div class="section-header">
+                        <h2>Graph Visualization</h2>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-secondary btn-small" onclick="graphController.resetLayout()">Reset Layout</button>
+                            <button class="btn-secondary btn-small" onclick="graphController.randomizePositions()">Randomise</button>
+                            <button class="btn-primary btn-small" onclick="graphController.fixPositions()">Fix Positions</button>
+                            <button class="btn-secondary btn-small" onclick="graphController.refreshGraph()">Refresh Graph</button>
+                        </div>
+                    </div>
+                    
+                    <div id="graph-visualizer" style="display: block;">
+                        <div id="graph-container" style="display: block; height: 600px;"></div>
+                        <p style="font-size: 0.8em; color: #5f6368; margin-top: 8px;">
+                            Arrows point from <strong>prerequisite</strong> to <strong>dependent</strong> node.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Save Version -->
+            <div id="view-save" class="view-section">
+                <div class="card">
+                    <div class="section-header">
+                        <h2>Save to Database</h2>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <input type="checkbox" id="overwrite-toggle" style="width: auto; margin: 0;">
+                        <label for="overwrite-toggle" style="margin: 0; font-weight: 500;">Overwrite base graph</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Version Label</label>
+                        <input type="text" id="version-label" placeholder="e.g. Baseline v1.0">
+                    </div>
+
+                    <div id="assessable-changes-section" style="display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                        <h3 style="color: #d93025; margin-bottom: 10px;">Assessable Node Changes</h3>
+                        <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 15px;">
+                            Changes to assessable nodes must be redirected to ensure capability trail stability.
+                        </p>
+                        <div id="assessable-changes-list">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <button id="btn-save-snapshot" class="btn-primary" onclick="workspaceOpsController.handleSaveSnapshot()">Save Snapshot</button>
+                </div>
+            </div>
+
+    </div>
+
+    <!-- Edit Node Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Node <span id="edit-node-id-display"></span></h2>
+                <span class="close" onclick="labUIController.closeModal('editNode')">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="edit-node-id">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="edit-node-title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="edit-node-desc" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Prerequisite Expression</label>
+                <input type="text" id="edit-node-pre">
+            </div>
+            <div class="form-group">
+                <label>Sources</label>
+                <div id="edit-node-sources" class="sources-container"></div>
+                <button class="btn-secondary btn-small" onclick="labUIController.openSourceModal('edit')">Add Source</button>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="edit-node-assessable" style="width: auto; margin: 0;">
+                <label for="edit-node-assessable" style="margin: 0;">Assessable Node</label>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="workspaceOpsController.updateNode()">Update Node</button>
+                <button class="btn-secondary" onclick="labUIController.closeModal('editNode')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Domain Modal -->
+    <div id="createDomainModal" class="modal">
+        <div class="modal-content">
+            <!--    WILL ADD LATER
+            <div class="inline-form-group">
+                <label>Under Domain ID</label>
+                <input type="number" id="domain-parent-domain" placeholder="ID (optional)" style="width: 100px;">
+            </div>-->
+            <div class="modal-header">
+                <h2>Create Domain</h2>
+                <span class="close" onclick="labUIController.closeModal('createDomain')">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="create-domain-id" placeholder="Integer ID">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="create-domain-title" placeholder="Domain Title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="create-domain-desc" rows="3" placeholder="Domain Description (optional)"></textarea>
+            </div>
+            <div class="button-group">
+                <button type="button" class="btn-primary" onclick="workspaceOpsController.addDomain()">Create Domain</button>
+                <button type="button" class="btn-secondary" onclick="labUIController.closeModal('createDomain')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Domain Modal -->
+    <div id="editDomainModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Domain <span id="edit-domain-id-display"></span></h2>
+                <span class="close" onclick="labUIController.closeModal('editDomain')">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="edit-domain-id">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="edit-domain-title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="edit-domain-desc" rows="3"></textarea>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="workspaceOpsController.updateDomain()">Update Domain</button>
+                <button class="btn-secondary" onclick="labUIController.closeModal('editDomain')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Dialog Modal -->
+    <div id="dialogModal" class="modal" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="dialog-title">Confirm</h2>
+                <span class="close" onclick="labUIController.closeDialog(false)">&times;</span>
+            </div>
+            <div id="dialog-body" style="margin-bottom: 20px; line-height: 1.5;">
+                <!-- Message goes here -->
+            </div>
+            <div id="dialog-input-container" class="form-group" style="display: none;">
+                <input type="text" id="dialog-input" style="width: 100%;">
+            </div>
+            <div class="button-group" style="justify-content: flex-end;">
+                <button id="dialog-cancel-btn" class="btn-secondary" onclick="labUIController.closeDialog(false)">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn-primary" onclick="labUIController.closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Modal -->
+    <div id="sourceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="source-modal-title">Add Source</h2>
+                <span class="close" onclick="labUIController.closeSourceModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="source-title" placeholder="Source Title">
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="source-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="PDF">PDF</option>
+                    <option value="Video">Video</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="source-author" placeholder="Author Name">
+            </div>
+            <div class="form-group">
+                <label>Year</label>
+                <input type="number" id="source-year" placeholder="Year">
+            </div>
+            <div class="form-group">
+                <label>URL</label>
+                <input type="text" id="source-url" placeholder="https://...">
+            </div>
+            <div class="form-group" style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Fragment Start</label>
+                    <input type="text" id="source-start" placeholder="Page/Time">
+                </div>
+                <div style="flex: 1;">
+                    <label>Fragment End</label>
+                    <input type="text" id="source-end" placeholder="Page/Time">
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button id="btn-delete-source" class="btn-danger btn-small" onclick="labUIController.deleteCurrentSource()" style="display: none;">Delete</button>
+                <div>
+                    <button class="btn-secondary" onclick="labUIController.closeSourceModal()">Cancel</button>
+                    <button class="btn-primary" onclick="labUIController.submitSource()">Save Source</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Source Modal -->
+    <div id="viewSourceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Source Details</h2>
+                <span class="close" onclick="labUIController.closeViewSourceModal()">&times;</span>
+            </div>
+            <div id="view-source-content">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="labUIController.closeViewSourceModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Modal -->
+    <div id="llm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>AI Node Suggestions</h2>
+                <span class="close" onclick="labUIController.closeLLMModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>What topic do you want suggestions for?</label>
+                    <textarea id="llm-query" rows="3" placeholder="e.g. 'Key concepts in quantum mechanics' or 'Steps to bake a cake'" style="width: 100%;"></textarea>
+                </div>
+                <button class="btn-primary" onclick="labUIController.queryLLM()">Get Suggestions</button>
+                
+                <div id="llm-loading" style="display: none; margin-top: 20px; text-align: center; color: #5f6368;">
+                    <p>Thinking... 🤖</p>
+                </div>
+                
+                <div id="llm-results" style="margin-top: 20px;">
+                    <!-- Results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="side-panel-overlay" class="side-panel-overlay"></div>
+    <div id="side-panel" class="side-panel">
+        <button class="side-panel-close" onclick="closeSidePanel()">&times;</button>
+        <a href="/landing" class="side-panel-link">Home</a>
+        <a href="/lab/workspace" class="side-panel-link">Workspace</a>
+        <a href="/lab/database" class="side-panel-link">Database Management</a>
+        <a href="/lab/curator-guide" class="side-panel-link">Curator Guide</a>
+        <a href="/profile/current-user" class="side-panel-link">My Profile</a>
+        <a href="#" onclick="logout()" class="side-panel-link" style="color: #d93025;">Logout</a>
+    </div>
+
+    <!-- Load new frontend architecture scripts -->
+    <script src="/frontend/api/base-api-service.js"></script>
+    <script src="/frontend/api/auth/auth-api-service.js"></script>
+    <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
+    <script src="/frontend/transformer/snapshots/snapshots-transformer.js"></script>
+    <script src="/frontend/utils/expression-utils.js"></script>
+    <script src="/frontend/utils/user-profile-utils.js"></script>
+    <script src="/frontend/components/graph-visualizer.js"></script>
+    <script src="/frontend/state/lab-state-manager.js"></script>
+    <script src="/frontend/state/database-state-manager.js"></script>
+    <script src="/frontend/ui/lab/workspace-ops-controller.js"></script>
+    <script src="/frontend/ui/lab/workspace-ui-controller.js"></script>
+    <script src="/frontend/ui/lab/graph-controller.js"></script>
+    <script src="/frontend/ui/lab/nav-controller.js"></script>
+
+    <!-- Initialize application -->
+    <script>
+        // Logout function
+        function logout() {
+            authApiService.logout().then(() => {
+                window.location.href = '/auth/login';
+            });
+        }
+
+        // Wait for DOM to be loaded
+        document.addEventListener('DOMContentLoaded', function() {          
+            // Check authentication
+            if (!authApiService.isAuthenticated()) {
+                window.location.href = '/auth/login';
+                return;
+            }
+
+            // Initialize database orchestration dependencies for delegated save/load flows
+            if (window.databaseStateManager && window.snapshotsApiService && window.snapshotsTransformer) {
+                window.databaseStateManager.initializeServices(window.snapshotsApiService, window.snapshotsTransformer);
+            } else {
+                console.error('Database orchestration dependencies missing:', {
+                    databaseStateManager: !!window.databaseStateManager,
+                    snapshotsApiService: !!window.snapshotsApiService,
+                    snapshotsTransformer: !!window.snapshotsTransformer
+                });
+            }
+            
+            // Initialize state manager and UI controller
+            const stateManager = window.labStateManager;
+            const opsController = new WorkspaceOpsController(stateManager, window.databaseStateManager);
+            const uiController = new LabUIController(stateManager);
+            
+            // NavController is now singleton - will auto-initialize
+            const navController = NavController.getInstance();
+            
+            // Make globally accessible
+            window.labStateManager = stateManager; // Keep for compatibility
+            window.labUIController = uiController;
+            window.workspaceOpsController = opsController;
+            window.navController = navController;
+            
+            // Load initial data first
+            async function loadInitialData() {
+                try {
+                    console.log('Initializing workspace...');
+
+                    const pendingSnapshot = window.databaseStateManager
+                        ? window.databaseStateManager.consumePendingWorkspaceSnapshot()
+                        : null;
+
+                    if (pendingSnapshot && pendingSnapshot.uuid) {
+                        stateManager.loadSnapshot(pendingSnapshot);
+                        console.log(`✓ Loaded staged snapshot into workspace (UUID: ${pendingSnapshot.uuid})`);
+                    } else {
+                        // Keep persisted local draft if no staged backend snapshot is present
+                        console.log('✓ Workspace initialized with persisted local draft');
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to initialize workspace:', error);
+                }
+            }
+            
+            loadInitialData().then(() => {
+                // Initialize graph controller AFTER initial data is loaded
+                const graphController = new GraphController(stateManager);
+                window.graphController = graphController;
+            });
+        });
+    </script>
+</body>
+</html>

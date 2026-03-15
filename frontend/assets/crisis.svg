@@ -1,0 +1,26 @@
+<svg width="800" height="1200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e8f0fe;stop-opacity:1" />
+    </linearGradient>
+    <filter id="blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grad1)" />
+  
+  <!-- Chaos/Tangle for Crisis -->
+  <g stroke="#1a1a1a" stroke-width="1" fill="none" opacity="0.1">
+    <path d="M100,100 Q400,50 600,300 T900,100" />
+    <path d="M50,300 Q200,600 500,200 T800,800" />
+    <path d="M200,100 Q50,400 300,700 T600,200" />
+    <path d="M700,50 Q400,300 100,600 T50,900" />
+    <circle cx="400" cy="400" r="300" stroke-dasharray="10,10" />
+    <line x1="100" y1="100" x2="700" y2="700" />
+    <line x1="700" y1="100" x2="100" y2="700" />
+  </g>
+  
+  <!-- Red accent for crisis/warning -->
+  <circle cx="600" cy="200" r="150" fill="#ffdddd" opacity="0.3" filter="url(#blur)" />
+</svg>

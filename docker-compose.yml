@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: brotherhood
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"    # Frontend
+      - "8000:10000"   # Backend API
+    environment:
+      PORT: 10000
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/brotherhood
+      APP_MODE: docker
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:

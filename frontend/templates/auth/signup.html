@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - The Brotherhood Curator Lab</title>
+    <link rel="stylesheet" href="/frontend/css/main_styles.css?v=8">
+    <style>
+        .signup-container {
+            max-width: 450px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .signup-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .signup-header h1 {
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        .signup-header p {
+            color: #5f6368;
+            margin: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .btn-signup {
+            width: 100%;
+            padding: 12px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-signup:hover {
+            background: #1557b0;
+        }
+        .btn-signup:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .login-link a {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .password-requirements {
+            font-size: 0.85em;
+            color: #5f6368;
+            margin-top: 5px;
+        }
+        .invitation-info {
+            background: #e8f0fe;
+            color: #155724;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <div class="signup-header">
+            <h1>The Brotherhood</h1>
+            <p>Create Your Account</p>
+        </div>
+        
+        <div class="invitation-info">
+            <strong>🔒 Invitation Required</strong><br>
+            You need an invitation code to join The Brotherhood Curator Lab.
+        </div>
+        
+        <div id="message-container"></div>
+        
+        <form id="signup-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required placeholder="Choose a username">
+            </div>
+            
+            <div class="form-group">
+                <label for="invitation-code">Invitation Code</label>
+                <input type="text" id="invitation-code" name="invitationCode" required placeholder="Enter invitation code">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="Create a password">
+                <div class="password-requirements">
+                    Password must be at least 8 characters long
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" id="confirm-password" name="confirmPassword" required placeholder="Confirm your password">
+            </div>
+            
+            <button type="submit" id="signup-btn" class="btn-signup">Create Account</button>
+        </form>
+        
+        <div class="login-link">
+            <p>Already have an account? <a href="/auth/login">Login here</a></p>
+            <p><a href="/landing">← Back to Home</a></p>
+        </div>
+    </div>
+
+    <!-- Load frontend architecture scripts -->
+    <script src="/frontend/api/base-api-service.js"></script>
+    <script src="/frontend/api/auth/auth-api-service.js"></script>
+    <script src="/frontend/transformer/auth/auth-transformer.js"></script>
+
+    <script>
+        // Form validation
+        function validateForm() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const invitationCode = document.getElementById('invitation-code').value;
+            
+            if (password.length < 8) {
+                showMessage('Password must be at least 8 characters long', 'error');
+                return false;
+            }
+            
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return false;
+            }
+            
+            if (!invitationCode) {
+                showMessage('Valid invitation code is required', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Show message
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('message-container');
+            const className = type === 'error' ? 'error-message' : 'success-message';
+            messageContainer.innerHTML = `<div class="${className}">${message}</div>`;
+        }
+        
+        // Signup form handler
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!validateForm()) {
+                return;
+            }
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                invitation_code: document.getElementById('invitation-code').value,
+                password: document.getElementById('password').value
+            };
+            
+            const signupBtn = document.getElementById('signup-btn');
+            const messageContainer = document.getElementById('message-container');
+            
+            // Show loading state
+            signupBtn.disabled = true;
+            signupBtn.textContent = 'Creating Account...';
+            messageContainer.innerHTML = '';
+            
+            try {
+                // Use the auth API service to signup
+                const response = await authApiService.signup(formData);
+                
+                // Show success message
+                showMessage('Account created successfully! Redirecting to login...', 'success');
+                
+                // Redirect to login after a short delay
+                setTimeout(() => {
+                    window.location.href = '/auth/login';
+                }, 2000);
+                
+            } catch (error) {
+                // Show error message
+                showMessage(`Signup failed: ${error.message}`, 'error');
+                
+                // Reset button state
+                signupBtn.disabled = false;
+                signupBtn.textContent = 'Create Account';
+            }
+        });
+        
+        // Check if already authenticated - removed to prevent redirect loops
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     if (authApiService.isAuthenticated()) {
+        //         // Already logged in, redirect to workspace
+        //         window.location.href = '/lab/workspace';
+        //     }
+        // });
+    </script>
+</body>
+</html>

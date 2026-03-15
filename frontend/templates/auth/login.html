@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - The Brotherhood Curator Lab</title>
+    <link rel="stylesheet" href="/frontend/css/main_styles.css?v=8">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h1 {
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        .login-header p {
+            color: #5f6368;
+            margin: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-login:hover {
+            background: #1557b0;
+        }
+        .btn-login:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .signup-link a {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>The Brotherhood</h1>
+            <p>Curator Lab Login</p>
+        </div>
+        
+        <div id="message-container"></div>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required placeholder="Enter your username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="Enter your password">
+            </div>
+            
+            <button type="submit" id="login-btn" class="btn-login">Login</button>
+        </form>
+        
+        <div class="signup-link">
+            <p>Don't have an account? <a href="/auth/signup">Sign up here</a></p>
+            <p><a href="/landing">← Back to Home</a></p>
+        </div>
+    </div>
+
+    <!-- Load frontend architecture scripts -->
+    <script src="/frontend/api/base-api-service.js"></script>
+    <script src="/frontend/api/auth/auth-api-service.js"></script>
+    <script src="/frontend/transformer/auth/auth-transformer.js"></script>
+
+    <script>
+        // Login form handler
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('login-btn');
+            const messageContainer = document.getElementById('message-container');
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            messageContainer.innerHTML = '';
+            
+            try {
+                // Use the auth API service to login
+                const authData = {
+                    username: username,
+                    password: password
+                };
+                
+                const response = await authApiService.login(authData);
+                
+                // Store the token
+                localStorage.setItem('access_token', response.access_token);
+                
+                // Show success message
+                messageContainer.innerHTML = '<div class="success-message">Login successful! Redirecting...</div>';
+                
+                // Redirect to workspace after a short delay
+                setTimeout(() => {
+                    window.location.href = '/lab/workspace';
+                }, 1000);
+                
+            } catch (error) {
+                // Show error message
+                messageContainer.innerHTML = `<div class="error-message">Login failed: ${error.message}</div>`;
+                
+                // Reset button state
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+        
+        // Check if already authenticated - removed auto-redirect to prevent loops
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     if (authApiService.isAuthenticated()) {
+        //         // Already logged in, redirect to workspace
+        //         window.location.href = '/lab/workspace';
+        //     }
+        // });
+    </script>
+</body>
+</html>
