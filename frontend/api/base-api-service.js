@@ -4,8 +4,10 @@
  */
 class BaseApiService {
     constructor() {
-        // Direct connection to backend (now running on port 8000)
-        this.baseURL = 'http://localhost:8000/api/v1';
+        // Use current host for API calls (works on both localhost and Render)
+        const protocol = window.location.protocol;
+        const host = window.location.host;
+        this.baseURL = `${protocol}//${host}/api/v1`;
         this.defaultHeaders = {
             'Content-Type': 'application/json'
         };
