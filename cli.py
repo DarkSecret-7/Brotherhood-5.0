@@ -11,11 +11,32 @@ console = Console()
 
 API_URL = os.getenv("BROTHERHOOD_API_URL", "http://localhost:8000/api/v1")
 
+def get_api_url():
+    """Get API URL from environment or detect current host"""
+    if os.getenv("BROTHERHOOD_API_URL"):
+        return os.getenv("BROTHERHOOD_API_URL")
+    
+    # For Render deployment, use built-in environment variables
+    if os.getenv("RENDER"):
+        render_service_url = os.getenv("RENDER_SERVICE_URL")
+        render_external_url = os.getenv("RENDER_EXTERNAL_URL")
+        render_external_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+        
+        if render_service_url:
+            return f"{render_service_url}/api/v1"
+        elif render_external_url:
+            return f"{render_external_url}/api/v1"
+        elif render_external_hostname:
+            return f"https://{render_external_hostname}/api/v1"
+    
+    return "http://localhost:8000/api/v1"
+
 @app.command()
 def list_saved_graphs():
     """Fetch and list all graph versions saved in the database."""
     try:
-        response = requests.get(f"{API_URL}/snapshots")
+        api_url = get_api_url()
+        response = requests.get(f"{api_url}/snapshots")
         response.raise_for_status()
         snapshots = response.json()
         
@@ -37,14 +58,12 @@ def list_saved_graphs():
         console.print(f"[bold red]Error fetching snapshots:[/bold red] {e}")
 
 @app.command()
-def delete_graph(snapshot_id: int):
-    """Permanently delete a snapshot from the database."""
-    if not typer.confirm(f"Are you sure you want to PERMANENTLY delete snapshot {snapshot_id}?"):
-        return
-    
+def delete_graph(snapshot_id: str):
+    """Delete a graph snapshot by its UUID."""
     try:
-        res = requests.delete(f"{API_URL}/snapshots/{snapshot_id}")
-        res.raise_for_status()
+        api_url = get_api_url()
+        response = requests.delete(f"{api_url}/snapshots/{snapshot_id}")
+        response.raise_for_status()
         console.print(f"[bold red]Snapshot {snapshot_id} deleted.[/bold red]")
     except Exception as e:
         console.print(f"[red]Error deleting snapshot: {e}[/red]")

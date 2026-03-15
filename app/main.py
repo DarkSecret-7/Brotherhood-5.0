@@ -25,9 +25,33 @@ app = FastAPI(title="The Brotherhood Curator Lab Graph API", lifespan=lifespan)
 
 # Add CORS middleware for development
 print("Adding CORS middleware...")
+# Dynamic CORS configuration for both local and production
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000", 
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000"
+]
+
+# Add Render URLs using built-in environment variables
+if os.getenv("RENDER"):
+    # Render automatically provides these variables
+    render_service_url = os.getenv("RENDER_SERVICE_URL")
+    render_external_url = os.getenv("RENDER_EXTERNAL_URL") 
+    render_external_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+    
+    if render_service_url:
+        allowed_origins.append(render_service_url)
+    if render_external_url:
+        allowed_origins.append(render_external_url)
+    if render_external_hostname:
+        # Construct URLs from hostname
+        allowed_origins.append(f"https://{render_external_hostname}")
+        allowed_origins.append(f"http://{render_external_hostname}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:3000", "http://127.0.0.1:8000"],  # Frontend URLs
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
