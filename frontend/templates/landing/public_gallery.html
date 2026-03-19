@@ -6,8 +6,7 @@
     <title>The Brotherhood - Public Gallery</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="/static/css/main_styles.css?v=8">
-    <link rel="stylesheet" href="/static/css/gallery_styles.css?v=1">
+    <link rel="stylesheet" href="/frontend/css/gallery.css">
 </head>
 <body>
     <div class="header">
@@ -26,19 +25,19 @@
                 <span>Public Graphs</span>
                 <button id="refresh-graphs" class="sidebar-refresh-btn" title="Refresh list">↻</button>
             </div>
+            <button class="toggle-sidebar-btn" title="Toggle Sidebar">☰</button>
             <div id="graph-list" class="sidebar-content">
                 <p style="text-align: center; color: #5f6368; margin-top: 20px;">Loading...</p>
             </div>
         </div>
 
         <div class="main-area" style="flex: 1; position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-            <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
             <!-- Explicitly force block display and size -->
             <div id="graph-container" style="display: block !important; width: 100% !important; height: 100% !important; min-height: 600px; background-color: #f9f9f9; flex: 1;"></div>
             
             <!-- Node Details Panel (Floating) -->
             <div id="node-details" class="node-details-panel">
-                <span class="close-details" onclick="closeNodeDetails()">&times;</span>
+                <span class="close-details">&times;</span>
                 <h3 id="detail-title" style="margin-top: 0; color: #1a73e8;">Node Title</h3>
                 <div id="detail-meta" style="font-size: 0.85em; color: #5f6368; margin-bottom: 10px;"></div>
                 <div id="detail-desc" style="line-height: 1.5; margin-bottom: 15px;"></div>
@@ -49,10 +48,33 @@
         </div>
     </div>
 
-    <!-- Shared Logic -->
-    <script src="/static/js/globals.js?v=9"></script>
-    <script src="/static/js/visualization.js?v=9"></script>
-    <!-- Gallery Logic -->
-    <script src="/static/js/public_gallery.js?v=3"></script>
+    <!-- Modern Architecture Dependencies -->
+    <script src="/frontend/api/base-api-service.js"></script>
+    <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
+    <script src="/frontend/api/snapshots/gallery-api-service.js"></script>
+    <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
+    <script src="/frontend/state/gallery-state-manager.js"></script>
+    <script src="/frontend/ui/gallery/gallery-ui-controller.js"></script>
+    <script src="/frontend/ui/gallery/gallery-ops-controller.js"></script>
+    <script src="/frontend/components/graph-visualizer.js"></script>
+    
+    <!-- Gallery Initialization -->
+    <script>
+        // Initialize gallery when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the modern gallery architecture
+            const stateManager = galleryStateManager;
+            const apiService = galleryApiService;
+            const transformer = galleryTransformer;
+            
+            // Create UI and operations controllers
+            const uiController = new GalleryUIController(stateManager);
+            const opsController = new GalleryOpsController(stateManager, apiService, transformer);
+            
+            // Initialize controllers
+            uiController.initialize();
+            opsController.initialize();
+        });
+    </script>
 </body>
 </html>

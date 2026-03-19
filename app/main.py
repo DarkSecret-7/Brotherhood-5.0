@@ -134,6 +134,11 @@ async def landing_contact():
 async def landing_documents():
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "documents.html"))
 
+# Public gallery route
+@app.get("/landing/gallery")
+async def public_gallery():
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "public_gallery.html"))
+
 @app.get("/lab/workspace")
 async def lab_workspace(request: Request):
     # Check for token in cookie

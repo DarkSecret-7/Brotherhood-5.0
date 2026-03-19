@@ -23,6 +23,5 @@ services:
       - db
     volumes:
       - .:/app
-
 volumes:
   postgres_data:

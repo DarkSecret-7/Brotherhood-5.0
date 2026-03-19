@@ -107,8 +107,6 @@ class SnapshotsTransformer {
     transformNodesToBackend(frontendNodes) {
         if (!Array.isArray(frontendNodes)) return [];
 
-        console.log('Transforming nodes:', frontendNodes.length, 'nodes');
-        
         return frontendNodes.map((node, index) => {
             const backendNode = {
                 local_id: node.id,
@@ -123,7 +121,6 @@ class SnapshotsTransformer {
                 assessable: node.assessable
             };
             
-            console.log(`Node ${index + 1}:`, backendNode);
             return backendNode;
         });
     }

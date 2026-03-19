@@ -434,18 +434,17 @@
             // Load initial data first
             async function loadInitialData() {
                 try {
-                    console.log('Initializing workspace...');
-
                     const pendingSnapshot = window.databaseStateManager
                         ? window.databaseStateManager.consumePendingWorkspaceSnapshot()
                         : null;
 
+                    console.log('Pending snapshot:', pendingSnapshot);
+                    
+
                     if (pendingSnapshot && pendingSnapshot.uuid) {
                         stateManager.loadSnapshot(pendingSnapshot);
-                        console.log(`✓ Loaded staged snapshot into workspace (UUID: ${pendingSnapshot.uuid})`);
                     } else {
                         // Keep persisted local draft if no staged backend snapshot is present
-                        console.log('✓ Workspace initialized with persisted local draft');
                     }
                     
                 } catch (error) {

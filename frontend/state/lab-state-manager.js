@@ -57,7 +57,8 @@ class LabStateManager {
             isSnapshotListOpen: false,
             currentVersionLabel: '',
             baseGraphLabel: null,
-            overwriteMode: false
+            overwriteMode: false,
+            isPublic: false
         };
 
         // Initialize subscribers array
@@ -86,6 +87,7 @@ class LabStateManager {
             const persistedDomains = localStorage.getItem('lab_domains');
             const currentSnapshotLabel = localStorage.getItem('lab_currentSnapshotLabel');
             const baseGraphLabel = localStorage.getItem('lab_baseGraphLabel');
+            const isPublic = localStorage.getItem('lab_isPublic');
 
             if (persistedNodes) {
                 const nodesData = JSON.parse(persistedNodes);
@@ -103,6 +105,10 @@ class LabStateManager {
             
             if (baseGraphLabel) {
                 this.state.baseGraphLabel = baseGraphLabel;
+            }
+            
+            if (isPublic) {
+                this.state.isPublic = isPublic === 'true';
             }
             
             // Load graph state
@@ -153,6 +159,7 @@ class LabStateManager {
             localStorage.setItem('lab_domains', JSON.stringify(this.state.domains));
             localStorage.setItem('lab_currentSnapshotLabel', this.state.currentVersionLabel);
             localStorage.setItem('lab_baseGraphLabel', this.state.baseGraphLabel);
+            localStorage.setItem('lab_isPublic', this.state.isPublic);
             
             // Persist graph state
             const graphState = this.state.graphState;
@@ -216,12 +223,15 @@ class LabStateManager {
         this.setError(null);
         
         try {
+            console.log('Loading snapshot:', frontendSnapshot);
+
             // Update state with transformed data (transformer already called this)
             this.state.currentSnapshot = frontendSnapshot;
             this.state.nodes = frontendSnapshot.nodes || [];
             this.state.domains = frontendSnapshot.domains || [];
             this.state.currentVersionLabel = frontendSnapshot.versionLabel;
             this.state.baseGraphLabel = frontendSnapshot.baseGraphLabel;
+            this.state.isPublic = frontendSnapshot.isPublic || false;
             
             // Update graph visualization
             this.updateGraphVisualization();
@@ -272,7 +282,7 @@ class LabStateManager {
             currentSnapshotUuid,
             baseUuid,
             overwrite: saveOptions.overwrite || false,
-            isPublic: saveOptions.isPublic || false
+            isPublic: this.state.isPublic
         };
         
         return workspaceDraft;
@@ -961,3 +971,4 @@ if (typeof module !== 'undefined' && module.exports) {
     window.LabStateManager = LabStateManager;
     window.labStateManager = labStateManager;
 }
+

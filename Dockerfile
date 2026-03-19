@@ -10,9 +10,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all application files
 COPY app/ ./app/
 COPY frontend/ ./frontend/
+COPY docs/ ./docs/
 COPY cli.py .
 COPY self_assessment/ ./self_assessment/
 COPY start-services.sh /app/start-services.sh
+
+# Copy .env file for development (Render uses its own environment variables)
+COPY .env .env
 
 # Make startup script executable
 RUN chmod +x /app/start-services.sh

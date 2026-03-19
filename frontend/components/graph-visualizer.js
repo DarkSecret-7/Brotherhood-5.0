@@ -213,18 +213,12 @@ class GraphVisualizer {
      */
     renderDomainHulls(ctx) {
         if (!this.network || !this.graphState || !this.graphState.domains) {
-            console.log('GraphVisualizer: renderDomainHulls - missing data:', {
-                hasNetwork: !!this.network,
-                hasGraphState: !!this.graphState,
-                hasDomains: !!(this.graphState && this.graphState.domains)
-            });
             return;
         }
 
         try {
             const positions = this.network.getPositions();
             if (!positions || Object.keys(positions).length === 0) {
-                console.log('GraphVisualizer: renderDomainHulls - no positions');
                 return;
             }
 
@@ -392,15 +386,10 @@ class GraphVisualizer {
      * @param {Object} graphState - Graph state with nodes, edges, pathways, positions
      */
     updateVisualization(graphState) {
-        console.log('GraphVisualizer: updateVisualization called');
-        console.log('GraphVisualizer: graphState:', graphState);
-        console.log('GraphVisualizer: nodes:', graphState.nodes.length, 'edges:', graphState.edges.length);
-        
         // Store graph state for domain hull rendering
         this.graphState = graphState;
         
         if (!this.network) {
-            console.log('GraphVisualizer: No network, calling initializeNetwork');
             this.initializeNetwork();
             // After network is created, update with data
             setTimeout(() => this.updateVisualization(graphState), 100);
@@ -410,9 +399,7 @@ class GraphVisualizer {
         // Update data sets
         const visNodes = this.createVisNodes(graphState.nodes, graphState.defaultPositions);
         const visEdges = this.createVisEdges(graphState.edges);
-        
-        console.log('GraphVisualizer: Created visNodes:', visNodes.length, 'visEdges:', visEdges.length);
-        
+                
         this.nodes.clear();
         this.nodes.add(visNodes);
         this.edges.clear();
@@ -517,7 +504,6 @@ class GraphVisualizer {
         if (!this.network) return new Map();
 
         const positions = this.getCurrentPositions();
-        console.log('GraphVisualizer: Fixed positions for', positions.size, 'nodes');
         
         // Return positions so they can be sent to backend
         return positions;

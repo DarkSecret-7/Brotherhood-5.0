@@ -439,7 +439,6 @@ class DatabaseStateManager {
             // Frontend draft -> Transformer -> backend payload
             const backendPayload = this.snapshotsTransformer.transformSnapshotToBackend(workspaceDraft);
             backendPayload.version_label = workspaceDraft.versionLabel.trim();
-            backendPayload.is_public = !!workspaceDraft.isPublic;
             
             // Add author data (only user_uuid is mandatory)
             backendPayload.created_by = {
@@ -458,6 +457,7 @@ class DatabaseStateManager {
             if (shouldOverwrite) {
                 savedBackendSnapshot = await this.snapshotsApiService.updateSnapshot(overwriteTargetUuid, backendPayload);
             } else {
+                backendPayload.is_public = false;         // Initiatialise with false
                 savedBackendSnapshot = await this.snapshotsApiService.createSnapshot(backendPayload);
             }
 
@@ -639,4 +639,5 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { DatabaseStateManager, databaseStateManager };
 }
+
 
