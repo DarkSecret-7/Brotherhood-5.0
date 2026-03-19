@@ -15,8 +15,9 @@ COPY cli.py .
 COPY self_assessment/ ./self_assessment/
 COPY start-services.sh /app/start-services.sh
 
-# Copy .env file for development (Render uses its own environment variables)
-COPY .env .env
+# Copy .env file for development only if it exists
+# Render uses its own environment variables from render.yaml
+COPY --chown=app:app .env* ./
 
 # Make startup script executable
 RUN chmod +x /app/start-services.sh
