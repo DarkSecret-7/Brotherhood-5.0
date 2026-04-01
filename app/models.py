@@ -67,7 +67,7 @@ class Node(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     snapshot_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="CASCADE"), index=True, nullable=False)
-    domain_id = Column(Integer, ForeignKey("domains.id"), index=True, nullable=True)
+    domain_id = Column(Integer, ForeignKey("domains.id", ondelete="SET NULL"), index=True, nullable=True)
     
     # The ID used by the user in the graph (1, 2, 3...)
     local_id = Column(Integer, index=True, nullable=False)
@@ -88,6 +88,7 @@ class SourceFragment(Base):
     __tablename__ = "source_fragments"
 
     id = Column(Integer, primary_key=True, index=True)
+    public_uuid = Column(UUID(as_uuid=True), unique=True, index=True, nullable=False, server_default=text("gen_random_uuid()"))
     node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), index=True, nullable=False)
     bib_id = Column(Integer, ForeignKey("bibliographies.id", ondelete="CASCADE"), index=True, nullable=False)
 

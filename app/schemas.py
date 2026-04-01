@@ -51,10 +51,16 @@ class SourceBase(BibliographySafeRead):             # Now Bibliography must be c
     fragment_end: Optional[str] = None
 
 class SourceCreate(SourceBase):
-    pass
+    updated: Optional[bool] = False  # True if source was modified (for delta updates)
+    deleted: Optional[bool] = False  # True if source should be deleted
+    source_uuid: Optional[UUID] = None  # UUID for identifying individual source fragments
+
+    class Config:
+        from_attributes = True
 
 class SourceRead(SourceBase):
     bib_hash: str
+    source_uuid: UUID  # UUID for identifying individual source fragments
 
     class Config:
         from_attributes = True
@@ -115,6 +121,8 @@ class NodeUpdate(NodeBase):
 
 class NodeCreate(NodeBase):
     source_items: Optional[List[SourceCreate]] = []
+    updated: Optional[bool] = False  # True if node was modified
+    deleted: Optional[bool] = False  # True if node should be deleted
 
 class NodeRead(NodeBase):
     snapshot_uuid: Optional[UUID] = None
@@ -128,7 +136,9 @@ class DomainBase(BaseModel):
     parent_id: Optional[int] = None
 
 class DomainCreate(DomainBase):
-    snapshot_uuid: UUID
+    snapshot_uuid: Optional[UUID] = None
+    updated: Optional[bool] = False  # True if domain was modified
+    deleted: Optional[bool] = False  # True if domain should be deleted
 
 class DomainRead(DomainCreate):
     snapshot_uuid: Optional[UUID] = None
@@ -178,7 +188,9 @@ class UserPasswordUpdate(BaseModel):
     old_password: str
     new_password: str
 
-class UserRead(UserProfileUpdate):
+class UserRead(UserBase):
+    user_uuid: UUID
+    username: Optional[str] = None
     is_active: Optional[bool] = None
     created_at: Optional[datetime] = None
 

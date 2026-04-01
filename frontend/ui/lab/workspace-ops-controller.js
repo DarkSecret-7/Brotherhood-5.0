@@ -100,7 +100,7 @@ class WorkspaceOpsController {
         // Set parent to common parent of selected items
         if (hasSelections) {
             const commonParent = this.stateManager.getCommonParentFromSelection();
-            if (commonParent !== null) {
+            if (commonParent !== false) {
                 domainData.parentId = commonParent;
             } else {
                 this.stateManager.showMessage('No common parent found for selected items', 'error');
@@ -120,7 +120,7 @@ class WorkspaceOpsController {
                 this.stateManager.showMessage('Domain added successfully', 'success');
             }
 
-            this.stateManager.toggleModal('addDomain', false);
+            this.stateManager.toggleModal('createDomain', false);
         } catch (error) {
             this.stateManager.showMessage(error.message, 'error');
         }
@@ -351,6 +351,34 @@ class WorkspaceOpsController {
         this.stateManager.showMessage(`Domain ejected to ${destination}`, 'success');
     }
 
+    restoreNode(nodeId) {
+        // Check if parent domain is not marked for delete
+        const node = this.stateManager.state.nodes.find(n => n.id === nodeId);
+        if (node) {
+            const parentDomain = this.stateManager.state.domains.find(d => d.id === node.domainId);
+            if (parentDomain && parentDomain._isDeleted) {
+                this.stateManager.showMessage('Cannot restore node: parent domain is marked for deletion', 'error');
+                return;
+            }
+        }
+
+        this.stateManager.restoreNode(nodeId);
+    }
+
+    restoreDomain(domainId) {
+        // Check if parent domain is not marked for delete
+        const domain = this.stateManager.state.domains.find(d => d.id === domainId);
+        if (domain) {
+            const parentDomain = this.stateManager.state.domains.find(d => d.id === domain.parentId);
+            if (parentDomain && parentDomain._isDeleted) {
+                this.stateManager.showMessage('Cannot restore domain: parent domain is marked for deletion', 'error');
+                return;
+            }
+        }
+
+        this.stateManager.restoreDomain(domainId);
+    }
+
     /**
      * Handle add domain
      */
@@ -360,10 +388,13 @@ class WorkspaceOpsController {
         
         if (hasSelections) {
             // Check if selected items have a common parent
-            if (this.stateManager.getCommonParentFromSelection() === null) {
+            /*if (this.stateManager.getCommonParentFromSelection() === false) {
                 this.stateManager.showMessage('Cannot group items: selected items must have a common parent', 'error');
                 return;
-            }
+            }*/
+
+           console.log("Has Selections");
+           
         }
         
         // Open create domain modal via state manager
@@ -374,6 +405,8 @@ class WorkspaceOpsController {
      * Handle save snapshot
      */
     async handleSaveSnapshot() {
+        console.log("Saving...");
+        
         // Get version label from UI - need to access the element
         const versionLabelElement = document.getElementById('version-label');
         const versionLabel = versionLabelElement ? versionLabelElement.value.trim() : '';
@@ -449,6 +482,7 @@ class WorkspaceOpsController {
             }
 
             // Normal save (no overwrite)
+            console.log('workspaceDraft', workspaceDraft);
             const savedSnapshot = await this.databaseStateManager.saveWorkspaceSnapshot(workspaceDraft);
 
             // Keep workspace synced to canonical saved snapshot
@@ -506,3 +540,4 @@ class WorkspaceOpsController {
 }
 
 window.WorkspaceOpsController = WorkspaceOpsController;
+

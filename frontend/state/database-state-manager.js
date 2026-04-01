@@ -350,7 +350,8 @@ class DatabaseStateManager {
     }
 
     /**
-     * Save graph changes
+     * Save graph changes (metadata only update)
+     * Delegates to transformer for API orchestration.
      */
     async saveGraphChanges(newLabel, isPublic) {
         const currentSnapshot = this.getCurrentGraphActionSnapshot();
@@ -373,34 +374,33 @@ class DatabaseStateManager {
                 throw new Error('Current snapshot is missing UUID');
             }
 
-            // API -> Transformer -> State/operation payload
-            const backendSnapshot = await this.snapshotsApiService.getSnapshot(snapshotUuid, 'fetch');
-            const frontendSnapshot = this.snapshotsTransformer.transformSnapshotFromBackend(backendSnapshot);
+            // Build workspace draft for metadata-only update
+            const workspaceDraft = {
+                versionLabel: newLabel.trim(),
+                isPublic: !!isPublic,
+                nodes: [],
+                domains: [],
+                currentSnapshotUuid: snapshotUuid,
+                overwrite: true
+            };
 
-            if (!frontendSnapshot || !frontendSnapshot.uuid) {
-                throw new Error('Could not transform snapshot for update');
-            }
+            // Delegate to transformer - it handles transformation + API call + response transformation
+            const savedFrontendSnapshot = await this.snapshotsTransformer.saveSnapshot(workspaceDraft, {
+                currentSnapshotUuid: snapshotUuid,
+                overwrite: true,
+                metadataOnly: true
+            });
 
-            frontendSnapshot.versionLabel = newLabel.trim();
-            frontendSnapshot.isPublic = !!isPublic;
-
-            const backendUpdatePayload = this.snapshotsTransformer.transformSnapshotToBackend(frontendSnapshot);
-            backendUpdatePayload.version_label = frontendSnapshot.versionLabel;
-            backendUpdatePayload.is_public = frontendSnapshot.isPublic;
-
-            const updatedBackendSnapshot = await this.snapshotsApiService.updateSnapshot(snapshotUuid, backendUpdatePayload);
-            const updatedFrontendSnapshot = this.snapshotsTransformer.transformSnapshotFromBackend(updatedBackendSnapshot);
-
-            if (!updatedFrontendSnapshot || !updatedFrontendSnapshot.uuid) {
+            if (!savedFrontendSnapshot || !savedFrontendSnapshot.uuid) {
                 throw new Error('Updated snapshot response missing UUID');
             }
 
-            this.setCurrentGraphActionSnapshot(updatedFrontendSnapshot);
+            this.setCurrentGraphActionSnapshot(savedFrontendSnapshot);
             
             // Refresh list
             await this.refreshSnapshots(true);
             
-            return updatedFrontendSnapshot;
+            return savedFrontendSnapshot;
         } catch (error) {
             this.setError('Failed to save changes: ' + error.message);
             throw error;
@@ -410,8 +410,9 @@ class DatabaseStateManager {
     }
 
     /**
-     * Save workspace draft by delegating persistence to database management orchestration.
+     * Save workspace draft by delegating persistence to transformer.
      * This method is the only save entry point workspace should use.
+     * Transformer handles: data conversion + API call + response transformation.
      * @param {Object} workspaceDraft - Raw workspace draft payload
      * @returns {Object} Transformed saved snapshot
      */
@@ -430,44 +431,36 @@ class DatabaseStateManager {
         this.clearError();
 
         try {
-            // Get current user for author data
+            // Get current user for author data (transformer will also check this)
             const currentUserUuid = window.authApiService?.getCurrentUserUuid();
             if (!currentUserUuid) {
                 throw new Error('User not authenticated');
             }
 
-            // Frontend draft -> Transformer -> backend payload
-            const backendPayload = this.snapshotsTransformer.transformSnapshotToBackend(workspaceDraft);
-            backendPayload.version_label = workspaceDraft.versionLabel.trim();
-            
-            // Add author data (only user_uuid is mandatory)
-            backendPayload.created_by = {
-                user_uuid: currentUserUuid
-            };
-            
-            console.log('Workspace save payload:', backendPayload);
-
+            // Delegate to transformer - it handles transformation + API call + response transformation
             const overwriteTargetUuid = workspaceDraft.currentSnapshotUuid || null;
             const shouldOverwrite = Boolean(workspaceDraft.overwrite && overwriteTargetUuid);
+            
             if (workspaceDraft.overwrite && !overwriteTargetUuid) {
                 console.warn('Overwrite requested without existing snapshot UUID. Falling back to create-new.');
             }
 
-            let savedBackendSnapshot;
-            if (shouldOverwrite) {
-                savedBackendSnapshot = await this.snapshotsApiService.updateSnapshot(overwriteTargetUuid, backendPayload);
-            } else {
-                backendPayload.is_public = false;         // Initiatialise with false
-                savedBackendSnapshot = await this.snapshotsApiService.createSnapshot(backendPayload);
-            }
+            console.log('workspaceDraft', workspaceDraft);
+            const savedFrontendSnapshot = await this.snapshotsTransformer.saveSnapshot(workspaceDraft, {
+                currentSnapshotUuid: overwriteTargetUuid,
+                overwrite: shouldOverwrite
+            });
 
-            // Backend response -> Transformer -> frontend state shape
-            const savedFrontendSnapshot = this.snapshotsTransformer.transformSnapshotFromBackend(savedBackendSnapshot);
             if (!savedFrontendSnapshot || !savedFrontendSnapshot.uuid) {
                 throw new Error('Saved snapshot response missing UUID');
             }
 
-            //this.setCurrentGraphActionSnapshot(savedFrontendSnapshot);
+            // Clear dirty flags and purge deleted items after successful save
+            if (window.labStateManager) {
+                window.labStateManager.clearDirtyFlags();
+                window.labStateManager.purgeDeletedItems();
+            }
+
             this.stagePendingWorkspaceSnapshot(savedFrontendSnapshot);
             this.clearCachedSnapshots();
 
@@ -511,6 +504,7 @@ class DatabaseStateManager {
 
     /**
      * Import graph (overwrite existing)
+     * Delegates to transformer for proper response transformation.
      */
     async importGraph(file) {
         if (!file) {
@@ -523,7 +517,7 @@ class DatabaseStateManager {
         this.clearError();
         
         try {
-            const result = await this.snapshotsApiService.importSnapshot(file, true);
+            const result = await this.snapshotsTransformer.importSnapshot(file, true);
             
             // Refresh list
             await this.refreshSnapshots(true);
@@ -570,6 +564,7 @@ class DatabaseStateManager {
 
     /**
      * Global import graph
+     * Delegates to transformer for proper response transformation.
      */
     async globalImportGraph(file, overwrite) {
         if (!file) {
@@ -582,7 +577,7 @@ class DatabaseStateManager {
         this.clearError();
         
         try {
-            const result = await this.snapshotsApiService.importSnapshot(file, overwrite);
+            const result = await this.snapshotsTransformer.importSnapshot(file, overwrite);
             
             // Refresh list
             await this.refreshSnapshots(true);
@@ -639,5 +634,6 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { DatabaseStateManager, databaseStateManager };
 }
+
 
 

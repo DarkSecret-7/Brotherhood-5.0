@@ -350,8 +350,17 @@ class LabStateManager {
             isSelected: false,
             isEditing: false,
             isValid: true,
-            validationErrors: []
+            validationErrors: [],
+            _isDirty: true  // Mark as dirty for delta updates
         };
+        
+        // Mark all sources as dirty since this is a new node
+        if (newNode.sources && newNode.sources.length > 0) {
+            newNode.sources = newNode.sources.map(source => ({
+                ...source,
+                _isDirty: true
+            }));
+        }
         
         // Add node to flat structure
         this.state.nodes.push(newNode);
@@ -368,7 +377,7 @@ class LabStateManager {
     updateNode(nodeId, updates) {
         const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
         if (nodeIndex !== -1) {
-            Object.assign(this.state.nodes[nodeIndex], updates);
+            Object.assign(this.state.nodes[nodeIndex], updates, { _isDirty: true });  // Mark as dirty
             this.state.isDirty = true;
             
             this.updateGraphVisualization();
@@ -377,16 +386,55 @@ class LabStateManager {
     }
 
     /**
-     * Delete node from draft
+     * Delete node from draft (mark for deletion)
      * @param {number} nodeId - Node ID
      */
     deleteNode(nodeId) {
-        this.state.nodes = this.state.nodes.filter(node => node.id !== nodeId);
-        this.state.selectedNodes.delete(nodeId);
-        this.state.isDirty = true;
-        
-        this.updateGraphVisualization();
-        this.notifyStateChange();
+        const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
+        if (nodeIndex !== -1) {
+            // Mark for deletion instead of immediate removal
+            this.state.nodes[nodeIndex]._isDeleted = true;
+            this.state.nodes[nodeIndex]._isDirty = true;
+            this.state.selectedNodes.delete(nodeId);
+            this.state.isDirty = true;
+            
+            this.updateGraphVisualization();
+            this.notifyStateChange();
+        }
+    }
+
+    /**
+     * Restore node from deletion
+     * @param {number} nodeId - Node ID
+     */
+    restoreNode(nodeId) {
+        const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
+        if (nodeIndex !== -1) {
+            // Clear deletion flag
+            delete this.state.nodes[nodeIndex]._isDeleted;
+            this.state.nodes[nodeIndex]._isDirty = true;
+            this.state.isDirty = true;
+            
+            this.updateGraphVisualization();
+            this.notifyStateChange();
+        }
+    }
+
+    /**
+     * Restore domain from deletion
+     * @param {number} domainId - Domain ID
+     */
+    restoreDomain(domainId) {
+        const domainIndex = this.state.domains.findIndex(domain => domain.id === domainId);
+        if (domainIndex !== -1) {
+            // Clear deletion flag
+            delete this.state.domains[domainIndex]._isDeleted;
+            this.state.domains[domainIndex]._isDirty = true;
+            this.state.isDirty = true;
+            
+            this.updateGraphVisualization();
+            this.notifyStateChange(); 
+        }
     }
 
     /**
@@ -407,7 +455,8 @@ class LabStateManager {
             assessableNodeCount: 0,
             isSelected: false,
             isCollapsed: true, // Start collapsed by default
-            isEditing: false
+            isEditing: false,
+            _isDirty: true  // Mark as dirty for delta updates
         };
 
         // Add domain to flat structure
@@ -415,9 +464,6 @@ class LabStateManager {
         
         this.state.isDirty = true;
         this.notifyStateChange();
-
-        // Close create domain modal
-        this.modals.createDomain = false;
     }
 
     /**
@@ -428,7 +474,7 @@ class LabStateManager {
     updateDomain(domainId, updates) {
         const domainIndex = this.state.domains.findIndex(domain => domain.id === domainId);
         if (domainIndex !== -1) {
-            Object.assign(this.state.domains[domainIndex], updates);
+            Object.assign(this.state.domains[domainIndex], updates, { _isDirty: true });  // Mark as dirty
             this.state.isDirty = true;
             
             this.notifyStateChange();
@@ -436,22 +482,28 @@ class LabStateManager {
     }
 
     /**
-     * Delete domain from draft
+     * Delete domain from draft (mark for deletion)
      * @param {number} domainId - Domain ID
      */
     deleteDomain(domainId) {
-        this.state.domains = this.state.domains.filter(domain => domain.id !== domainId);
-        this.state.selectedDomains.delete(domainId);
-        
-        // Remove domain reference from nodes
-        this.state.nodes.forEach(node => {
-            if (node.domainId === domainId) {
-                node.domainId = null;
-            }
-        });
-        
-        this.state.isDirty = true;
-        this.notifyStateChange();
+        const domainIndex = this.state.domains.findIndex(domain => domain.id === domainId);
+        if (domainIndex !== -1) {
+            // Mark for deletion instead of immediate removal
+            this.state.domains[domainIndex]._isDeleted = true;
+            this.state.domains[domainIndex]._isDirty = true;
+            this.state.selectedDomains.delete(domainId);
+            
+            // Mark nodes as deleted
+            this.state.nodes.forEach(node => {
+                if (node.domainId === domainId) {
+                    node._isDirty = true;
+                    node._isDeleted = true;
+                }
+            });
+            
+            this.state.isDirty = true;
+            this.notifyStateChange();
+        }
     }
 
     /**
@@ -478,6 +530,107 @@ class LabStateManager {
             this.state.selectedDomains.add(domainId);
         }
         this.notifyStateChange();
+    }
+
+    /**
+     * Add source to a node
+     * @param {number} nodeId - Node ID
+     * @param {Object} sourceData - Source data
+     */
+    addSourceToNode(nodeId, sourceData) {
+        const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
+        if (nodeIndex !== -1) {
+            const newSource = {
+                ...sourceData,
+                _isDirty: true  // Mark as dirty since it's new
+            };
+            
+            if (!this.state.nodes[nodeIndex].sources) {
+                this.state.nodes[nodeIndex].sources = [];
+            }
+            this.state.nodes[nodeIndex].sources.push(newSource);
+            this.state.nodes[nodeIndex]._isDirty = true;  // Mark node as dirty too
+            this.state.isDirty = true;
+            this.notifyStateChange();
+        }
+    }
+
+    /**
+     * Update source in a node
+     * @param {number} nodeId - Node ID
+     * @param {number} sourceIndex - Source index in array
+     * @param {Object} updates - Source updates
+     */
+    updateSourceInNode(nodeId, sourceIndex, updates) {
+        const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
+        if (nodeIndex !== -1 && this.state.nodes[nodeIndex].sources) {
+            const source = this.state.nodes[nodeIndex].sources[sourceIndex];
+            if (source) {
+                Object.assign(source, updates, { _isDirty: true });  // Mark as dirty
+                this.state.nodes[nodeIndex]._isDirty = true;  // Mark node as dirty too
+                this.state.isDirty = true;
+                this.notifyStateChange();
+            }
+        }
+    }
+
+    /**
+     * Delete source from a node
+     * @param {number} nodeId - Node ID
+     * @param {number} sourceIndex - Source index in array
+     */
+    deleteSourceFromNode(nodeId, sourceIndex) {
+        const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
+        if (nodeIndex !== -1 && this.state.nodes[nodeIndex].sources) {
+            // Mark source as deleted instead of immediate removal
+            this.state.nodes[nodeIndex].sources[sourceIndex]._isDeleted = true;
+            this.state.nodes[nodeIndex].sources[sourceIndex]._isDirty = true;
+            this.state.nodes[nodeIndex]._isDirty = true;  // Mark node as dirty too
+            this.state.isDirty = true;
+            this.notifyStateChange();
+        }
+    }
+
+    /**
+     * Clear all dirty and deleted flags after successful save
+     */
+    clearDirtyFlags() {
+        // Clear flags from nodes and their sources
+        this.state.nodes.forEach(node => {
+            delete node._isDirty;
+            delete node._isDeleted;
+            // Clear source-level flags
+            if (node.sources) {
+                node.sources.forEach(source => {
+                    delete source._isDirty;
+                    delete source._isDeleted;
+                });
+            }
+        });
+        
+        // Clear flags from domains
+        this.state.domains.forEach(domain => {
+            delete domain._isDirty;
+            delete domain._isDeleted;
+        });
+    }
+
+    /**
+     * Purge deleted items from arrays after successful save
+     */
+    purgeDeletedItems() {
+        // Remove nodes marked for deletion
+        this.state.nodes = this.state.nodes.filter(node => !node._isDeleted);
+        
+        // Remove domains marked for deletion
+        this.state.domains = this.state.domains.filter(domain => !domain._isDeleted);
+        
+        // Remove sources marked for deletion from nodes
+        this.state.nodes.forEach(node => {
+            if (node.sources) {
+                node.sources = node.sources.filter(source => !source._isDeleted);
+            }
+        });
     }
 
     /**
@@ -561,6 +714,7 @@ class LabStateManager {
                 const node = this.state.nodes.find(n => n.id === item.id);
                 if (node) {
                     node.domainId = targetDomainId;
+                    node._isDirty = true;  // Mark as dirty when moved
                 }
             } else if (item.type === 'domain') {
                 // Update domain's parent
@@ -773,7 +927,10 @@ class LabStateManager {
      * @param {boolean} open - Open state
      */
     toggleModal(modalName, open = null) {
-        this.state.modals[modalName] = open !== null ? open : !this.state.modals[modalName];
+        console.log("Toggling modal: ", modalName);
+        this.state.modals[modalName] = !this.state.modals[modalName];
+        console.log("Current state: ", this.state.modals[modalName]);
+
         this.notifyStateChange();
     }
 
@@ -905,6 +1062,8 @@ class LabStateManager {
      * Notify state change listeners
      */
     notifyStateChange() {
+        console.log(this.state.currentSnapshot);
+        
         // Use only the subscribers array pattern
         if (this.subscribers && this.subscribers.length > 0) {
             this.subscribers.forEach(callback => {

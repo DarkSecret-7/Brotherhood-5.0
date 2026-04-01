@@ -122,6 +122,8 @@ class DatabaseManager {
         const snapshots = this.stateManager.getLoadedSnapshots();
         const snapshot = snapshots[index];
         if (!snapshot) return;
+
+        console.log(snapshot);
         
         this.stateManager.setCurrentGraphActionSnapshot(snapshot);
         
@@ -129,6 +131,7 @@ class DatabaseManager {
         document.getElementById('graph-action-label-input').value = snapshot.versionLabel || ('v' + snapshot.uuid);
         
         // Set Info
+        document.getElementById('graph-action-uuid').textContent = snapshot.uuid;
         document.getElementById('graph-action-created').textContent = snapshot.createdAt ? snapshot.createdAt.toLocaleString() : 'Unknown';
         document.getElementById('graph-action-updated').textContent = snapshot.lastUpdated ? snapshot.lastUpdated.toLocaleString() : 'Unknown';
         document.getElementById('graph-action-nodes').textContent = snapshot.nodeCount || 0;
@@ -305,3 +308,4 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+

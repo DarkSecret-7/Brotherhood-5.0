@@ -1,6 +1,7 @@
 /**
  * Gallery Graph Processor - Convert gallery data to visualization format
  * Processes nodes and domains from gallery format for GraphVisualizer
+ * DEPRECATED: Use GraphVisualizer directly with gallery data
  */
 class GalleryGraphProcessor {
     

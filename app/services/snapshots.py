@@ -57,31 +57,41 @@ class SnapshotService:
 
     @staticmethod
     def update_snapshot(db: Session, snapshot_uuid: UUID, snapshot_data: schemas.GraphSnapshotUpdate) -> schemas.GraphSnapshotRead:
-        """Update snapshot with business logic - supports metadata-only updates"""
+        """Update snapshot with delta processing - only updates changed items"""
         db_snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
         if not db_snapshot:
             raise ValueError("Snapshot not found")
-            
-        # Explicitly update last_updated
+        
         db_snapshot.last_updated = datetime.now(timezone.utc)
         
-        # Do not repopulate unless metadata_only is False
+        # Check if any nodes/domains have the updated/deleted flags
+        has_delta_flags = any(
+            getattr(n, 'updated', False) or getattr(n, 'deleted', False)
+            for n in (snapshot_data.nodes or [])
+        ) or any(
+            getattr(d, 'updated', False) or getattr(d, 'deleted', False)
+            for d in (snapshot_data.domains or [])
+        )
+        
         if not snapshot_data.metadata_only:
-            # Full update behavior - clear and repopulate nodes/domains
-            crud.snapshots.clear_snapshot_nodes(db, db_snapshot.id)
-            crud.snapshots.clear_snapshot_domains(db, db_snapshot.id)
-            crud.snapshots.clear_snapshot_redirects(db, db_snapshot.id)
-            
-            # Re-populate with new data
-            SnapshotService._populate_snapshot_data(db, db_snapshot.id, snapshot_data)
-            
+            if has_delta_flags:
+                # Use delta processing - only update changed items
+                SnapshotService._populate_snapshot_data_delta(db, db_snapshot.id, snapshot_data)
+            else:
+                # Fallback to full repopulate for backward compatibility
+                # or when no delta flags are present (e.g., import, full overwrite)
+                crud.snapshots.clear_snapshot_nodes(db, db_snapshot.id)
+                crud.snapshots.clear_snapshot_domains(db, db_snapshot.id)
+                crud.snapshots.clear_snapshot_redirects(db, db_snapshot.id)
+                SnapshotService._populate_snapshot_data(db, db_snapshot.id, snapshot_data)
+        
         # Update metadata if provided
         update_data = {}
         if snapshot_data.is_public is not None:
             update_data['is_public'] = snapshot_data.is_public
         if snapshot_data.version_label is not None:
             update_data['version_label'] = snapshot_data.version_label
-            
+        
         if update_data:
             crud.snapshots.update_snapshot_record(db, db_snapshot.id, **update_data)
         
@@ -215,6 +225,13 @@ class SnapshotService:
         db_nodes = []
         
         for node_data in snapshot_data.nodes:
+            # Get actual database domain_id from the mapping (domains already created with IDs)
+            domain_db_id = None
+            if node_data.domain_id is not None:
+                domain_obj = domain_local_id_to_obj.get(node_data.domain_id)
+                if domain_obj:
+                    domain_db_id = domain_obj.id
+            
             # Create node objects without adding to session yet
             db_node = models.Node(
                 snapshot_id=snapshot_id,
@@ -224,6 +241,7 @@ class SnapshotService:
                 prerequisite=node_data.prerequisite,
                 mentions=node_data.mentions,
                 assessable=node_data.assessable,
+                domain_id=domain_db_id,
                 x=node_data.x,
                 y=node_data.y
             )
@@ -246,20 +264,257 @@ class SnapshotService:
             crud.snapshots.bulk_create_redirects(db, db_redirects)
 
     @staticmethod
+    def _populate_snapshot_data_delta(db: Session, snapshot_id: int, snapshot_data):
+        """Populate snapshot with delta updates - only process changed items"""
+        
+        # --- Domains Delta Processing ---
+        domain_local_id_to_obj = {}
+        
+        for d_data in snapshot_data.domains or []:
+            local_id = d_data.local_id
+            
+            if getattr(d_data, 'deleted', False):
+                # Delete domain and cascade to nodes
+                crud.snapshots.delete_domain_by_local_id(db, snapshot_id, local_id)
+                continue
+            
+            if getattr(d_data, 'updated', False):
+                # Check if domain exists
+                existing_domain = crud.snapshots.get_domain_by_local_id(db, snapshot_id, local_id)
+                
+                if existing_domain:
+                    # Update existing domain
+                    crud.snapshots.update_domain_record(
+                        db, existing_domain,
+                        title=d_data.title,
+                        description=d_data.description
+                        # parent_id handled separately below
+                    )
+                    domain_local_id_to_obj[local_id] = existing_domain
+                else:
+                    # Create new domain
+                    db_domain = models.Domain(
+                        snapshot_id=snapshot_id,
+                        local_id=local_id,
+                        title=d_data.title,
+                        description=d_data.description
+                    )
+                    crud.snapshots.create_domain_record(db, db_domain)
+                    domain_local_id_to_obj[local_id] = db_domain
+            else:
+                # Unchanged - just load for reference
+                existing_domain = crud.snapshots.get_domain_by_local_id(db, snapshot_id, local_id)
+                if existing_domain:
+                    domain_local_id_to_obj[local_id] = existing_domain
+        
+        # Handle parent relationships for all domains (updated or not)
+        for d_data in snapshot_data.domains or []:
+            if not getattr(d_data, 'deleted', False) and d_data.parent_id is not None:
+                parent_domain = domain_local_id_to_obj.get(d_data.parent_id)
+                current_domain = domain_local_id_to_obj.get(d_data.local_id)
+                if parent_domain and current_domain:
+                    current_domain.parent = parent_domain
+        
+        # --- Nodes Delta Processing ---
+        for node_data in snapshot_data.nodes:
+            local_id = node_data.local_id
+            
+            if getattr(node_data, 'deleted', False):
+                # Delete node - source fragments cascade delete via SQLAlchemy
+                crud.snapshots.delete_node_by_local_id(db, snapshot_id, local_id)
+                continue
+            
+            # Get domain database ID from local_id
+            domain_db_id = None
+            if node_data.domain_id is not None:
+                domain_obj = domain_local_id_to_obj.get(node_data.domain_id)
+                if domain_obj:
+                    domain_db_id = domain_obj.id
+            
+            if getattr(node_data, 'updated', False):
+                existing_node = crud.snapshots.get_node_by_local_id(db, snapshot_id, local_id)
+                
+                if existing_node:
+                    # Process individual source updates (only if node is updated)
+                    SnapshotService._process_source_updates(db, existing_node, node_data.source_items or [])
+                    
+                    # Update node fields
+                    crud.snapshots.update_node_record(
+                        db, existing_node,
+                        title=node_data.title,
+                        description=node_data.description,
+                        prerequisite=node_data.prerequisite,
+                        mentions=node_data.mentions,
+                        assessable=node_data.assessable,
+                        domain_id=domain_db_id,
+                        x=node_data.x,
+                        y=node_data.y
+                    )
+                else:
+                    # Create new node
+                    db_node = models.Node(
+                        snapshot_id=snapshot_id,
+                        local_id=local_id,
+                        title=node_data.title,
+                        description=node_data.description,
+                        prerequisite=node_data.prerequisite,
+                        mentions=node_data.mentions,
+                        assessable=node_data.assessable,
+                        domain_id=domain_db_id,
+                        x=node_data.x,
+                        y=node_data.y
+                    )
+                    crud.snapshots.create_node_record(db, db_node)
+                    db.flush()  # Need to flush to get the node.id for source fragments
+                    
+                    # Create source fragments for new node
+                    SnapshotService._create_source_fragments(db, db_node, node_data.source_items or [])
+            # Note: Sources are only processed when node is marked as updated.
+            # Frontend must mark node as dirty when modifying sources.
+
+    @staticmethod
+    def _process_source_updates(db: Session, db_node: models.Node, source_items: list):
+        """Process individual source updates - only update changed sources using UUIDs"""
+        from ..crud import bibliography as bib_crud
+        from ..utils import generate_hash
+        
+        # Build mapping of UUID -> source fragment for this node
+        existing_by_uuid = {}
+        for sf in db_node.source_frags:
+            if sf.public_uuid:
+                existing_by_uuid[str(sf.public_uuid)] = sf
+        
+        # Track which sources to keep (not deleted)
+        sources_to_keep = set()
+        
+        for src in source_items:
+            source_uuid = getattr(src, 'source_uuid', None)
+            
+            # Handle explicit deletion
+            if getattr(src, 'deleted', False):
+                if source_uuid and str(source_uuid) in existing_by_uuid:
+                    existing_frag = existing_by_uuid[str(source_uuid)]
+                    crud.snapshots.delete_source_fragment(db, existing_frag.id)
+                continue
+            
+            # Skip sources not marked as updated (no changes)
+            if not getattr(src, 'updated', False):
+                continue
+            
+            existing_frag = None
+            
+            # Try to find by UUID if provided
+            if source_uuid:
+                existing_frag = existing_by_uuid.get(str(source_uuid))
+            
+            # Find or create bibliography
+            bib = bib_crud.get_bibliography_by_hash(db, getattr(src, 'public_hash', None))
+            if not bib:
+                bib = bib_crud.create_bibliography_record(
+                    db,
+                    title=src.title,
+                    author=getattr(src, 'author', None),
+                    year=getattr(src, 'year', None),
+                    bib_type=getattr(src, 'bib_type', 'PDF'),
+                    url=getattr(src, 'url', None),
+                    public_hash=getattr(src, 'public_hash', None) or generate_hash()
+                )
+            
+            if existing_frag:
+                # Update existing source fragment
+                crud.snapshots.update_source_fragment(
+                    db,
+                    existing_frag,
+                    bib_id=bib.id,
+                    fragment_start=getattr(src, 'fragment_start', None),
+                    fragment_end=getattr(src, 'fragment_end', None)
+                )
+                sources_to_keep.add(existing_frag.id)
+            else:
+                # Create new source fragment (UUID auto-generated by DB)
+                new_frag = crud.snapshots.create_source_fragment(
+                    db,
+                    node_id=db_node.id,
+                    bib_id=bib.id,
+                    fragment_start=getattr(src, 'fragment_start', None),
+                    fragment_end=getattr(src, 'fragment_end', None)
+                )
+                db.flush()
+                sources_to_keep.add(new_frag.id)
+
+    @staticmethod
+    def _create_source_fragments(db: Session, db_node: models.Node, source_items: list):
+        """Create source fragments for a node"""
+        from ..crud import bibliography as bib_crud
+        from ..utils import generate_hash
+        
+        for src in source_items:
+            # Find or create bibliography
+            bib = bib_crud.get_bibliography_by_hash(db, getattr(src, 'public_hash', None))
+            if not bib:
+                bib = bib_crud.create_bibliography_record(
+                    db,
+                    title=src.title,
+                    author=getattr(src, 'author', None),
+                    year=getattr(src, 'year', None),
+                    bib_type=getattr(src, 'bib_type', 'PDF'),
+                    url=getattr(src, 'url', None),
+                    public_hash=getattr(src, 'public_hash', None) or generate_hash()
+                )
+            
+            # Create source fragment
+            bib_crud.create_source_fragment_record(
+                db,
+                node_id=db_node.id,
+                bib_id=bib.id,
+                fragment_start=getattr(src, 'fragment_start', None),
+                fragment_end=getattr(src, 'fragment_end', None)
+            )
+
+    @staticmethod
     def _convert_to_read_schema(db_snapshot) -> schemas.GraphSnapshotRead:
         """Convert database model to read schema - business logic"""
+        # Build mapping of domain db_id -> local_id for node domain_id conversion
+        domain_db_id_to_local = {}
+        for domain in db_snapshot.domains:
+            domain_db_id_to_local[domain.id] = domain.local_id
+        
         # Convert nodes to read schemas
         nodes = []
         for node in db_snapshot.nodes:
+            # Convert database domain_id to local_id for frontend
+            domain_local_id = None
+            if node.domain_id is not None:
+                domain_local_id = domain_db_id_to_local.get(node.domain_id)
+            
+            # Convert source fragments to SourceRead with source_uuid
+            source_items = []
+            for sf in node.source_frags:
+                source_items.append(schemas.SourceRead(
+                    snapshot_uuid=db_snapshot.public_uuid,
+                    node_id=node.local_id,
+                    fragment_start=sf.fragment_start,
+                    fragment_end=sf.fragment_end,
+                    source_uuid=sf.public_uuid,
+                    bib_hash=sf.bibliography.public_hash,
+                    title=sf.bibliography.title,
+                    author=sf.bibliography.author,
+                    year=sf.bibliography.year,
+                    bib_type=sf.bibliography.bib_type,
+                    url=sf.bibliography.url,
+                ))
+            
             nodes.append(schemas.NodeRead(
                 local_id=node.local_id,
                 title=node.title,
                 description=node.description,
                 prerequisite=node.prerequisite,
                 mentions=node.mentions,
+                domain_id=domain_local_id,
                 x=node.x,
                 y=node.y,
-                assessable=node.assessable
+                assessable=node.assessable,
+                source_items=source_items
             ))
         
         # Convert domains to read schemas

@@ -71,6 +71,91 @@ def delete_snapshot_by_label(db: Session, version_label: str):
         return True
     return False
 
+
+def get_node_by_local_id(db: Session, snapshot_id: int, local_id: int):
+    """Get node by local_id within a snapshot"""
+    return db.query(models.Node).filter(
+        models.Node.snapshot_id == snapshot_id,
+        models.Node.local_id == local_id
+    ).first()
+
+
+def get_domain_by_local_id(db: Session, snapshot_id: int, local_id: int):
+    """Get domain by local_id within a snapshot"""
+    return db.query(models.Domain).filter(
+        models.Domain.snapshot_id == snapshot_id,
+        models.Domain.local_id == local_id
+    ).first()
+
+
+def update_node_record(db: Session, db_node: models.Node, **kwargs):
+    """Update existing node record"""
+    for key, value in kwargs.items():
+        if hasattr(db_node, key):
+            setattr(db_node, key, value)
+    db.flush()
+
+
+def update_domain_record(db: Session, db_domain: models.Domain, **kwargs):
+    """Update existing domain record"""
+    for key, value in kwargs.items():
+        if hasattr(db_domain, key):
+            setattr(db_domain, key, value)
+    db.flush()
+
+
+def delete_node_by_local_id(db: Session, snapshot_id: int, local_id: int):
+    """Delete specific node by local_id"""
+    db.query(models.Node).filter(
+        models.Node.snapshot_id == snapshot_id,
+        models.Node.local_id == local_id
+    ).delete(synchronize_session=False)
+
+
+def delete_domain_by_local_id(db: Session, snapshot_id: int, local_id: int):
+    """Delete specific domain by local_id"""
+    db.query(models.Domain).filter(
+        models.Domain.snapshot_id == snapshot_id,
+        models.Domain.local_id == local_id
+    ).delete(synchronize_session=False)
+
+
+def clear_node_source_fragments(db: Session, node_id: int):
+    """Delete all source fragments for a specific node"""
+    db.query(models.SourceFragment).filter(
+        models.SourceFragment.node_id == node_id
+    ).delete(synchronize_session=False)
+
+
+def get_source_fragment_by_uuid(db: Session, source_uuid: UUID):
+    """Get source fragment by its public UUID"""
+    return db.query(models.SourceFragment).filter(
+        models.SourceFragment.public_uuid == source_uuid
+    ).first()
+
+def update_source_fragment(db: Session, source_frag: models.SourceFragment, **kwargs):
+    """Update existing source fragment"""
+    for key, value in kwargs.items():
+        if hasattr(source_frag, key):
+            setattr(source_frag, key, value)
+    db.flush()
+
+
+def delete_source_fragment(db: Session, source_frag_id: int):
+    """Delete specific source fragment by ID"""
+    db.query(models.SourceFragment).filter(
+        models.SourceFragment.id == source_frag_id
+    ).delete(synchronize_session=False)
+
+
+def create_source_fragment(db: Session, **kwargs):
+    """Create a new source fragment record"""
+    db_source_fragment = models.SourceFragment(**kwargs)
+    db.add(db_source_fragment)
+    db.flush()
+    return db_source_fragment
+
+
 def create_authorship_record(db: Session, graph_id: int, user_id: int, role: str = None):
     """Create graph authorship record"""
     db_authorship = models.GraphAuthorship(

@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *$py.class
 .venv/
@@ -15,6 +16,7 @@ brotherhood.db
 .vscode/
 .idea/
 AGENTS.md
+.windsurf/
 
 # OS
 .DS_Store

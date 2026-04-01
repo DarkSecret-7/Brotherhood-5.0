@@ -118,7 +118,9 @@ class SnapshotsTransformer {
                 domain_id: node.domainId,
                 x: node.position?.x || null,
                 y: node.position?.y || null,
-                assessable: node.assessable
+                assessable: node.assessable,
+                updated: node._isDirty || false,
+                deleted: node._isDeleted || false
             };
             
             return backendNode;
@@ -148,19 +150,99 @@ class SnapshotsTransformer {
     }
 
     /**
+     * Save snapshot to backend - creates new or updates existing
+     * This method orchestrates the full save operation: transformation + API call + response transformation
+     * @param {Object} workspaceDraft - Raw workspace draft from state manager
+     * @param {Object} options - Save options { currentSnapshotUuid, overwrite }
+     * @returns {Object} Saved snapshot in frontend format
+     */
+    async saveSnapshot(workspaceDraft, options = {}) {
+        // Get current user for author data
+        const currentUserUuid = window.authApiService?.getCurrentUserUuid();
+        if (!currentUserUuid) {
+            throw new Error('User not authenticated');
+        }
+
+        // Build backend payload
+        const metadataOnly = options.metadataOnly || false;
+        const backendPayload = this.transformSnapshotToBackend(workspaceDraft, metadataOnly);
+        backendPayload.version_label = workspaceDraft.versionLabel?.trim() || '';
+        backendPayload.is_public = workspaceDraft.isPublic || false;
+        
+        // Add base_uuid if present
+        if (workspaceDraft.baseUuid) {
+            backendPayload.base_uuid = workspaceDraft.baseUuid;
+        }
+        
+        // Add author data matching UserRead structure
+        backendPayload.created_by = {
+            user_uuid: currentUserUuid
+        };
+
+        console.log('backendPayload', backendPayload);
+
+        // Determine create vs update
+        const overwriteTargetUuid = options.currentSnapshotUuid || null;
+        const shouldOverwrite = Boolean(options.overwrite && overwriteTargetUuid);
+
+        let savedBackendSnapshot;
+        if (shouldOverwrite) {
+            // For updates, we need to include snapshot_uuid in domains
+            if (backendPayload.domains) {
+                backendPayload.domains = backendPayload.domains.map(domain => ({
+                    ...domain,
+                    snapshot_uuid: overwriteTargetUuid
+                }));
+            }
+            savedBackendSnapshot = await window.snapshotsApiService.updateSnapshot(overwriteTargetUuid, backendPayload);
+        } else {
+            // For new snapshots, domains don't have snapshot_uuid yet (assigned by backend)
+            backendPayload.is_public = false;
+            savedBackendSnapshot = await window.snapshotsApiService.createSnapshot(backendPayload);
+        }
+
+        // Transform response back to frontend format
+        return this.transformSnapshotFromBackend(savedBackendSnapshot);
+    }
+
+    /**
+     * Import snapshot from file and transform response
+     * @param {File} file - The .knw file to import
+     * @param {boolean} overwrite - Whether to overwrite if exists
+     * @returns {Object} Transformed snapshot in frontend format
+     */
+    async importSnapshot(file, overwrite = false) {
+        const backendSnapshot = await window.snapshotsApiService.importSnapshot(file, overwrite);
+        // Transform backend response to frontend format
+        return this.transformSnapshotFromBackend(backendSnapshot);
+    }
+
+    /**
      * Transform frontend domains to backend format
      * @param {Array} frontendDomains - Frontend domains array
+     * @param {string} snapshotUuid - Optional snapshot UUID to include in domains
      * @returns {Array} Backend domains array
      */
-    transformDomainsToBackend(frontendDomains) {
+    transformDomainsToBackend(frontendDomains, snapshotUuid = null) {
         if (!Array.isArray(frontendDomains)) return [];
 
-        return frontendDomains.map(domain => ({
-            local_id: domain.id,
-            title: domain.title,
-            description: domain.description,
-            parent_id: domain.parentId
-        }));
+        return frontendDomains.map(domain => {
+            const backendDomain = {
+                local_id: domain.id,
+                title: domain.title,
+                description: domain.description,
+                parent_id: domain.parentId,
+                updated: domain._isDirty || false,
+                deleted: domain._isDeleted || false
+            };
+            
+            // Include snapshot_uuid if provided (required for updates)
+            if (snapshotUuid) {
+                backendDomain.snapshot_uuid = snapshotUuid;
+            }
+            
+            return backendDomain;
+        });
     }
 
     /**
@@ -173,13 +255,14 @@ class SnapshotsTransformer {
 
         return backendSources.map(source => ({
             title: source.title,
-            type: source.bib_type || 'PDF',
+            type: source.bib_type || 'Other',
             author: source.author || '',
             year: source.year || null,
             url: source.url || '',
             fragmentStart: source.fragment_start || '',
             fragmentEnd: source.fragment_end || '',
-            hash: source.bib_hash || null
+            hash: source.bib_hash || null,
+            sourceUuid: source.source_uuid || null
         }));
     }
 
@@ -198,7 +281,11 @@ class SnapshotsTransformer {
             year: source.year,
             url: source.url,
             fragment_start: source.fragmentStart,
-            fragment_end: source.fragmentEnd
+            fragment_end: source.fragmentEnd,
+            public_hash: source.hash || null,
+            source_uuid: source.sourceUuid || null,
+            updated: source._isDirty || false,
+            deleted: source._isDeleted || false
         }));
     }
 
@@ -375,3 +462,5 @@ if (typeof module !== 'undefined' && module.exports) {
     window.SnapshotsTransformer = SnapshotsTransformer;
     window.snapshotsTransformer = snapshotsTransformer;
 }
+
+

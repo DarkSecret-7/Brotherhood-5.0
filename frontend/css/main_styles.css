@@ -776,6 +776,52 @@ input:checked + .slider:before {
     font-weight: 600;
 }
 
+/* Status badges for dirty/deleted states */
+.status-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-badge.dirty {
+    color: #f57c00;
+    font-size: 0.9em;
+}
+
+.status-badge.deleted {
+    font-size: 0.9em;
+}
+
+/* Node state styling */
+.tree-item.node-dirty, .tree-item.domain-dirty {
+    border-left: 4px solid #f57c00;
+    background: #fff8e1;
+}
+
+.tree-item.node-dirty .tree-item-title, .tree-item.domain-dirty .tree-item-title {
+    color: #e65100;
+}
+
+.tree-item.node-deleted, .tree-item.domain-deleted {
+    border-left: 4px solid #d32f2f;
+    background: #ffebee;
+    opacity: 0.7;
+}
+
+.tree-item.node-deleted .tree-item-title, .tree-item.domain-deleted .tree-item-title {
+    color: #b71c1c;
+    text-decoration: line-through;
+}
+
+.deleted-title {
+    text-decoration: line-through;
+    color: #b71c1c;
+}
+
 /* Tree item children container */
 .tree-item-children {
     margin-left: 20px;

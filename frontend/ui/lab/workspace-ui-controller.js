@@ -311,7 +311,20 @@ class LabUIController {
         const validityCheck = this.stateManager.getSelectedItems().every(item => {
             return this.stateManager.checkMoveValidity(item.id, domain.id);
         });
-        console.log("DOMAIN: ", domain.title, "DEPTH: ", depth, "IS COLLAPSED: ", isCollapsed);
+        
+        // Determine status classes and indicators
+        const isDirty = domain._isDirty;
+        const isDeleted = domain._isDeleted;
+        let statusClass = '';
+        let statusIndicator = '';
+        
+        if (isDeleted) {
+            statusClass = 'domain-deleted';
+            statusIndicator = '<span class="status-badge deleted" title="Marked for deletion">🗑️</span>';
+        } else if (isDirty) {
+            statusClass = 'domain-dirty';
+            statusIndicator = '<span class="status-badge dirty" title="Modified (unsaved)">●</span>';
+        }
                
         const moveButton = hasSelections && validityCheck ? 
             `<button class="btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})">Move</button>` : '';
@@ -324,22 +337,24 @@ class LabUIController {
             this.renderTreeItems(children, depth + 1) : '';
                 
         return `
-            <div class="tree-item domain-item ${isCollapsed ? 'collapsed' : ''} ${isSelected ? 'selected' : ''}" data-domain-id="${domain.id}">
+            <div class="tree-item domain-item ${isCollapsed ? 'collapsed' : ''} ${isSelected ? 'selected' : ''} ${statusClass}" data-domain-id="${domain.id}">
                 <div class="tree-item-header" style="padding-left: ${currentPadding}px;">
-                    <input type="checkbox" class="selection-checkbox" ${isSelected ? 'checked' : ''} 
-                           onchange="labUIController.toggleDomainSelection(${domain.id})">
+                    <input type="checkbox" class="selection-checkbox" ${isSelected ? 'checked' : ''}
+                           onchange="labUIController.toggleDomainSelection(${domain.id})" ${isDeleted ? 'disabled' : ''}>
                     <span class="folder-icon" onclick="labUIController.toggleDomainCollapse(${domain.id})">${isCollapsed ? '▶' : '▼'}</span>
                     <div class="tree-item-content">
                         <span class="domain-badge">${domain.id}</span>
-                        <span class="tree-item-title">${this.escapeHtml(domain.title)}</span>
+                        ${statusIndicator}
+                        <span class="tree-item-title ${isDeleted ? 'deleted-title' : ''}">${this.escapeHtml(domain.title)}</span>
                         ${domain.description ? `<span class="tree-item-description">${this.escapeHtml(domain.description)}</span>` : ''}
                     </div>
-                    <div class="tree-item-actions" onclick="event.stopPropagation()">
-                        ${moveButton}
-                        ${domain.parentId ? 
-                            `<button class="btn-warning btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject to root">Eject</button>` : ''}
-                        <button class="btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>
-                        <button class="btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">Delete</button>
+                        ${domain.parentId && !isDeleted ? 
+                            `<button class="btn-warning btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
+                        ${!isDeleted && hasSelections ? 
+                            `<button class="btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">Move</button>` : ''}
+                        ${!isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>` : ''}
+                        ${!isDeleted ? `<button class="btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">Delete</button>` : ''}
+                        ${isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.restoreDomain(${domain.id})">Restore</button>` : ''}
                     </div>
                 </div>
                 <div class="tree-item-children" style="display: ${isCollapsed ? 'none' : 'block'};">
@@ -360,21 +375,37 @@ class LabUIController {
         const levelIndent = 15;
         const currentPadding = (depth * levelIndent) + 5;
         
+        // Determine status classes and indicators
+        const isDirty = node._isDirty;
+        const isDeleted = node._isDeleted;
+        let statusClass = '';
+        let statusIndicator = '';
+        
+        if (isDeleted) {
+            statusClass = 'node-deleted';
+            statusIndicator = '<span class="status-badge deleted" title="Marked for deletion">🗑️</span>';
+        } else if (isDirty) {
+            statusClass = 'node-dirty';
+            statusIndicator = '<span class="status-badge dirty" title="Modified (unsaved)">●</span>';
+        }
+        
         return `
-            <div class="tree-item node-item ${isSelected ? 'selected' : ''}" data-node-id="${node.id}">
+            <div class="tree-item node-item ${isSelected ? 'selected' : ''} ${statusClass}" data-node-id="${node.id}">
                 <div class="tree-item-header" style="padding-left: ${currentPadding}px;">
                     <input type="checkbox" class="selection-checkbox" ${isSelected ? 'checked' : ''} 
-                           onchange="labUIController.toggleNodeSelection(${node.id})">
+                           onchange="labUIController.toggleNodeSelection(${node.id})" ${isDeleted ? 'disabled' : ''}>
                     <div class="tree-item-content">
                         <span class="tree-item-id">${node.id}</span>
-                        <span class="tree-item-title">${this.escapeHtml(node.title)}</span>
+                        ${statusIndicator}
+                        <span class="tree-item-title ${isDeleted ? 'deleted-title' : ''}">${this.escapeHtml(node.title)}</span>
                         ${node.assessable ? '<span class="assessable-badge">A</span>' : ''}
                     </div>
                     <div class="tree-item-actions" onclick="event.stopPropagation()">
-                        ${node.domainId ? 
-                            `<button class="btn-warning btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject to root">Eject</button>` : ''}
-                        <button class="btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">Edit</button>
-                        <button class="btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">Delete</button>
+                        ${node.domainId && !isDeleted ? 
+                            `<button class="btn-warning btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">Eject</button>` : ''}
+                        ${!isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">Edit</button>` : ''}
+                        ${!isDeleted ? `<button class="btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">Delete</button>` : ''}
+                        ${isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.restoreNode(${node.id})">Restore</button>` : ''}
                     </div>
                 </div>
                 <div class="tree-item-details">
