@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY frontend/ ./frontend/
 COPY docs/ ./docs/
-COPY cli.py .
 COPY self_assessment/ ./self_assessment/
 COPY start-services.sh /app/start-services.sh
 
