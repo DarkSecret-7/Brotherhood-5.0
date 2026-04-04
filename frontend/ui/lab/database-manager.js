@@ -23,12 +23,60 @@ class DatabaseManager {
                 this.refreshSnapshots(true);
             }
         });
+
+        // Dialog button handlers using event delegation
+        document.addEventListener('click', (e) => {
+            // Close button (X) click
+            if (e.target.closest('#dialogModal .close')) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.stateManager.closeDialog(false);
+                return;
+            }
+
+            // Cancel button click
+            if (e.target.id === 'dialog-cancel-btn') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.stateManager.closeDialog(false);
+                return;
+            }
+
+            // OK/Confirm button click
+            if (e.target.id === 'dialog-confirm-btn') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.stateManager.closeDialog(true);
+                return;
+            }
+        });
+
+        // Overlay click to close
+        const dialogModal = document.getElementById('dialogModal');
+        if (dialogModal) {
+            dialogModal.addEventListener('click', (e) => {
+                if (e.target === dialogModal) {
+                    this.stateManager.closeDialog(false);
+                }
+            });
+        }
     }
 
     /**
      * Handle state changes from state manager
      */
     handleStateChange(state) {
+        // On first call, ensure all modals are hidden (defensive)
+        if (!this._initialized) {
+            this._initialized = true;
+            const graphActionModal = document.getElementById('graphActionModal');
+            const globalImportModal = document.getElementById('globalImportModal');
+            const dialogModal = document.getElementById('dialogModal');
+            if (graphActionModal) graphActionModal.style.display = 'none';
+            if (globalImportModal) globalImportModal.style.display = 'none';
+            if (dialogModal) dialogModal.style.display = 'none';
+        }
+
         // Handle loading states
         if (state.isLoading || state.isRefreshing) {
             // Update UI to show loading state if needed
@@ -43,14 +91,49 @@ class DatabaseManager {
         if (state.modals.graphAction !== undefined) {
             const modal = document.getElementById('graphActionModal');
             if (modal) {
-                modal.style.display = state.modals.graphAction ? 'block' : 'none';
+                modal.style.display = state.modals.graphAction ? 'flex' : 'none';
             }
         }
 
         if (state.modals.globalImport !== undefined) {
             const modal = document.getElementById('globalImportModal');
             if (modal) {
-                modal.style.display = state.modals.globalImport ? 'block' : 'none';
+                modal.style.display = state.modals.globalImport ? 'flex' : 'none';
+            }
+        }
+
+        // Handle dialog modal
+        if (state.modals.dialog !== undefined) {
+            const modal = document.getElementById('dialogModal');
+            const dialog = state.dialog;
+            if (modal) {
+                modal.style.display = state.modals.dialog ? 'flex' : 'none';
+                
+                // Update dialog content
+                if (state.modals.dialog) {
+                    document.getElementById('dialog-title').textContent = dialog.title;
+                    document.getElementById('dialog-body').textContent = dialog.message;
+                    
+                    const inputContainer = document.getElementById('dialog-input-container');
+                    const inputEl = document.getElementById('dialog-input');
+                    const cancelBtn = document.getElementById('dialog-cancel-btn');
+                    const confirmBtn = document.getElementById('dialog-confirm-btn');
+                    
+                    if (dialog.type === 'prompt') {
+                        inputContainer.style.display = 'block';
+                        inputEl.value = dialog.defaultValue || '';
+                        cancelBtn.style.display = 'inline-block';
+                    } else if (dialog.type === 'confirm') {
+                        inputContainer.style.display = 'none';
+                        cancelBtn.style.display = 'inline-block';
+                    } else {
+                        inputContainer.style.display = 'none';
+                        cancelBtn.style.display = 'none';
+                    }
+                    
+                    confirmBtn.textContent = dialog.confirmText || 'OK';
+                    cancelBtn.textContent = dialog.cancelText || 'Cancel';
+                }
             }
         }
     }
@@ -152,7 +235,7 @@ class DatabaseManager {
         if (fileInput) fileInput.value = '';
         
         this.stateManager.setModal('graphAction', true);
-        document.getElementById('graphActionModal').style.display = 'block';
+        document.getElementById('graphActionModal').style.display = 'flex';
     }
 
     closeGraphActionModal() {
@@ -175,14 +258,15 @@ class DatabaseManager {
         const snapshot = snapshots.find(s => s.uuid === snapshotUuid);
         const displayLabel = snapshot ? snapshot.versionLabel : '#' + snapshotUuid;
 
-        const confirmMsg = `STOP! This will clear your current workspace and load snapshot \"${displayLabel}\" (UUID: ${snapshotUuid}). Continue?`;
+        const confirmMsg = `STOP! This will clear your current workspace and load snapshot "${displayLabel}" (UUID: ${snapshotUuid}). Continue?`;
         
-        if (confirm(confirmMsg)) {
+        const confirmed = await this.stateManager.customConfirm(confirmMsg);
+        if (confirmed) {
             try {
                 await this.stateManager.fetchSnapshotToWorkspace(snapshotUuid);
                 window.location.href = '/lab/workspace';
             } catch (err) {
-                alert('Error fetching snapshot: ' + err.message);
+                this.stateManager.customAlert('Error fetching snapshot: ' + err.message);
             }
         }
     }
@@ -193,11 +277,11 @@ class DatabaseManager {
         
         try {
             await this.stateManager.saveGraphChanges(newLabel, isPublic);
-            alert("Changes saved successfully!");
+            this.stateManager.customAlert('Changes saved successfully!');
             this.closeGraphActionModal();
             this.refreshSnapshots(true);
         } catch (err) {
-            alert("Error saving changes: " + err.message);
+            this.stateManager.customAlert('Error saving changes: ' + err.message);
         }
     }
 
@@ -214,7 +298,7 @@ class DatabaseManager {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            alert('Export failed: ' + err.message);
+            this.stateManager.customAlert('Export failed: ' + err.message);
         }
     }
 
@@ -222,31 +306,33 @@ class DatabaseManager {
         const fileInput = document.getElementById('import-file-input');
         
         if (!fileInput || fileInput.files.length === 0) {
-            alert('Please select a .knw file.');
+            this.stateManager.customAlert('Please select a .knw file.');
             return;
         }
         
         const file = fileInput.files[0];
         
-        if (confirm('WARNING: This will completely replace the current graph with the imported file. Are you sure?')) {
+        const confirmed = await this.stateManager.customConfirm('WARNING: This will completely replace the current graph with the imported file. Are you sure?');
+        if (confirmed) {
             try {
                 await this.stateManager.importGraph(file);
-                alert('Graph overwritten successfully!');
+                this.stateManager.customAlert('Graph overwritten successfully!');
                 this.closeGraphActionModal();
             } catch (err) {
-                alert('Import error: ' + err.message);
+                this.stateManager.customAlert('Import error: ' + err.message);
             }
         }
     }
 
     async triggerDeleteGraph() {
-        if (confirm('PERMANENT DELETE! Are you sure you want to remove this graph?')) {
+        const confirmed = await this.stateManager.customConfirm('PERMANENT DELETE! Are you sure you want to remove this graph?');
+        if (confirmed) {
             try {
                 await this.stateManager.deleteGraph();
                 this.closeGraphActionModal();
                 this.refreshSnapshots(true);
             } catch (err) {
-                alert('Error deleting snapshot: ' + err.message);
+                this.stateManager.customAlert('Error deleting snapshot: ' + err.message);
             }
         }
     }
@@ -255,7 +341,7 @@ class DatabaseManager {
         document.getElementById('global-import-file').value = '';
         document.getElementById('global-import-overwrite').checked = false;
         this.stateManager.setModal('globalImport', true);
-        document.getElementById('globalImportModal').style.display = 'block';
+        document.getElementById('globalImportModal').style.display = 'flex';
     }
 
     closeGlobalImportModal() {
@@ -271,7 +357,7 @@ class DatabaseManager {
         const overwrite = document.getElementById('global-import-overwrite').checked;
 
         if (!fileInput || fileInput.files.length === 0) {
-            alert('Please select a .knw file.');
+            this.stateManager.customAlert('Please select a .knw file.');
             return;
         }
 
@@ -279,11 +365,11 @@ class DatabaseManager {
         
         try {
             await this.stateManager.globalImportGraph(file, overwrite);
-            alert('Graph imported successfully!');
+            this.stateManager.customAlert('Graph imported successfully!');
             this.closeGlobalImportModal();
             this.refreshSnapshots(true);
         } catch (err) {
-            alert('Import error: ' + err.message);
+            this.stateManager.customAlert('Import error: ' + err.message);
         }
     }
 }

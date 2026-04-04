@@ -1,6 +1,7 @@
 """
 Snapshot CRUD endpoints
 """
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -78,3 +79,63 @@ def delete_snapshot(snapshot_uuid: UUID, db: Session = Depends(database.get_db),
         raise HTTPException(status_code=404, detail="Snapshot not found")
     
     return {"message": "Snapshot deleted successfully"}
+
+
+@router.get("/snapshots/{snapshot_uuid}/export")
+def export_snapshot(
+    snapshot_uuid: UUID,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Export snapshot as .knw file - requires 'read' action authorization"""
+    user_id = current_user.id if current_user else None
+    
+    # Check read authorization
+    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "read"):
+        raise HTTPException(status_code=403, detail="Not authorized to export this snapshot")
+    
+    try:
+        # Get snapshot data for export
+        snapshot_data = services.snapshots.SnapshotService.export_snapshot(db, snapshot_uuid)
+        
+        # Create export file
+        from ..utils import create_export_file
+        graph_label = snapshot_data.get('version_label') or f"graph_{snapshot_uuid}"
+        return create_export_file(snapshot_data, graph_label)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/snapshots/import", response_model=schemas.GraphSnapshotRead)
+def import_snapshot(
+    file: UploadFile = File(...),
+    overwrite: bool = False,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Import snapshot from .knw file"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Validate file extension
+    from ..utils import validate_import_file, parse_import_content
+    if not validate_import_file(file.filename):
+        raise HTTPException(status_code=400, detail="Invalid file format. Only .knw files are allowed.")
+    
+    try:
+        # Read and parse file content
+        content = file.file.read()
+        import_data = parse_import_content(content)
+        
+        # Import the snapshot
+        result = services.snapshots.SnapshotService.import_snapshot(
+            db=db,
+            import_data=import_data,
+            current_user=current_user,
+            overwrite=overwrite
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON content in file")

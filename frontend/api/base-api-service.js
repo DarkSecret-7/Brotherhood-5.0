@@ -41,7 +41,9 @@ class BaseApiService {
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            console.error('API Error:', response.status, errorData);
+            const errorMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData);
+            throw new Error(errorMsg || `HTTP error! status: ${response.status}`);
         }
         
         return response;

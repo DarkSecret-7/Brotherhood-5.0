@@ -37,7 +37,17 @@ class LabStateManager {
                 editDomain: this.createEmptyDomainForm(),
                 source: this.createEmptySourceForm(),
                 llm: { query: '' },
-                dialog: { title: '', message: '', input: '', callback: null }
+            },
+
+            dialog: {
+                title: '',
+                message: '',
+                type: 'alert',
+                confirmText: 'OK',
+                cancelText: 'Cancel',
+                defaultValue: '',
+                callback: null,
+                resolve: null
             },
             
             // Graph visualization state
@@ -924,13 +934,14 @@ class LabStateManager {
     /**
      * Toggle modal state
      * @param {string} modalName - Modal name
-     * @param {boolean} open - Open state
+     * @param {boolean} open - Open state (if null, toggles current state)
      */
     toggleModal(modalName, open = null) {
-        console.log("Toggling modal: ", modalName);
-        this.state.modals[modalName] = !this.state.modals[modalName];
-        console.log("Current state: ", this.state.modals[modalName]);
-
+        if (open !== null) {
+            this.state.modals[modalName] = open;
+        } else {
+            this.state.modals[modalName] = !this.state.modals[modalName];
+        }
         this.notifyStateChange();
     }
 
@@ -951,13 +962,17 @@ class LabStateManager {
     resetForm(formName) {
         switch (formName) {
             case 'newNode':
+                domainId = this.state.forms.newNode.domainId;
                 this.state.forms.newNode = this.createEmptyNodeForm();
+                this.state.forms.newNode.domainId = domainId
                 break;
             case 'editNode':
                 this.state.forms.editNode = this.createEmptyNodeForm();
                 break;
             case 'newDomain':
+                parentId = this.state.forms.newDomain.parentId;
                 this.state.forms.newDomain = this.createEmptyDomainForm();
+                this.state.forms.newDomain.parentId = parentId;
                 break;
             case 'editDomain':
                 this.state.forms.editDomain = this.createEmptyDomainForm();
@@ -966,10 +981,10 @@ class LabStateManager {
                 this.state.forms.source = this.createEmptySourceForm();
                 break;
             case 'llm':
-                this.state.forms.llm = { query: '' };
+                this.state.forms.llm = this.createEmptyLLMForm();
                 break;
             case 'dialog':
-                this.state.forms.dialog = { title: '', message: '', input: '', callback: null };
+                this.state.forms.dialog = this.createEmptyDialogForm();
                 break;
         }
         this.notifyStateChange();
@@ -1049,12 +1064,31 @@ class LabStateManager {
     createEmptySourceForm() {
         return {
             title: '',
-            type: 'PDF',
+            type: 'Other',
             author: '',
             year: null,
             url: '',
             fragmentStart: '',
             fragmentEnd: ''
+        };
+    }
+
+    createEmptyLLMForm() {
+        return {
+            query: ''
+        };
+    }
+
+    createEmptyDialogForm() {
+        return {
+            title: '',
+            message: '',
+            type: 'alert',
+            confirmText: 'OK',
+            cancelText: 'Cancel',
+            defaultValue: '',
+            callback: null,
+            resolve: null
         };
     }
 
@@ -1108,6 +1142,77 @@ class LabStateManager {
     showMessage(message, type) {
         // This would be implemented based on the UI controller
         console.log(`[${type.toUpperCase()}]: ${message}`);
+    }
+
+    /**
+     * Show custom dialog modal
+     * @param {Object} options - Dialog options (title, message, type, confirmText, cancelText, defaultValue)
+     * @returns {Promise} Resolves with user response
+     */
+    showDialog(options) {
+        this.state.dialog = {
+            title: options.title || 'Notification',
+            message: options.message || '',
+            type: options.type || 'alert',
+            confirmText: options.confirmText || 'OK',
+            cancelText: options.cancelText || 'Cancel',
+            defaultValue: options.defaultValue || '',
+            callback: options.callback || null,
+            resolve: null
+        };
+        this.state.modals.dialog = true;
+        this.notifyStateChange();
+        
+        return new Promise((resolve) => {
+            this.state.dialog.resolve = resolve;
+        });
+    }
+
+    /**
+     * Close dialog and resolve promise
+     * @param {boolean} result - User response
+     */
+    closeDialog(result) {
+        const dialog = this.state.dialog;
+        const type = dialog.type;
+        
+        this.state.modals.dialog = false;
+        
+        // Call callback if provided
+        if (dialog.callback) {
+            dialog.callback(result);
+        }
+        
+        // Resolve promise if exists
+        if (dialog.resolve) {
+            if (type === 'prompt') {
+                const inputValue = document.getElementById('dialog-input')?.value || '';
+                dialog.resolve(result ? inputValue : null);
+            } else {
+                dialog.resolve(result);
+            }
+            dialog.resolve = null;
+        }
+        
+        this.notifyStateChange();
+    }
+
+    /**
+     * Show custom alert
+     * @param {string} message - Alert message
+     * @param {Function} callback - Optional callback
+     */
+    customAlert(message, callback = null) {
+        return this.showDialog({ type: 'alert', title: 'Alert', message, callback });
+    }
+
+    /**
+     * Show custom confirm dialog
+     * @param {string} message - Confirm message
+     * @param {Function} callback - Optional callback
+     */
+    customConfirm(message, callback = null) {
+        return this.showDialog({ type: 'confirm', title: 'Confirm', message, callback });
     }
 
     /**

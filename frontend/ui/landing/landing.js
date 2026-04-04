@@ -3,8 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusEl = document.getElementById('contact-status');
     const submitBtn = document.getElementById('contact-submit');
 
-    if (!form || !statusEl || !submitBtn) return;
-
     const nav = document.getElementById('main-nav');
     const hamburger = document.querySelector('.hamburger');
 
@@ -17,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.toggleNav();
         });
     }
+
+    if (!form || !statusEl || !submitBtn) return;
     
     form.addEventListener('submit', async (e) => {
         e.preventDefault();

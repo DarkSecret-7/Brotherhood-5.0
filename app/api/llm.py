@@ -6,7 +6,7 @@ import os
 import json
 from typing import List
 
-router = APIRouter()
+router = APIRouter(prefix="/llm")
 
 @router.post("/suggest", response_model=schemas.LLMResponse)
 def get_suggestions(query: schemas.LLMQuery):
@@ -27,7 +27,8 @@ def get_suggestions(query: schemas.LLMQuery):
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        system_prompt = prompts.SUGGEST_NODES_SYSTEM_PROMPT
+        # Use custom system prompt if provided, otherwise use default
+        system_prompt = query.system_prompt if query.system_prompt else prompts.SUGGEST_NODES_SYSTEM_PROMPT
         
         user_content = f"Prompt: {query.prompt}"
         if query.graph_name:

@@ -15,7 +15,19 @@ class DatabaseStateManager {
             // Modal states
             modals: {
                 graphAction: false,
-                globalImport: false
+                globalImport: false,
+                dialog: false
+            },
+            
+            // Dialog state
+            dialog: {
+                title: 'Confirm',
+                message: '',
+                type: 'alert', // 'alert', 'confirm', 'prompt'
+                confirmText: 'OK',
+                cancelText: 'Cancel',
+                defaultValue: '',
+                resolve: null
             },
             
             // Loading states
@@ -202,13 +214,72 @@ class DatabaseStateManager {
     }
 
     /**
-     * Toggle modal state
+     * Show custom dialog modal
+     * @param {Object} options - Dialog options (title, message, type, confirmText, cancelText, defaultValue)
+     * @returns {Promise} Resolves with user response
      */
-    toggleModal(modalName) {
-        if (this.state.modals.hasOwnProperty(modalName)) {
-            this.state.modals[modalName] = !this.state.modals[modalName];
-            this.notifyStateChange();
+    showDialog(options) {
+        this.state.dialog = {
+            title: options.title || 'Notification',
+            message: options.message || '',
+            type: options.type || 'alert',
+            confirmText: options.confirmText || 'OK',
+            cancelText: options.cancelText || 'Cancel',
+            defaultValue: options.defaultValue || '',
+            resolve: null
+        };
+        this.state.modals.dialog = true;
+        this.notifyStateChange();
+        
+        return new Promise((resolve) => {
+            this.state.dialog.resolve = resolve;
+        });
+    }
+
+    /**
+     * Close dialog and resolve promise
+     * @param {boolean} result - User response
+     */
+    closeDialog(result) {
+        const dialog = this.state.dialog;
+        const type = dialog.type;
+        
+        this.state.modals.dialog = false;
+        
+        if (dialog.resolve) {
+            if (type === 'prompt') {
+                const inputValue = document.getElementById('dialog-input')?.value || '';
+                dialog.resolve(result ? inputValue : null);
+            } else {
+                dialog.resolve(result);
+            }
+            dialog.resolve = null;
         }
+        
+        this.notifyStateChange();
+    }
+
+    /**
+     * Show custom alert
+     * @param {string} message - Alert message
+     */
+    customAlert(message) {
+        return this.showDialog({ type: 'alert', title: 'Alert', message });
+    }
+
+    /**
+     * Show custom confirm dialog
+     * @param {string} message - Confirm message
+     */
+    customConfirm(message) {
+        return this.showDialog({ type: 'confirm', title: 'Confirm', message });
+    }
+
+    /**
+     * Get dialog state
+     */
+    getDialog() {
+        return { ...this.state.dialog };
     }
 
     /**

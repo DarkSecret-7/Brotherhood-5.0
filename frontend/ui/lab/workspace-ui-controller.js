@@ -3,8 +3,9 @@
  * Focuses on what to display and user interactions only
  */
 class LabUIController {
-    constructor(stateManager) {
+    constructor(stateManager, llmOpsController) {
         this.stateManager = stateManager;
+        this.llmOpsController = llmOpsController;
         this.initializeElements();
         this.bindEventListeners();
         
@@ -107,7 +108,8 @@ class LabUIController {
             closeBtn.addEventListener('click', (e) => {
                 const modal = e.target.closest('.modal');
                 if (modal) {
-                    this.closeModal(modal.id.replace('Modal', '').toLowerCase());
+                    const modalName = modal.id.replace('Modal', '').toLowerCase();
+                    this.closeModal(modalName);
                 }
             });
         });
@@ -453,9 +455,9 @@ class LabUIController {
     moveSelectedToDomain(targetDomainId) {
         try {
             this.stateManager.moveSelectedToDomain(targetDomainId);
-            this.showMessage('Items moved successfully', 'success');
+            this.stateManager.showMessage('Items moved successfully', 'success');
         } catch (error) {
-            this.showMessage(error.message, 'error');
+            this.stateManager.showMessage(error.message, 'error');
         }
     }
 
@@ -483,29 +485,54 @@ class LabUIController {
      * Update modal display
      */
     updateModalDisplay() {
-        const { modals, forms } = this.stateManager.state;
+        const { modals, forms, dialog } = this.stateManager.state;
         
         // Update modal visibility
         Object.keys(modals).forEach(modalName => {
             const modal = this.elements.modals[modalName];
             if (modal) {
-                modal.style.display = modals[modalName] ? 'block' : 'none';
+                modal.style.display = modals[modalName] ? 'flex' : 'none';
             }
         });
         
         // Update dialog content if dialog is visible
-        if (modals.dialog && forms.dialog) {
+        if (modals.dialog && dialog) {
             const dialogTitle = document.getElementById('dialog-title');
             const dialogBody = document.getElementById('dialog-body');
             const dialogInput = document.getElementById('dialog-input');
             const dialogInputContainer = document.getElementById('dialog-input-container');
+            const cancelBtn = document.getElementById('dialog-cancel-btn');
+            const confirmBtn = document.getElementById('dialog-confirm-btn');
             
-            if (dialogTitle) dialogTitle.textContent = forms.dialog.title || 'Confirm';
-            if (dialogBody) dialogBody.textContent = forms.dialog.message || '';
-            if (dialogInput) dialogInput.value = forms.dialog.input || '';
+            if (dialogTitle) dialogTitle.textContent = dialog.title || 'Confirm';
+            if (dialogBody) dialogBody.textContent = dialog.message || '';
+            if (dialogInput) dialogInput.value = dialog.defaultValue || '';
             if (dialogInputContainer) {
-                dialogInputContainer.style.display = forms.dialog.input ? 'block' : 'none';
+                dialogInputContainer.style.display = dialog.type === 'prompt' ? 'block' : 'none';
             }
+            
+            // Show/hide cancel button based on dialog type
+            if (cancelBtn) {
+                cancelBtn.style.display = dialog.type === 'alert' ? 'none' : 'inline-block';
+            }
+            
+            // Update button text
+            if (confirmBtn) {
+                confirmBtn.textContent = dialog.confirmText || 'OK';
+            }
+            if (cancelBtn) {
+                cancelBtn.textContent = dialog.cancelText || 'Cancel';
+            }
+        }
+        
+        // Update edit node modal sources when visible
+        if (modals.editNode && forms.editNode) {
+            this.renderEditNodeSources(forms.editNode.sources || [], 'editNode');
+        }
+        
+        // Update new node modal sources (always visible on page)
+        if (forms.newNode) {
+            this.renderEditNodeSources(forms.newNode.sources || [], 'newNode');
         }
     }
 
@@ -538,7 +565,7 @@ class LabUIController {
      */
     updateErrorDisplay(error) {
         if (error) {
-            this.showDialog('Error', error, null, () => {});
+            this.stateManager.customAlert(error);
         }
     }
 
@@ -556,24 +583,15 @@ class LabUIController {
      */
     closeModal(modalName) {
         this.stateManager.toggleModal(modalName, false);
-        this.stateManager.resetForm(`${modalName}Form`);
-    }
-
-    /**
-     * Show dialog
-     * @param {string} title - Dialog title
-     * @param {string} message - Dialog message
-     * @param {string} input - Input placeholder (optional)
-     * @param {Function} callback - Callback function
-     */
-    showDialog(title, message, input = null, callback) {
-        this.stateManager.updateForm('dialog', {
-            title,
-            message,
-            input: input || '',
-            callback
-        });
-        this.openModal('dialog');
+        this.stateManager.resetForm(modalName);
+        
+        // Special handling for LLM modal - clear results and input
+        if (modalName === 'llm') {
+            const resultsContainer = document.getElementById('llm-results');
+            const queryInput = document.getElementById('llm-query');
+            if (resultsContainer) resultsContainer.innerHTML = '';
+            if (queryInput) queryInput.value = '';
+        }
     }
 
     /**
@@ -666,7 +684,6 @@ class LabUIController {
                 // Update if expression was simplified
                 if (simplified !== value) {
                     input.value = simplified;
-                    this.showMessage('Prerequisites auto-simplified', 'info');
                     this.hideSimplificationHelper(input);
                 } else {
                     // Show helper that no simplification was possible
@@ -687,7 +704,7 @@ class LabUIController {
                 }
                 
                 if (forceUpdate && validation.error) {
-                    this.showMessage(validation.error, 'error');
+                    this.stateManager.customAlert(validation.error);
                 }
             }
         } catch (error) {
@@ -748,23 +765,35 @@ class LabUIController {
         div.textContent = text;
         return div.innerHTML;
     }
-
-    /**
-     * Show message to user
-     * @param {string} message - Message to show
-     * @param {string} type - Message type ('success', 'error', 'info')
-     */
-    showMessage(message, type = 'info') {
-        console.log(`${type.toUpperCase()}: ${message}`);
-        // Implementation could show a toast or notification
-    }
-
+    
     /**
      * Open source modal
      * @param {string} context - Context ('edit' or 'new')
      */
     openSourceModal(context) {
         this.sourceModalContext = context;
+        
+        // Clear editing state when adding new source
+        this.editingSourceIndex = undefined;
+        this.editingSourceForm = undefined;
+        
+        // Reset modal title
+        document.getElementById('source-modal-title').textContent = 'Add Source';
+        
+        // Hide delete button
+        document.getElementById('btn-delete-source').style.display = 'none';
+        
+        // Clear form inputs
+        document.getElementById('source-title').value = '';
+        document.getElementById('source-type').value = 'Other';
+        document.getElementById('source-author').value = '';
+        document.getElementById('source-year').value = '';
+        document.getElementById('source-url').value = '';
+        document.getElementById('source-start').value = '';
+        document.getElementById('source-end').value = '';
+        document.getElementById('source-bib-hash').value = '';
+        document.getElementById('source-uuid').value = '';
+        
         this.openModal('source');
     }
 
@@ -776,18 +805,99 @@ class LabUIController {
     }
 
     /**
-     * Submit source
+     * Submit source - add or update source in the correct form
      */
     submitSource() {
-        // Implementation would go here
+        const title = document.getElementById('source-title')?.value.trim();
+        const type = document.getElementById('source-type')?.value;
+        const author = document.getElementById('source-author')?.value.trim();
+        const year = document.getElementById('source-year')?.value;
+        const url = document.getElementById('source-url')?.value.trim();
+        const fragmentStart = document.getElementById('source-start')?.value.trim();
+        const fragmentEnd = document.getElementById('source-end')?.value.trim();
+        
+        if (!title) {
+            this.stateManager.customAlert('Source title is required');
+            return;
+        }
+        
+        const sourceData = {
+            title,
+            type: type || 'Other',
+            author: author || '',
+            year: year ? parseInt(year) : null,
+            url: url || '',
+            fragmentStart: fragmentStart || '',
+            fragmentEnd: fragmentEnd || '',
+            hash: document.getElementById('source-bib-hash')?.value || null,
+            sourceUuid: document.getElementById('source-uuid')?.value || null,
+            _isDirty: true
+        };
+        
+        // Check if we're editing an existing source
+        if (this.editingSourceIndex !== undefined && this.editingSourceForm) {
+            // Update existing source
+            const form = this.stateManager.state.forms[this.editingSourceForm];
+            if (form.sources && form.sources[this.editingSourceIndex]) {
+                Object.assign(form.sources[this.editingSourceIndex], sourceData);
+            }
+            // Clear editing state
+            this.editingSourceIndex = undefined;
+            this.editingSourceForm = undefined;
+        } else {
+            // Add to the correct form based on context
+            const formName = this.sourceModalContext === 'edit' ? 'editNode' : 'newNode';
+            const form = this.stateManager.state.forms[formName];
+            
+            if (!form.sources) {
+                form.sources = [];
+            }
+            
+            form.sources.push(sourceData);
+        }
+        
+        // Clear source form inputs
+        document.getElementById('source-title').value = '';
+        document.getElementById('source-author').value = '';
+        document.getElementById('source-year').value = '';
+        document.getElementById('source-url').value = '';
+        document.getElementById('source-start').value = '';
+        document.getElementById('source-end').value = '';
+        document.getElementById('source-bib-hash').value = '';
+        document.getElementById('source-uuid').value = '';
+        
+        // Close modal and trigger re-render
         this.closeModal('source');
+        this.stateManager.notifyStateChange();
     }
 
     /**
-     * Delete current source
+     * Delete current source from modal
      */
     deleteCurrentSource() {
-        // Implementation would go here
+        if (this.editingSourceIndex !== undefined && this.editingSourceForm) {
+            const form = this.stateManager.state.forms[this.editingSourceForm];
+            if (form.sources && form.sources[this.editingSourceIndex]) {
+                // Mark as deleted
+                form.sources[this.editingSourceIndex]._isDeleted = true;
+            }
+            // Clear editing state
+            this.editingSourceIndex = undefined;
+            this.editingSourceForm = undefined;
+            
+            // Clear form and close modal
+            document.getElementById('source-title').value = '';
+            document.getElementById('source-author').value = '';
+            document.getElementById('source-year').value = '';
+            document.getElementById('source-url').value = '';
+            document.getElementById('source-start').value = '';
+            document.getElementById('source-end').value = '';
+            document.getElementById('source-bib-hash').value = '';
+            document.getElementById('source-uuid').value = '';
+            
+            this.closeModal('source');
+            this.stateManager.notifyStateChange();
+        }
     }
 
     /**
@@ -799,15 +909,114 @@ class LabUIController {
     }
 
     /**
-     * Close dialog
+     * Close dialog - delegates to state manager
      * @param {boolean} confirmed - Whether dialog was confirmed
      */
     closeDialog(confirmed) {
-        const form = this.stateManager.state.forms.dialog;
-        if (form.callback) {
-            form.callback(confirmed);
+        this.stateManager.closeDialog(confirmed);
+    }
+
+    /**
+     * Query LLM - delegates to ops controller
+     */
+    async queryLLM() {
+        const queryInput = document.getElementById('llm-query');
+        const resultsContainer = document.getElementById('llm-results');
+        const loadingIndicator = document.getElementById('llm-loading');
+
+        if (!queryInput || !resultsContainer || !loadingIndicator) return;
+
+        const prompt = queryInput.value.trim();
+
+        // Show loading
+        loadingIndicator.style.display = 'block';
+        resultsContainer.innerHTML = '';
+
+        // Delegate to ops controller
+        await window.llmOpsController.queryLLM(
+            prompt,
+            (suggestions) => {
+                this.displayLLMResults(suggestions);
+                loadingIndicator.style.display = 'none';
+            },
+            (errorMessage) => {
+                resultsContainer.innerHTML = `<div style="color: red; padding: 10px; background: #ffe6e6; border-radius: 4px;">Failed to get suggestions: ${errorMessage}</div>`;
+                loadingIndicator.style.display = 'none';
+            }
+        );
+    }
+
+    /**
+     * Display LLM suggestion results
+     * @param {Array} suggestions - Array of suggestion objects
+     */
+    displayLLMResults(suggestions) {
+        const container = document.getElementById('llm-results');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (!suggestions || suggestions.length === 0) {
+            container.innerHTML = '<p>No suggestions found.</p>';
+            return;
         }
-        this.closeModal('dialog');
+
+        // Add Toolbar
+        const toolbar = document.createElement('div');
+        toolbar.className = 'llm-toolbar';
+        toolbar.style.marginBottom = '15px';
+        toolbar.style.padding = '10px';
+        toolbar.style.backgroundColor = '#f1f3f4';
+        toolbar.style.borderRadius = '8px';
+        toolbar.style.display = 'flex';
+        toolbar.style.justifyContent = 'space-between';
+        toolbar.style.alignItems = 'center';
+        
+        toolbar.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="llm-select-all" onchange="labUIController.toggleSelectAllLLM(this)" style="width: auto; margin: 0; cursor: pointer;">
+                <label for="llm-select-all" style="margin: 0; font-weight: 600; cursor: pointer;">Select All</label>
+            </div>
+            <button class="btn-primary btn-small" onclick="window.llmOpsController.importLLMSelected()">Import Selected</button>
+        `;
+        container.appendChild(toolbar);
+
+        suggestions.forEach((suggestion, index) => {
+            const card = document.createElement('div');
+            card.className = 'llm-suggestion-card';
+            card.style.border = '1px solid #e0e0e0';
+            card.style.borderRadius = '8px';
+            card.style.padding = '15px';
+            card.style.marginBottom = '10px';
+            card.style.backgroundColor = '#f9f9f9';
+            
+            card.innerHTML = `
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="padding-top: 4px;">
+                        <input type="checkbox" class="llm-suggestion-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 style="margin-top: 0; color: #1a73e8; margin-bottom: 5px;">${this.escapeHtml(suggestion.title)}</h4>
+                        <p style="margin-bottom: 10px; color: #444;">${this.escapeHtml(suggestion.description)}</p>
+                        <button class="btn-secondary btn-small" onclick="window.llmOpsController.importSingleLLMNode('${this.escapeHtml(suggestion.title).replace(/'/g, "\\'")}', '${this.escapeHtml(suggestion.description).replace(/'/g, "\\'")}')">Use This Single</button>
+                        <div style="display:none;" class="suggestion-data">
+                            <span class="s-title">${this.escapeHtml(suggestion.title)}</span>
+                            <span class="s-desc">${this.escapeHtml(suggestion.description)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    /**
+     * Toggle select all LLM suggestions
+     * @param {HTMLInputElement} checkbox - The select all checkbox
+     */
+    toggleSelectAllLLM(checkbox) {
+        const checkboxes = document.querySelectorAll('.llm-suggestion-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
     }
 
     /**
@@ -817,14 +1026,6 @@ class LabUIController {
         this.closeModal('llm');
     }
 
-    /**
-     * Query LLM
-     */
-    async queryLLM() {
-        // Implementation would go here
-        console.log('Query LLM not implemented yet');
-    }
-
 
     /**
      * Close global import modal
@@ -832,6 +1033,95 @@ class LabUIController {
     closeGlobalImportModal() {
         const modal = document.getElementById('globalImportModal');
         if (modal) modal.style.display = 'none';
+    }
+
+    /**
+     * Render sources in edit node modal
+     * @param {Array} sources - Array of source objects
+     * @param {string} formName - Form name ('editNode' or 'newNode')
+     */
+    renderEditNodeSources(sources, formName = 'editNode') {
+        const containerId = formName === 'editNode' ? 'edit-node-sources' : 'new-node-sources';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (sources.length === 0) {
+            container.innerHTML = '<span style="color: #9aa0a6; font-size: 0.9em;">No sources linked.</span>';
+            return;
+        }
+        
+        sources.forEach((source, index) => {
+            if (source._isDeleted) return; // Skip deleted sources
+            
+            const sourceDiv = document.createElement('div');
+            sourceDiv.className = 'source-item-row';
+            sourceDiv.style.marginBottom = '8px';
+            sourceDiv.style.display = 'flex';
+            sourceDiv.style.alignItems = 'center';
+            sourceDiv.style.gap = '8px';
+            sourceDiv.innerHTML = `
+                <div style="flex: 1; font-size: 0.9em;">
+                    <strong>${source.title || 'Untitled'}</strong>
+                    ${source.author ? `<span style="color: #666;"> - ${source.author}</span>` : ''}
+                </div>
+                <button class="btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
+                <button class="btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
+            `;
+            container.appendChild(sourceDiv);
+        });
+    }
+
+    /**
+     * Edit a source in the node form - populate source modal and open it
+     * @param {number} sourceIndex - Index of source to edit
+     * @param {string} formName - Form name ('editNode' or 'newNode')
+     */
+    editSource(sourceIndex, formName = 'editNode') {
+        const form = this.stateManager.state.forms[formName];
+        if (!form.sources || !form.sources[sourceIndex]) return;
+        
+        const source = form.sources[sourceIndex];
+        
+        // Populate source modal with existing data
+        document.getElementById('source-title').value = source.title || '';
+        document.getElementById('source-type').value = source.type || 'Other';
+        document.getElementById('source-author').value = source.author || '';
+        document.getElementById('source-year').value = source.year || '';
+        document.getElementById('source-url').value = source.url || '';
+        document.getElementById('source-start').value = source.fragmentStart || '';
+        document.getElementById('source-end').value = source.fragmentEnd || '';
+        document.getElementById('source-bib-hash').value = source.hash || '';
+        document.getElementById('source-uuid').value = source.sourceUuid || '';
+        
+        // Store the index being edited
+        this.editingSourceIndex = sourceIndex;
+        this.editingSourceForm = formName;
+        
+        // Update modal title
+        document.getElementById('source-modal-title').textContent = 'Edit Source';
+        
+        // Show delete button
+        document.getElementById('btn-delete-source').style.display = 'inline-block';
+        
+        // Open modal
+        this.openModal('source');
+    }
+
+    /**
+     * Remove a source from the node form
+     * @param {number} sourceIndex - Index of source to remove
+     * @param {string} formName - Form name ('editNode' or 'newNode')
+     */
+    removeSource(sourceIndex, formName = 'editNode') {
+        const form = this.stateManager.state.forms[formName];
+        if (form.sources && form.sources[sourceIndex]) {
+            // Mark as deleted instead of removing immediately
+            form.sources[sourceIndex]._isDeleted = true;
+            // Notify state change to trigger re-render
+            this.stateManager.notifyStateChange();
+        }
     }
 
     /**

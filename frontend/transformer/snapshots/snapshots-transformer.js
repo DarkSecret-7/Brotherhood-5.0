@@ -179,7 +179,8 @@ class SnapshotsTransformer {
             user_uuid: currentUserUuid
         };
 
-        console.log('backendPayload', backendPayload);
+        console.log('backendPayload', JSON.stringify(backendPayload, null, 2));
+        console.log('First node sources:', JSON.stringify(backendPayload.nodes?.[0]?.source_items, null, 2));
 
         // Determine create vs update
         const overwriteTargetUuid = options.currentSnapshotUuid || null;
@@ -275,13 +276,13 @@ class SnapshotsTransformer {
         if (!Array.isArray(frontendSources)) return [];
 
         return frontendSources.map(source => ({
-            title: source.title,
-            bib_type: source.type,
-            author: source.author,
-            year: source.year,
-            url: source.url,
-            fragment_start: source.fragmentStart,
-            fragment_end: source.fragmentEnd,
+            title: source.title || 'Untitled',
+            bib_type: source.type || 'Other',
+            author: source.author || null,
+            year: source.year ? parseInt(source.year) : null,
+            url: source.url || null,
+            fragment_start: source.fragmentStart || null,
+            fragment_end: source.fragmentEnd || null,
             public_hash: source.hash || null,
             source_uuid: source.sourceUuid || null,
             updated: source._isDirty || false,

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Brotherhood Curator Lab - Workspace</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/logo_light.png" />
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <link rel="stylesheet" href="/frontend/css/main_styles.css?v=8">
 </head>
@@ -88,7 +89,7 @@
                         <div class="form-group">
                             <label>Sources</label>
                             <div id="new-node-sources" class="sources-container"></div>
-                            <button class="btn-secondary btn-small">Add Source</button>
+                            <button class="btn-secondary btn-small" onclick="labUIController.openSourceModal('new')">Add Source</button>
                         </div>
                         <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" id="node-assessable" style="width: auto; margin: 0;">
@@ -256,7 +257,7 @@
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h2 id="dialog-title">Confirm</h2>
-                <span class="close" onclick="labUIController.closeDialog(false)">&times;</span>
+                <span class="close" onclick="window.labUIController && window.labUIController.closeDialog(false)">&times;</span>
             </div>
             <div id="dialog-body" style="margin-bottom: 20px; line-height: 1.5;">
                 <!-- Message goes here -->
@@ -265,54 +266,72 @@
                 <input type="text" id="dialog-input" style="width: 100%;">
             </div>
             <div class="button-group" style="justify-content: flex-end;">
-                <button id="dialog-cancel-btn" class="btn-secondary" onclick="labUIController.closeDialog(false)">Cancel</button>
-                <button id="dialog-confirm-btn" class="btn-primary" onclick="labUIController.closeDialog(true)">OK</button>
+                <button id="dialog-cancel-btn" class="btn-secondary" onclick="window.labUIController && window.labUIController.closeDialog(false)">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn-primary" onclick="window.labUIController && window.labUIController.closeDialog(true)">OK</button>
             </div>
         </div>
     </div>
 
     <!-- Source Modal -->
     <div id="sourceModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
                 <h2 id="source-modal-title">Add Source</h2>
                 <span class="close" onclick="labUIController.closeSourceModal()">&times;</span>
             </div>
-            <div class="form-group">
-                <label>Title *</label>
-                <input type="text" id="source-title" placeholder="Source Title">
-            </div>
-            <div class="form-group">
-                <label>Type</label>
-                <select id="source-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="PDF">PDF</option>
-                    <option value="Video">Video</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Author</label>
-                <input type="text" id="source-author" placeholder="Author Name">
-            </div>
-            <div class="form-group">
-                <label>Year</label>
-                <input type="number" id="source-year" placeholder="Year">
-            </div>
-            <div class="form-group">
-                <label>URL</label>
-                <input type="text" id="source-url" placeholder="https://...">
-            </div>
-            <div class="form-group" style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                    <label>Fragment Start</label>
-                    <input type="text" id="source-start" placeholder="Page/Time">
+            <div style="display: flex; gap: 20px;">
+                <!-- Left Side: Bibliography Details -->
+                <div style="flex: 1; border-right: 1px solid #eee; padding-right: 20px;">
+                    <h3 style="margin-top: 0; color: #5f6368; font-size: 0.9em;">Bibliography</h3>
+                    <div class="form-group">
+                        <label>Title *</label>
+                        <input type="text" id="source-title" placeholder="Source Title">
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="source-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="PDF">PDF</option>
+                            <option value="Video">Video</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Author</label>
+                        <input type="text" id="source-author" placeholder="Author Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <input type="number" id="source-year" placeholder="Year">
+                    </div>
+                    <div class="form-group">
+                        <label>URL</label>
+                        <input type="text" id="source-url" placeholder="https://...">
+                    </div>
+                    <!-- Read-only fields -->
+                    <div class="form-group">
+                        <label>Bibliography Hash</label>
+                        <input type="text" id="source-bib-hash" readonly style="background: #f5f5f5; color: #666;">
+                    </div>
                 </div>
-                <div style="flex: 1;">
-                    <label>Fragment End</label>
-                    <input type="text" id="source-end" placeholder="Page/Time">
+                <!-- Right Side: Source Fragment -->
+                <div style="flex: 1; padding-left: 10px;">
+                    <h3 style="margin-top: 0; color: #5f6368; font-size: 0.9em;">Source Fragment</h3>
+                    <div class="form-group">
+                        <label>Fragment Start</label>
+                        <input type="text" id="source-start" placeholder="Page/Time">
+                    </div>
+                    <div class="form-group">
+                        <label>Fragment End</label>
+                        <input type="text" id="source-end" placeholder="Page/Time">
+                    </div>
+                    <!-- Read-only fields -->
+                    <div class="form-group">
+                        <label>Source UUID</label>
+                        <input type="text" id="source-uuid" readonly style="background: #f5f5f5; color: #666; font-size: 0.85em;">
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 20px;">
+            <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
                 <button id="btn-delete-source" class="btn-danger btn-small" onclick="labUIController.deleteCurrentSource()" style="display: none;">Delete</button>
                 <div>
                     <button class="btn-secondary" onclick="labUIController.closeSourceModal()">Cancel</button>
@@ -376,6 +395,7 @@
 
     <!-- Load new frontend architecture scripts -->
     <script src="/frontend/api/base-api-service.js"></script>
+    <script src="/frontend/api/llm/llm-api-service.js"></script>
     <script src="/frontend/api/auth/auth-api-service.js"></script>
     <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
     <script src="/frontend/transformer/snapshots/snapshots-transformer.js"></script>
@@ -385,6 +405,7 @@
     <script src="/frontend/state/lab-state-manager.js"></script>
     <script src="/frontend/state/database-state-manager.js"></script>
     <script src="/frontend/ui/lab/workspace-ops-controller.js"></script>
+    <script src="/frontend/ui/lab/llm-ops-controller.js"></script>
     <script src="/frontend/ui/lab/workspace-ui-controller.js"></script>
     <script src="/frontend/ui/lab/graph-controller.js"></script>
     <script src="/frontend/ui/lab/nav-controller.js"></script>
@@ -420,7 +441,8 @@
             // Initialize state manager and UI controller
             const stateManager = window.labStateManager;
             const opsController = new WorkspaceOpsController(stateManager, window.databaseStateManager);
-            const uiController = new LabUIController(stateManager);
+            const llmOpsController = new LLMOpsController(stateManager);
+            const uiController = new LabUIController(stateManager, llmOpsController);
             
             // NavController is now singleton - will auto-initialize
             const navController = NavController.getInstance();
@@ -429,6 +451,7 @@
             window.labStateManager = stateManager; // Keep for compatibility
             window.labUIController = uiController;
             window.workspaceOpsController = opsController;
+            window.llmOpsController = llmOpsController;
             window.navController = navController;
             
             // Load initial data first

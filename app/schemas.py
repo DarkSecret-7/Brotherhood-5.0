@@ -45,8 +45,8 @@ class BibliographySafeRead(BibliographyBase):   # Safe reading of bibliography, 
     public_hash: Optional[str]
 
 class SourceBase(BibliographySafeRead):             # Now Bibliography must be created/referenced before Source
-    snapshot_uuid: UUID
-    node_id: int        # ALWAYS LOCAL ID
+    snapshot_uuid: Optional[UUID] = None
+    node_id: Optional[int] = None        # ALWAYS LOCAL ID
     fragment_start: Optional[str] = None
     fragment_end: Optional[str] = None
 
@@ -59,7 +59,6 @@ class SourceCreate(SourceBase):
         from_attributes = True
 
 class SourceRead(SourceBase):
-    bib_hash: str
     source_uuid: UUID  # UUID for identifying individual source fragments
 
     class Config:
@@ -249,6 +248,7 @@ class LLMQuery(BaseModel):
     prompt: str
     context: Optional[str] = None
     graph_name: Optional[str] = None
+    system_prompt: Optional[str] = None
 
 class LLMSuggestion(BaseModel):
     title: str

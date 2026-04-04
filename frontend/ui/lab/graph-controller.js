@@ -228,7 +228,7 @@ class GraphController {
             // Reset visualizer to default positions
             this.visualizer.applyPositions(this.graphState.defaultPositions);
             
-            this.showMessage('Layout reset to default positions', 'info');
+            this.stateManager.showMessage('Layout reset to default positions', 'info');
         }
     }
 
@@ -253,7 +253,7 @@ class GraphController {
             // Apply random positions
             this.visualizer.applyPositions(randomPositions);
             
-            this.showMessage('Positions randomized', 'info');
+            this.stateManager.showMessage('Positions randomized', 'info');
         }
     }
 
@@ -274,7 +274,7 @@ class GraphController {
         this.updateGraphData();
         this.updateVisualization();
         
-        this.showMessage('Graph refreshed', 'success');
+        this.stateManager.showMessage('Graph refreshed', 'success');
     }
 
     /**
@@ -290,16 +290,6 @@ class GraphController {
             assessableNodeCount: this.graphState.nodes.filter(n => n.assessable).length,
             lastUpdated: this.graphState.lastUpdated
         };
-    }
-
-    /**
-     * Show message to user
-     * @param {string} message - Message to show
-     * @param {string} type - Message type
-     */
-    showMessage(message, type = 'info') {
-        console.log(`[${type.toUpperCase()}]: ${message}`);
-        // Could integrate with UI controller for toast notifications
     }
 
     /**

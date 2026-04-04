@@ -91,23 +91,39 @@ This split separates draft editing from direct backend communication.
 │  └─ crud.py                 # Transitional/deprecated monolith
 ├─ frontend/
 │  ├─ api/                    # HTTP client and endpoint services
-│  ├─ transformer/            # Data format conversion
-│  ├─ state/                  # Single source of truth
-│  ├─ ui/                     # Controllers and UI components
-│  ├─ templates/              # HTML templates
+│  ├─ assets/                 # Static assets (images, icons)
+│  ├─ components/             # Reusable graph components
 │  ├─ css/                    # Stylesheets
-│  ├─ components/             # Reusable components
-│  ├─ assets/                 # Static assets
+│  ├─ state/                  # Single source of truth (lab-state-manager, database-state-manager)
+│  ├─ templates/              # HTML templates
+│  │  ├─ auth/                # Login/signup pages
+│  │  ├─ lab/                 # Workspace, database, curator guide, profile
+│  │  └─ landing/             # Public site pages (index, crisis, solution, components, help, contact, documents, gallery)
+│  ├─ transformer/            # Data format conversion between backend and frontend
+│  ├─ ui/                     # Controllers and UI logic
+│  │  ├─ gallery/             # Gallery UI components
+│  │  ├─ lab/                 # Lab workspace controllers
+│  │  ├─ landing/             # Landing page logic
+│  │  └─ profile/             # User profile UI
+│  ├─ utils/                  # Frontend utilities
 │  └─ index.html              # Main frontend entry
 ├─ self_assessment/           # Standalone assessment package
-├─ landing_page/              # Static public site
-├─ static [LEGACY]/           # Legacy frontend assets
-├─ templates [LEGACY]/        # Legacy HTML templates
-├─ profile [LEGACY]/          # Legacy profile management
+│  ├─ assessment.py           # Core assessment logic
+│  ├─ models.py               # Pydantic models for assessments
+│  ├─ utils.py                # Assessment utilities
+│  └─ test_assessment.py      # Assessment tests
+├─ static [LEGACY]/           # Legacy frontend assets (deprecated)
+├─ templates [LEGACY]/        # Legacy HTML templates (deprecated)
+├─ profile [LEGACY]/          # Legacy profile management (deprecated)
 ├─ docker-compose.yml         # Local development services
 ├─ Dockerfile                 # Production container
 ├─ render.yaml                # Render deployment config
-└─ requirements.txt           # Python dependencies
+├─ requirements.txt           # Python dependencies
+├─ test/                      # Test suite
+│  ├─ run_tests.bat            # Windows test runner
+│  ├─ run_tests.sh             # Unix/Linux/macOS test runner
+│  ├─ setup_database.py       # Test database setup
+│  └─ test_backend.py         # Backend test suite
 ```
 
 ## Prerequisites
@@ -147,7 +163,11 @@ The system runs as a single web service:
    - **Purpose**: Public information, manifesto, and contact form.
 
 3. **Public Gallery**
-   - **URL**: [http://localhost:8000/gallery](http://localhost:8000/gallery)
+   - **URL**: [http://localhost:8000/landing/gallery](http://localhost:8000/landing/gallery)
+
+4. **User Profile** (authenticated)
+   - **URL**: `http://localhost:8000/profile/{user_uuid}`
+   - View and manage user profiles
 
 ### 5. Import & Export (.knw)
 The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs.
@@ -162,25 +182,7 @@ The system supports a custom `.knw` (Knowledge Graph) file format for sharing gr
 - **Overwrite**: Inside an existing graph's settings, you can import a `.knw` file to completely replace the current graph content (requires confirmation).
 - **Smart Resolution**: The importer automatically resolves user references (creators) and base graph links. If a referenced user or graph is missing, it defaults to safe values ("Unknown" or null) to prevent errors.
 
-### 6. Use the CLI
-The CLI manages a local graph state and syncs with the backend.
-
-**Basic Workflow**:
-```powershell
-# Create nodes interactively
-python cli.py create-node
-
-# List current local nodes
-python cli.py list-nodes
-
-# Save the current graph as a new version
-python cli.py save-graph --version-label "v1"
-
-# Load a previous version (replaces local state)
-python cli.py load-graph <snapshot_id>
-```
-
-### 7. Interactive Graph Management
+### 6. Interactive Graph Management
 - **Visual Drag & Drop**: Rearrange nodes freely in the workspace. Your custom layout is saved with the snapshot.
 - **Group Movement**: Collapse a Domain to treat it as a single unit. Dragging a collapsed domain automatically moves all its internal nodes and nested domains, maintaining their relative positions.
 - **Background Rendering**: Domains are visualized as convex hulls that encompass their nodes, providing a clear visual hierarchy.
@@ -288,11 +290,14 @@ Templates in `frontend/templates/` define page structure; controllers bind behav
 ### Main User-Facing Routes
 Served by backend:
 - `/` and `/landing`
+- `/landing/crisis`, `/landing/solution`, `/landing/components`, `/landing/help`, `/landing/contact`, `/landing/documents`
+- `/landing/gallery` (public gallery)
 - `/auth/login`
 - `/auth/signup`
 - `/lab/workspace`
 - `/lab/database`
 - `/lab/curator-guide`
+- `/profile/{user_uuid}` (user profiles)
 
 API and health:
 - `/api/v1/*`

@@ -167,11 +167,15 @@ def parse_import_content(content: bytes) -> dict:
 
 def clean_import_data(data: dict) -> dict:
     """Clean imported data by removing read-only fields and setting defaults"""
-    # Strip top-level read-only fields that might confuse creation
+    # Strip top-level fields that should not be imported (DB will generate these)
     data.pop('id', None)
-    data.pop('created_at', None)
-    data.pop('last_updated', None)
     data.pop('node_count', None)
+    
+    # Note: created_at and last_updated are preserved as they are metadata to be restored
+    
+    # Strip site-specific fields (these should not be imported)
+    data.pop('is_public', None)
+    data.pop('authors', None)
     
     # Ensure metadata defaults if missing
     if 'base_uuid' not in data:

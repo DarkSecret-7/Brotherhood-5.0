@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Brotherhood Curator Lab - Database Management</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/logo_light.png" />
     <link rel="stylesheet" href="/frontend/css/main_styles.css?v=8">
 </head>
 <body>
@@ -186,5 +187,24 @@
             window.navController = navController;
         });
     </script>
+    <!-- Custom Dialog Modal -->
+    <div id="dialogModal" class="modal" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="dialog-title">Confirm</h2>
+                <span class="close" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(false)">&times;</span>
+            </div>
+            <div id="dialog-body" style="margin-bottom: 20px; line-height: 1.5;">
+                <!-- Message goes here -->
+            </div>
+            <div id="dialog-input-container" class="form-group" style="display: none;">
+                <input type="text" id="dialog-input" style="width: 100%;">
+            </div>
+            <div class="button-group" style="justify-content: flex-end;">
+                <button id="dialog-cancel-btn" class="btn-secondary" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(false)">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn-primary" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

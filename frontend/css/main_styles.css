@@ -167,6 +167,17 @@ code { background: #f1f3f4; padding: 2px 5px; border-radius: 4px; font-family: m
     align-items: center; 
     justify-content: center; 
 }
+.modal.show,
+.modal[style*="flex"] { 
+    display: flex !important;
+}
+
+/* Graph Action Modal - Keep left-aligned when visible */
+#graphActionModal[style*="flex"] {
+    justify-content: flex-start !important;
+    padding-left: 20px;
+}
+
 .modal-content { 
     background-color: white; 
     padding: 30px; 

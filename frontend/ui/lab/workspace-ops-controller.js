@@ -36,6 +36,9 @@ class WorkspaceOpsController {
 
     // Add node
     addNode() {
+        // Get sources from form state
+        const formSources = this.stateManager.state.forms.newNode.sources || [];
+        
         // Validate form
         const nodeData = {
             id: this.elements.addNode.localId.value ? parseInt(this.elements.addNode.localId.value) : null,
@@ -44,17 +47,17 @@ class WorkspaceOpsController {
             prerequisites: this.elements.addNode.prerequisite.value.trim(),
             domainId: this.elements.addNode.domainId.value ? parseInt(this.elements.addNode.domainId.value) : null,
             assessable: this.elements.addNode.assessable.checked,
-            sources: []
+            sources: formSources.filter(s => !s._isDeleted) // Only include non-deleted sources
         };
 
         
         if (!nodeData.title) {
-            this.stateManager.showMessage('Node title is required', 'error');
+            this.stateManager.customAlert('Node title is required');
             return;
         }
 
         if (!nodeData.id || nodeData.id <= 0) {
-            this.stateManager.showMessage('Valid node ID is required', 'error');
+            this.stateManager.customAlert('Valid node ID is required');
             return;
         }
 
@@ -84,12 +87,12 @@ class WorkspaceOpsController {
 
         // Validate
         if (!domainData.title) {
-            this.stateManager.showMessage('Domain title is required', 'error');
+            this.stateManager.customAlert('Domain title is required');
             return;
         }
 
         if (!domainData.id || domainData.id <= 0) {
-            this.stateManager.showMessage('Valid domain ID is required', 'error');
+            this.stateManager.customAlert('Valid domain ID is required');
             return;
         }
 
@@ -130,27 +133,40 @@ class WorkspaceOpsController {
      * Update node from form data
      */
     updateNode() {
-        const form = this.stateManager.state.forms.editNode;
+        // Read form values directly from HTML elements
+        const editFormElements = window.labUIController.elements.forms.editNode;
+        if (!editFormElements) return;
+        
+        const nodeData = {
+            id: parseInt(editFormElements.localId.value) || null,
+            title: editFormElements.title.value.trim(),
+            description: editFormElements.description.value.trim(),
+            prerequisites: editFormElements.prerequisite.value.trim(),
+            assessable: editFormElements.assessable.checked
+        };
         
         // Validate form
-        if (!form.title || form.title.trim() === '') {
-            this.stateManager.showMessage('Node title is required', 'error');
+        if (!nodeData.title) {
+            this.stateManager.customAlert('Node title is required');
             return;
         }
         
-        if (!form.id || form.id <= 0) {
-            this.stateManager.showMessage('Valid node ID is required', 'error');
+        if (!nodeData.id || nodeData.id <= 0) {
+            this.stateManager.customAlert('Valid node ID is required');
             return;
         }
         
         // Update node in state
         try {
-            this.stateManager.updateNode(form.id, {
-                title: form.title,
-                description: form.description,
-                prerequisites: form.prerequisites,
-                domainId: form.domainId,
-                assessable: form.assessable
+            // Get sources from form state (which was populated during editNode)
+            const form = this.stateManager.state.forms.editNode;
+            
+            this.stateManager.updateNode(nodeData.id, {
+                title: nodeData.title,
+                description: nodeData.description,
+                prerequisites: nodeData.prerequisites,
+                assessable: nodeData.assessable,
+                sources: form.sources || []
             });
             
             // Close modal via state manager
@@ -165,25 +181,32 @@ class WorkspaceOpsController {
      * Update domain from form data
      */
     updateDomain() {
-        const form = this.stateManager.state.forms.editDomain;
+        // Read form values directly from HTML elements
+        const editFormElements = window.labUIController.elements.forms.editDomain;
+        if (!editFormElements) return;
+        
+        const domainData = {
+            id: parseInt(editFormElements.localId.value) || null,
+            title: editFormElements.title.value.trim(),
+            description: editFormElements.description.value.trim()
+        };
         
         // Validate form
-        if (!form.title || form.title.trim() === '') {
-            this.stateManager.showMessage('Domain title is required', 'error');
+        if (!domainData.title) {
+            this.stateManager.customAlert('Domain title is required');
             return;
         }
         
-        if (!form.id || form.id <= 0) {
-            this.stateManager.showMessage('Valid domain ID is required', 'error');
+        if (!domainData.id || domainData.id <= 0) {
+            this.stateManager.customAlert('Valid domain ID is required');
             return;
         }
         
         // Update domain in state
         try {
-            this.stateManager.updateDomain(form.id, {
-                title: form.title,
-                description: form.description,
-                parentId: form.parentId
+            this.stateManager.updateDomain(domainData.id, {
+                title: domainData.title,
+                description: domainData.description
             });
             
             // Close modal via state manager
@@ -219,17 +242,16 @@ class WorkspaceOpsController {
      */
     deleteDomain(domainId) {
         // Show dialog via state manager
-        this.stateManager.updateForm('dialog', {
-            title: 'Delete Domain',
-            message: 'Are you sure you want to delete this domain and all its contents?',
-            input: '',
-            callback: (confirmed) => {
+        this.stateManager.showDialog(
+            title = 'Delete Domain', 
+            message = 'Are you sure you want to delete this domain and all its contents?', 
+            type = 'alert', 
+            callback = (confirmed) => {
                 if (confirmed) {
                     this.stateManager.deleteDomain(domainId);
                 }
             }
-        });
-        this.stateManager.toggleModal('dialog', true);
+        );
     }
 
     /**
@@ -252,12 +274,9 @@ class WorkspaceOpsController {
             editFormElements.description.value = node.description || '';
             editFormElements.prerequisite.value = node.prerequisites || '';
             editFormElements.assessable.checked = node.assessable || false;
-            
-            // Clear any helper text
-            window.labUIController.hideSimplificationHelper(editFormElements.prerequisite);
         }
 
-        // Open modal via state manager
+        // Open modal via state manager - UI controller will render via handleStateChange
         this.stateManager.toggleModal('editNode', true);
     }
 
@@ -414,24 +433,12 @@ class WorkspaceOpsController {
         const overwrite = overwriteToggleElement ? overwriteToggleElement.checked : false;
 
         if (!versionLabel) {
-            // Show dialog via state manager
-            this.stateManager.updateForm('dialog', {
-                title: 'Validation Error',
-                message: 'Version label is required',
-                input: '',
-                callback: () => {}
-            });
-            this.stateManager.toggleModal('dialog', true);
+            // Show alert via state manager
+            this.stateManager.customAlert('Version label is required');
             return;
         }
         if (!this.databaseStateManager) {
-            this.stateManager.updateForm('dialog', {
-                title: 'Save Error',
-                message: 'Database management orchestration is not available.',
-                input: '',
-                callback: () => {}
-            });
-            this.stateManager.toggleModal('dialog', true);
+            this.stateManager.customAlert('Database management orchestration is not available.');
             return;
         }
 
@@ -443,32 +450,18 @@ class WorkspaceOpsController {
             
             // Show confirmation dialog for overwrites
             if (overwrite) {
-                this.stateManager.updateForm('dialog', {
-                    title: 'Confirm Overwrite',
-                    message: `Are you sure you want to overwrite the existing snapshot? This will replace all data.`,
-                    input: '',
-                    callback: async (confirmed) => {
+                this.stateManager.customConfirm(
+                    'Are you sure you want to overwrite the existing snapshot? This will replace all data.',
+                    async (confirmed) => {
                         if (confirmed) {
                             try {
                                 const savedSnapshot = await this.databaseStateManager.saveWorkspaceSnapshot(workspaceDraft);
                                 // Keep workspace synced to canonical saved snapshot
                                 this.stateManager.loadSnapshot(savedSnapshot);
-                                // Show success dialog
-                                this.stateManager.updateForm('dialog', {
-                                    title: 'Success',
-                                    message: `Snapshot saved successfully (UUID: ${savedSnapshot.uuid}).`,
-                                    input: '',
-                                    callback: () => {}
-                                });
-                                this.stateManager.toggleModal('dialog', true);
+                                // Show success alert
+                                this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.uuid}).`);
                             } catch (error) {
-                                this.stateManager.updateForm('dialog', {
-                                    title: 'Save Error',
-                                    message: error.message,
-                                    input: '',
-                                    callback: () => {}
-                                });
-                                this.stateManager.toggleModal('dialog', true);
+                                this.stateManager.customAlert(`Save Error: ${error.message}`);
                             } finally {
                                 this.stateManager.setLoading(false);
                             }
@@ -476,8 +469,7 @@ class WorkspaceOpsController {
                             this.stateManager.setLoading(false);
                         }
                     }
-                });
-                this.stateManager.toggleModal('dialog', true);
+                );
                 return; // Exit here, callback will handle the save
             }
 
@@ -487,22 +479,10 @@ class WorkspaceOpsController {
 
             // Keep workspace synced to canonical saved snapshot
             this.stateManager.loadSnapshot(savedSnapshot);
-            // Show success dialog
-            this.stateManager.updateForm('dialog', {
-                title: 'Success',
-                message: `Snapshot saved successfully (UUID: ${savedSnapshot.uuid}).`,
-                input: '',
-                callback: () => {}
-            });
-            this.stateManager.toggleModal('dialog', true);
+            // Show success alert
+            this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.uuid}).`);
         } catch (error) {
-            this.stateManager.updateForm('dialog', {
-                title: 'Save Error',
-                message: error.message,
-                input: '',
-                callback: () => {}
-            });
-            this.stateManager.toggleModal('dialog', true);
+            this.stateManager.customAlert(`Save Error: ${error.message}`);
         } finally {
             this.stateManager.setLoading(false);
         }
@@ -512,18 +492,15 @@ class WorkspaceOpsController {
      * Handle clear workspace
      */
     handleClearWorkspace() {
-        // Show dialog via state manager
-        this.stateManager.updateForm('dialog', {
-            title: 'Clear Workspace',
-            message: 'Are you sure you want to clear the workspace? All unsaved changes will be lost.',
-            input: '',
-            callback: (confirmed) => {
+        // Show confirm dialog via state manager
+        this.stateManager.customConfirm(
+            'Are you sure you want to clear the workspace? All unsaved changes will be lost.',
+            (confirmed) => {
                 if (confirmed) {
                     this.stateManager.clearWorkspace();
                 }
             }
-        });
-        this.stateManager.toggleModal('dialog', true);
+        );
     }
 
     /**

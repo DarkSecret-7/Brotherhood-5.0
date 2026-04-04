@@ -134,6 +134,230 @@ class SnapshotService:
         return crud.snapshots.delete_snapshot_by_uuid(db, snapshot_uuid)
 
     @staticmethod
+    def export_snapshot(db: Session, snapshot_uuid: UUID) -> dict:
+        """Export snapshot data for download as .knw file"""
+        snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
+        if not snapshot:
+            raise ValueError("Snapshot not found")
+        
+        # Convert to read schema for export
+        snapshot_data = SnapshotService._convert_to_read_schema(snapshot)
+        
+        # Convert to dict for JSON serialization
+        # Note: is_public is intentionally excluded as it's site-specific
+        return {
+            'public_uuid': str(snapshot_data.public_uuid),
+            'base_uuid': str(snapshot_data.base_uuid) if snapshot_data.base_uuid else None,
+            'version_label': snapshot_data.version_label,
+            'created_at': snapshot_data.created_at.isoformat() if snapshot_data.created_at else None,
+            'last_updated': snapshot_data.last_updated.isoformat() if snapshot_data.last_updated else None,
+            'authors': [
+                {
+                    'user_uuid': str(author.user_uuid),
+                    'username': author.username
+                } for author in (snapshot_data.authors or [])
+            ],
+            'nodes': [
+                {
+                    'local_id': node.local_id,
+                    'title': node.title,
+                    'description': node.description,
+                    'prerequisite': node.prerequisite,
+                    'mentions': node.mentions,
+                    'domain_id': node.domain_id,
+                    'x': node.x,
+                    'y': node.y,
+                    'assessable': node.assessable,
+                    'source_items': [
+                        {
+                            'title': src.title,
+                            'bib_type': src.bib_type,
+                            'author': src.author,
+                            'year': src.year,
+                            'url': src.url,
+                            'fragment_start': src.fragment_start,
+                            'fragment_end': src.fragment_end,
+                            'bib_hash': src.bib_hash,
+                            'source_uuid': str(src.source_uuid) if src.source_uuid else None
+                        } for src in (node.source_items or [])
+                    ]
+                } for node in snapshot_data.nodes
+            ],
+            'domains': [
+                {
+                    'local_id': domain.local_id,
+                    'title': domain.title,
+                    'description': domain.description,
+                    'parent_id': domain.parent_id
+                } for domain in snapshot_data.domains
+            ],
+            'redirects': [
+                {
+                    'old_local_id': redirect.old_local_id,
+                    'new_local_id': redirect.new_local_id
+                } for redirect in (snapshot_data.redirects or [])
+            ]
+        }
+
+    @staticmethod
+    def import_snapshot(db: Session, import_data: dict, current_user: models.User, overwrite: bool = False) -> schemas.GraphSnapshotRead:
+        """Import snapshot from .knw file data"""
+        from ..utils import clean_import_data, handle_redirects_import
+        from datetime import datetime
+        
+        # Clean the import data (remove read-only and site-specific fields)
+        cleaned_data = clean_import_data(import_data)
+        
+        # Handle redirects format conversion if needed
+        cleaned_data = handle_redirects_import(cleaned_data)
+        
+        # Parse timestamps if present
+        imported_created_at = None
+        imported_last_updated = None
+        if cleaned_data.get('created_at'):
+            try:
+                imported_created_at = datetime.fromisoformat(cleaned_data['created_at'].replace('Z', '+00:00'))
+            except (ValueError, AttributeError):
+                pass
+        if cleaned_data.get('last_updated'):
+            try:
+                imported_last_updated = datetime.fromisoformat(cleaned_data['last_updated'].replace('Z', '+00:00'))
+            except (ValueError, AttributeError):
+                pass
+        
+        # Check if a snapshot with this UUID already exists
+        existing_snapshot = None
+        import_uuid = cleaned_data.get('public_uuid')
+        if import_uuid:
+            try:
+                existing_snapshot = crud.snapshots.get_snapshot_by_uuid(db, UUID(import_uuid))
+            except (ValueError, TypeError):
+                pass  # Invalid UUID format
+        
+        # If overwrite is requested and snapshot exists, update it
+        if overwrite and existing_snapshot:
+            # Check write authorization
+            if not SnapshotService.check_snapshot_authorization(db, existing_snapshot.public_uuid, current_user.id if current_user else None, "write"):
+                raise ValueError("Not authorized to overwrite this snapshot")
+            
+            # Build update data (is_public is NOT imported - site-specific)
+            update_data = schemas.GraphSnapshotUpdate(
+                version_label=cleaned_data.get('version_label'),
+                nodes=[
+                    schemas.NodeCreate(
+                        local_id=node.get('local_id'),
+                        title=node.get('title'),
+                        description=node.get('description'),
+                        prerequisite=node.get('prerequisite'),
+                        mentions=node.get('mentions'),
+                        domain_id=node.get('domain_id'),
+                        x=node.get('x'),
+                        y=node.get('y'),
+                        assessable=node.get('assessable', False),
+                        source_items=[
+                            schemas.SourceCreate(
+                                title=src.get('title'),
+                                bib_type=src.get('bib_type', 'Other'),
+                                author=src.get('author'),
+                                year=src.get('year'),
+                                url=src.get('url'),
+                                fragment_start=src.get('fragment_start'),
+                                fragment_end=src.get('fragment_end'),
+                                snapshot_uuid=existing_snapshot.public_uuid,
+                                node_id=node.get('local_id'),
+                                source_uuid=src.get('source_uuid')
+                            ) for src in (node.get('source_items') or [])
+                        ]
+                    ) for node in cleaned_data.get('nodes', [])
+                ],
+                domains=[
+                    schemas.DomainCreate(
+                        local_id=domain.get('local_id'),
+                        title=domain.get('title'),
+                        description=domain.get('description'),
+                        parent_id=domain.get('parent_id'),
+                        snapshot_uuid=existing_snapshot.public_uuid
+                    ) for domain in cleaned_data.get('domains', [])
+                ],
+                redirects=[
+                    schemas.NodeRedirectBase(
+                        snapshot_uuid=existing_snapshot.public_uuid,
+                        old_local_id=redirect.get('old_local_id'),
+                        new_local_id=redirect.get('new_local_id')
+                    ) for redirect in cleaned_data.get('redirects', [])
+                ] if cleaned_data.get('redirects') else None,
+                overwrite=True,
+                metadata_only=False
+            )
+            
+            result = SnapshotService.update_snapshot(db, existing_snapshot.public_uuid, update_data)
+            
+            return result
+        else:
+            # Create new snapshot (is_public defaults to False - not imported)
+            create_data = schemas.GraphSnapshotCreate(
+                version_label=cleaned_data.get('version_label'),
+                base_uuid=cleaned_data.get('base_uuid'),
+                nodes=[
+                    schemas.NodeCreate(
+                        local_id=node.get('local_id'),
+                        title=node.get('title'),
+                        description=node.get('description'),
+                        prerequisite=node.get('prerequisite'),
+                        mentions=node.get('mentions'),
+                        domain_id=node.get('domain_id'),
+                        x=node.get('x'),
+                        y=node.get('y'),
+                        assessable=node.get('assessable', False),
+                        source_items=[
+                            schemas.SourceCreate(
+                                title=src.get('title'),
+                                bib_type=src.get('bib_type', 'Other'),
+                                author=src.get('author'),
+                                year=src.get('year'),
+                                url=src.get('url'),
+                                fragment_start=src.get('fragment_start'),
+                                fragment_end=src.get('fragment_end'),
+                                snapshot_uuid=import_data.get('public_uuid'),  # Will be replaced by backend
+                                node_id=node.get('local_id'),
+                                source_uuid=src.get('source_uuid')
+                            ) for src in (node.get('source_items') or [])
+                        ]
+                    ) for node in cleaned_data.get('nodes', [])
+                ],
+                domains=[
+                    schemas.DomainCreate(
+                        local_id=domain.get('local_id'),
+                        title=domain.get('title'),
+                        description=domain.get('description'),
+                        parent_id=domain.get('parent_id')
+                    ) for domain in cleaned_data.get('domains', [])
+                ],
+                redirects=[
+                    schemas.NodeRedirectBase(
+                        snapshot_uuid=import_data.get('public_uuid'),  # Will be replaced by backend
+                        old_local_id=redirect.get('old_local_id'),
+                        new_local_id=redirect.get('new_local_id')
+                    ) for redirect in cleaned_data.get('redirects', [])
+                ] if cleaned_data.get('redirects') else None,
+                created_by=schemas.UserRead(user_uuid=current_user.public_uuid, username=current_user.username) if current_user else None
+            )
+            
+            result = SnapshotService.create_snapshot(db=db, snapshot_data=create_data)
+            
+            # Restore timestamps if they were in the import
+            if imported_created_at or imported_last_updated:
+                new_snapshot = crud.snapshots.get_snapshot_by_uuid(db, result.public_uuid)
+                if new_snapshot:
+                    new_snapshot.created_at = imported_created_at or new_snapshot.created_at
+                    new_snapshot.last_updated = imported_last_updated or new_snapshot.last_updated
+                    db.commit()
+                    db.refresh(new_snapshot)
+                    result = SnapshotService._convert_to_read_schema(new_snapshot)
+            
+            return result
+
+    @staticmethod
     def get_snapshot_with_action(db: Session, snapshot_uuid: UUID, user_id: int, action: str) -> schemas.GraphSnapshotRead:
         """Get snapshot with authorization based on action
         
@@ -410,15 +634,27 @@ class SnapshotService:
             # Find or create bibliography
             bib = bib_crud.get_bibliography_by_hash(db, getattr(src, 'public_hash', None))
             if not bib:
-                bib = bib_crud.create_bibliography_record(
+                # Try to find by title/author/year to avoid duplicates
+                bib = bib_crud.get_bibliography_by_details(
                     db,
                     title=src.title,
                     author=getattr(src, 'author', None),
-                    year=getattr(src, 'year', None),
-                    bib_type=getattr(src, 'bib_type', 'PDF'),
-                    url=getattr(src, 'url', None),
-                    public_hash=getattr(src, 'public_hash', None) or generate_hash()
+                    year=getattr(src, 'year', None)
                 )
+            if not bib:
+                # Generate a hash and check if it already exists
+                new_hash = getattr(src, 'public_hash', None) or generate_hash(f"{src.title}:{src.author}:{src.year}")
+                bib = bib_crud.get_bibliography_by_hash(db, new_hash)
+                if not bib:
+                    bib = bib_crud.create_bibliography_record(
+                        db,
+                        title=src.title,
+                        author=getattr(src, 'author', None),
+                        year=getattr(src, 'year', None),
+                        bib_type=getattr(src, 'bib_type', 'PDF'),
+                        url=getattr(src, 'url', None),
+                        public_hash=new_hash
+                    )
             
             if existing_frag:
                 # Update existing source fragment
@@ -452,15 +688,27 @@ class SnapshotService:
             # Find or create bibliography
             bib = bib_crud.get_bibliography_by_hash(db, getattr(src, 'public_hash', None))
             if not bib:
-                bib = bib_crud.create_bibliography_record(
+                # Try to find by title/author/year to avoid duplicates
+                bib = bib_crud.get_bibliography_by_details(
                     db,
                     title=src.title,
                     author=getattr(src, 'author', None),
-                    year=getattr(src, 'year', None),
-                    bib_type=getattr(src, 'bib_type', 'PDF'),
-                    url=getattr(src, 'url', None),
-                    public_hash=getattr(src, 'public_hash', None) or generate_hash()
+                    year=getattr(src, 'year', None)
                 )
+            if not bib:
+                # Generate a hash and check if it already exists
+                new_hash = getattr(src, 'public_hash', None) or generate_hash(f"{src.title}:{src.author}:{src.year}")
+                bib = bib_crud.get_bibliography_by_hash(db, new_hash)
+                if not bib:
+                    bib = bib_crud.create_bibliography_record(
+                        db,
+                        title=src.title,
+                        author=getattr(src, 'author', None),
+                        year=getattr(src, 'year', None),
+                        bib_type=getattr(src, 'bib_type', 'PDF'),
+                        url=getattr(src, 'url', None),
+                        public_hash=new_hash
+                    )
             
             # Create source fragment
             bib_crud.create_source_fragment_record(
@@ -491,12 +739,13 @@ class SnapshotService:
             source_items = []
             for sf in node.source_frags:
                 source_items.append(schemas.SourceRead(
+                    public_uuid=sf.public_uuid,
                     snapshot_uuid=db_snapshot.public_uuid,
                     node_id=node.local_id,
                     fragment_start=sf.fragment_start,
                     fragment_end=sf.fragment_end,
                     source_uuid=sf.public_uuid,
-                    bib_hash=sf.bibliography.public_hash,
+                    public_hash=sf.bibliography.public_hash,    # Bibliography hash
                     title=sf.bibliography.title,
                     author=sf.bibliography.author,
                     year=sf.bibliography.year,
