@@ -124,11 +124,9 @@ This split separates draft editing from direct backend communication.
 ├─ Dockerfile                 # Production container
 ├─ render.yaml                # Render deployment config
 ├─ requirements.txt           # Python dependencies
-├─ test/                      # Test suite
-│  ├─ run_tests.bat            # Windows test runner
-│  ├─ run_tests.sh             # Unix/Linux/macOS test runner
-│  ├─ setup_database.py       # Test database setup
-│  └─ test_backend.py         # Backend test suite
+├─ LICENSES.txt               # GNU GPL v3.0 open-source license
+├─ README.md                  # Overview of the repositiory
+├─ start-services.sh          # Orchestrator for the project, to be copied inside the docker container
 ```
 
 ## Prerequisites
