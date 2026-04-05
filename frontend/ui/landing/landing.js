@@ -1,20 +1,36 @@
+/*
+ * This file is part of The Brotherhood Project
+ *
+ * Copyright (C) 2026  The Brotherhood Project
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+window.toggleNav = function () {
+    console.log('toggleNav called');
+    const nav = document.getElementById('main-nav');
+    console.log('nav element:', nav);
+    if (nav) {
+        nav.classList.toggle('active');
+        console.log('active class toggled, now:', nav.classList.contains('active'));
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('contact-form');
     const statusEl = document.getElementById('contact-status');
     const submitBtn = document.getElementById('contact-submit');
-
-    const nav = document.getElementById('main-nav');
-    const hamburger = document.querySelector('.hamburger');
-
-    window.toggleNav = function () {
-        if (nav) nav.classList.toggle('active');
-    };
-
-    if (hamburger) {
-        hamburger.addEventListener('click', () => {
-            window.toggleNav();
-        });
-    }
 
     if (!form || !statusEl || !submitBtn) return;
     
