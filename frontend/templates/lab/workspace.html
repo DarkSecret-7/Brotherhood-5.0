@@ -193,9 +193,15 @@
                 <label>Description</label>
                 <textarea id="edit-node-desc" rows="3"></textarea>
             </div>
-            <div class="form-group">
-                <label>Prerequisite Expression</label>
-                <input type="text" id="edit-node-pre">
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Prerequisite Expression</label>
+                    <input type="text" id="edit-node-pre">
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 25px;">
+                    <input type="checkbox" id="edit-node-propagate" style="width: auto; margin: 0;">
+                    <label for="edit-node-propagate" style="margin: 0; font-size: 0.85em; white-space: nowrap;">Propagate Changes</label>
+                </div>
             </div>
             <div class="form-group">
                 <label>Sources</label>

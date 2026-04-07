@@ -51,6 +51,7 @@ class LabUIController {
                 title: document.getElementById('edit-node-title'),
                 description: document.getElementById('edit-node-desc'),
                 prerequisite: document.getElementById('edit-node-pre'),
+                propagateChanges: document.getElementById('edit-node-propagate'),
                 assessable: document.getElementById('edit-node-assessable'),
                 sources: document.getElementById('edit-node-sources')
             },

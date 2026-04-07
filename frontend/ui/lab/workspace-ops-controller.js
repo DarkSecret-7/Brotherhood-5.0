@@ -167,7 +167,8 @@ class WorkspaceOpsController {
                 prerequisites: nodeData.prerequisites,
                 assessable: nodeData.assessable,
                 sources: form.sources || []
-            });
+            },
+            editFormElements.propagateChanges.checked);
             
             // Close modal via state manager
             this.stateManager.toggleModal('editNode', false);
@@ -273,6 +274,7 @@ class WorkspaceOpsController {
             editFormElements.title.value = node.title || '';
             editFormElements.description.value = node.description || '';
             editFormElements.prerequisite.value = node.prerequisites || '';
+            editFormElements.propagateChanges.checked = node.propagateChanges !== false; // Default to true
             editFormElements.assessable.checked = node.assessable || false;
         }
 

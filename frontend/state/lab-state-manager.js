@@ -299,19 +299,13 @@ class LabStateManager {
     }
 
     /**
-     * Add node to draft
-     * @param {Object} nodeData - Node data
+     * Process and simplify prerequisite expressions
+     * @param {string} prerequisites - Prerequisite expression
+     * @param {number} nodeId - Current node ID for simplification context
+     * @returns {string} Processed prerequisite expression
      */
-    addNode(nodeData) {
-        // Check if node ID already exists
-        const existingNode = this.state.nodes.find(node => node.id === nodeData.id);
-        if (existingNode) {
-            this.showMessage(`Node with ID ${nodeData.id} already exists`, 'error');
-            return;
-        }
-
-        // Process prerequisites if utils are available
-        let processedPrerequisites = nodeData.prerequisites || '';
+    processPrerequisites(prerequisites, nodeId = null) {
+        let processedPrerequisites = prerequisites || '';
         if (window.ExpressionUtils && processedPrerequisites.trim()) {
             try {
                 // Validate with node existence check first
@@ -324,34 +318,50 @@ class LabStateManager {
                     // Only simplify if expression is valid and all referenced nodes exist
                     const simplified = window.ExpressionUtils.simplifyPrerequisitesInBrowser(
                         processedPrerequisites,
-                        nodeData.id,
+                        nodeId,
                         this.state.nodes
                     );
                     
                     // Validate the simplified expression again
                     const simplifiedValidation = window.ExpressionUtils.parsePrerequisites(simplified);
                     if (simplifiedValidation.isValid) {
-                        console.log(`Prerequisites simplified from "${nodeData.prerequisites}" to "${simplified}"`);
+                        if (simplified !== processedPrerequisites) {
+                            console.log(`Prerequisites simplified for node ${nodeId || 'new'}: "${processedPrerequisites}" -> "${simplified}"`);
+                        }
                         processedPrerequisites = simplified;
                     } else {
-                        console.warn(`Simplified expression is invalid, keeping original: "${nodeData.prerequisites}"`);
-                        processedPrerequisites = nodeData.prerequisites;
+                        console.warn(`Simplified expression is invalid, keeping original: "${processedPrerequisites}"`);
                     }
                 } else {
                     // Don't simplify if there are non-existent nodes or syntax errors
                     if (validation.hasNonExistentNodes) {
-                        console.warn(`Expression references non-existent nodes [${validation.missingNodes.join(', ')}], keeping original: "${nodeData.prerequisites}"`);
+                        console.warn(`Expression references non-existent nodes [${validation.missingNodes.join(', ')}], keeping original: "${processedPrerequisites}"`);
                     } else {
-                        console.warn(`Invalid expression syntax, keeping original: "${nodeData.prerequisites}"`);
+                        console.warn(`Invalid expression syntax, keeping original: "${processedPrerequisites}"`);
                     }
-                    processedPrerequisites = nodeData.prerequisites;
                 }
             } catch (error) {
                 console.error('Error processing prerequisites:', error);
-                // Keep original if processing fails
-                processedPrerequisites = nodeData.prerequisites;
             }
         }
+        return processedPrerequisites;
+    }
+
+    /**
+     * Add node to draft
+     * @param {Object} nodeData - Node data
+     */
+    addNode(nodeData) {
+        // Check if node ID already exists
+        const existingNode = this.state.nodes.find(node => node.id === nodeData.id);
+        if (existingNode) {
+            this.showMessage(`Node with ID ${nodeData.id} already exists`, 'error');
+            return;
+        }
+
+        // Process prerequisites if utils are available
+        let processedPrerequisites = this.processPrerequisites(nodeData.prerequisites, nodeData.id);
+        this.updateMentions(nodeData.id, processedPrerequisites, null);
 
         const newNode = {
             ...nodeData,
@@ -380,15 +390,90 @@ class LabStateManager {
     }
 
     /**
+     * Update mentions on referenced nodes when a node's prerequisites change
+     * @param {number} nodeId - The node whose prerequisites changed
+     * @param {string} newPrereqs - New prerequisite expression
+     * @param {string} oldPrereqs - Old prerequisite expression (to remove old mentions)
+     */
+    updateMentions(nodeId, newPrereqs, oldPrereqs=null) {
+        if (oldPrereqs && oldPrereqs.trim() && oldPrereqs.trim() !== '') {
+            // Remove this node from old referenced nodes' mentions
+            const oldIds = window.ExpressionUtils.extractNodeIdsFromPrerequisites(oldPrereqs);
+            oldIds.forEach(refId => {
+                const refNode = this.state.nodes.find(n => n.id === refId);
+                if (refNode && refNode.mentions) {
+                    refNode.mentions.pop(nodeId);
+                }
+            });
+        }
+        
+        // Add this node to new referenced nodes' mentions
+        const newIds = window.ExpressionUtils.extractNodeIdsFromPrerequisites(newPrereqs);
+        newIds.forEach(refId => {
+            const refNode = this.state.nodes.find(n => n.id === refId);            
+            if (refNode) {
+                if (!refNode.mentions) {
+                    refNode.mentions = [];
+                }
+                refNode.mentions.push(nodeId);
+            }
+        });
+    }
+
+    propagatePrerequisiteChange(nodeId, oldPrereq=null) {
+        // Reprocess prerequisites for all nodes that reference this node
+        const currentNode = this.state.nodes.find(node => node.id === nodeId);
+   
+        if (currentNode && currentNode.mentions && currentNode.mentions.length > 0) {
+            console.log('Working on:', currentNode);
+            console.log('Prerequsities given: ', oldPrereq);
+            currentNode.mentions.forEach(refId => {
+                const refNode = this.state.nodes.find(node => node.id === refId);
+                if (refNode) {
+                    let prereq = refNode.prerequisites || '';
+                    if (oldPrereq) prereq = prereq + ' AND (' + oldPrereq + ')';
+                    console.log('Prerequisite: ', prereq)
+                    const updatedPrereq = this.processPrerequisites(prereq, refId);
+                    
+                    // Check if prerequisites actually changed, and then enable recursion
+                    const prerequisitesChanged = updatedPrereq !== refNode.prerequisites;
+
+                    Object.assign(refNode, { prerequisites: updatedPrereq });
+                    if (prerequisitesChanged) {
+                        this.propagatePrerequisiteChange(refId);
+                    }
+                }
+            });
+        }
+    }
+
+    /**
      * Update node in draft
      * @param {number} nodeId - Node ID
      * @param {Object} updates - Node updates
      */
-    updateNode(nodeId, updates) {
+    updateNode(nodeId, updates, shouldPrereqChange=false) {
         const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
         if (nodeIndex !== -1) {
-            Object.assign(this.state.nodes[nodeIndex], updates, { _isDirty: true });  // Mark as dirty
+            const existingNode = this.state.nodes[nodeIndex];
+            const oldPrerequisites = existingNode.prerequisites;
+            
+            // Process prerequisites if they are being updated
+            if (updates.prerequisites !== undefined) {
+                updates.prerequisites = this.processPrerequisites(updates.prerequisites, nodeId);
+            }
+            
+            Object.assign(existingNode, updates, { _isDirty: true });  // Mark as dirty
             this.state.isDirty = true;
+            
+            // If prerequisites changed, update mentions on referenced nodes
+            const prerequisitesChanged = updates.prerequisites !== undefined && 
+                                       updates.prerequisites !== oldPrerequisites;
+            
+            if (prerequisitesChanged) {
+                this.updateMentions(nodeId, updates.prerequisites, oldPrerequisites);
+                if (shouldPrereqChange) this.propagatePrerequisiteChange(nodeId, oldPrerequisites);
+            }
             
             this.updateGraphVisualization();
             this.notifyStateChange();

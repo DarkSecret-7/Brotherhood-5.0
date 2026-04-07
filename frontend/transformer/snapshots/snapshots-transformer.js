@@ -83,7 +83,7 @@ class SnapshotsTransformer {
             title: node.title,
             description: node.description || '',
             prerequisites: this.transformPrerequisitesFromBackend(node.prerequisite),
-            mentions: node.mentions || {},
+            mentions: this.transformMentionsFromBackend(node.mentions) || [],
             sources: this.transformSourcesFromBackend(node.source_items || []),
             domainId: node.domain_id || null,
             position: {
@@ -113,7 +113,7 @@ class SnapshotsTransformer {
                 title: node.title,
                 description: node.description,
                 prerequisite: this.transformPrerequisitesToBackend(node.prerequisites),
-                mentions: node.mentions || {},
+                mentions: this.transformMentionsToBackend(node.mentions),
                 source_items: this.transformSourcesToBackend(node.sources || []),
                 domain_id: node.domainId,
                 x: node.position?.x || null,
@@ -299,8 +299,10 @@ class SnapshotsTransformer {
         if (!backendPrereq) return '';
         if (typeof backendPrereq === 'string') return backendPrereq;
         if (typeof backendPrereq === 'object') {
-            // Convert complex prerequisite object to string expression
-            return this.prerequisiteObjectToString(backendPrereq);
+            // Convert tree structure to string using ExpressionUtils
+            if (window.ExpressionUtils) {
+                return window.ExpressionUtils.treeToPrerequisiteString(backendPrereq);
+            }
         }
         return '';
     }
@@ -308,18 +310,50 @@ class SnapshotsTransformer {
     /**
      * Transform prerequisite expression to backend format
      * @param {String} frontendPrereq - Frontend prerequisite expression
-     * @returns {Object|String} Backend prerequisite data
+     * @returns {Object|null} Backend prerequisite data as dict
      */
     transformPrerequisitesToBackend(frontendPrereq) {
         if (!frontendPrereq || frontendPrereq.trim() === '') return null;
         
-        // Try to parse as expression, keep as string if simple
-        try {
-            // For now, return as string - backend can handle parsing
-            return frontendPrereq.trim();
-        } catch (error) {
-            return frontendPrereq.trim();
+        // Parse expression into tree structure using ExpressionUtils
+        if (window.ExpressionUtils) {
+            return window.ExpressionUtils.parsePrerequisiteToTree(frontendPrereq);
         }
+        
+        // Fallback: wrap simple string in object format
+        return '';
+    }
+
+    /**
+     * Transform mentions from backend JSONB format to frontend array
+     * @param {Object} backendMentions - Backend mentions dict (JSONB)
+     * @returns {Array} Frontend mentions array of node IDs
+     */
+    transformMentionsFromBackend(backendMentions) {
+        if (!backendMentions || typeof backendMentions !== 'object') return [];
+        
+        // Convert backend dict {"3": true, "5": true} to frontend array [3, 5]
+        return Object.keys(backendMentions)
+            .map(id => parseInt(id))
+            .filter(id => !isNaN(id));
+    }
+
+    /**
+     * Transform mentions from frontend array to backend JSONB format
+     * @param {Array} frontendMentions - Frontend mentions array of node IDs
+     * @returns {Object} Backend mentions dict (JSONB)
+     */
+    transformMentionsToBackend(frontendMentions) {
+        if (!frontendMentions || !Array.isArray(frontendMentions) || frontendMentions.length === 0) {
+            return {};
+        }
+
+        // Convert frontend array [3, 5] to backend dict {"3": true, "5": true}
+        const backendMentions = {};
+        frontendMentions.forEach(nodeId => {
+            backendMentions[String(nodeId)] = true;
+        });
+        return backendMentions;
     }
 
     /**
@@ -389,23 +423,6 @@ class SnapshotsTransformer {
             assessableNodeCount: snapshot.assessable_node_count || 0,
             authors: this.transformAuthorsFromBackend(snapshot.authors || [])
         }));
-    }
-
-    /**
-     * Convert prerequisite object to string expression
-     * @param {Object} prereqObj - Prerequisite object
-     * @returns {String} String expression
-     */
-    prerequisiteObjectToString(prereqObj) {
-        // Simple implementation - can be enhanced based on actual backend format
-        if (prereqObj.expression) return prereqObj.expression;
-        if (prereqObj.and && Array.isArray(prereqObj.and)) {
-            return `(${prereqObj.and.join(' AND ')})`;
-        }
-        if (prereqObj.or && Array.isArray(prereqObj.or)) {
-            return `(${prereqObj.or.join(' OR ')})`;
-        }
-        return JSON.stringify(prereqObj);
     }
 
     /**

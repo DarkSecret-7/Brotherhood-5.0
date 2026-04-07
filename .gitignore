@@ -32,3 +32,6 @@ test/
 
 # Database Backups
 RENDER_DATABASE_BACKUPS/
+
+# Development Artifacts
+teamplan/
