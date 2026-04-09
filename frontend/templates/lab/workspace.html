@@ -51,7 +51,7 @@
     </div>
 
     <div class="active-version-display" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <div id="active-version-info">
+        <div id="active-version-info" style="cursor: pointer;" onclick="labUIController.openMetadataModal()">
             Working on: <span id="current-version-label">None</span>
         </div>
         <div class="workspace-buttons" style="align-self: right;">
@@ -409,6 +409,24 @@
                 <div id="llm-results" style="margin-top: 20px;">
                     <!-- Results will appear here -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metadata Modal -->
+    <div id="metadata-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Graph Metadata</h2>
+                <span class="close" onclick="labUIController.closeMetadataModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="metadata-content" style="margin-top: 20px;">
+                    <!-- Metadata will be injected here -->
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="labUIController.closeMetadataModal()">Close</button>
             </div>
         </div>
     </div>

@@ -106,6 +106,14 @@ class DatabaseStateManager {
                 return null;
             }
 
+            // Convert date strings back to Date objects
+            if (snapshot.createdAt) {
+                snapshot.createdAt = new Date(snapshot.createdAt);
+            }
+            if (snapshot.lastUpdated) {
+                snapshot.lastUpdated = new Date(snapshot.lastUpdated);
+            }
+
             localStorage.removeItem('pendingSnapshotLoad');
             return snapshot;
         } catch (error) {

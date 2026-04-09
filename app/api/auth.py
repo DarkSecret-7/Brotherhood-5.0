@@ -149,7 +149,9 @@ async def delete_user_me(current_user: models.User = Depends(get_current_user), 
 
 # --- Utility Endpoints (for dev/setup) DO NOT USE IN PRODUCTION ---
 
+"""
 @router.post("/auth/invitations", response_model=schemas.InvitationRead)
 def create_invitation(invitation: schemas.InvitationCreate, db: Session = Depends(database.get_db)):
     # This should ideally be protected, but for now we need a way to create the first invitation
     return services.invitations.InvitationService.create_invitation(db, code=invitation.code)
+"""

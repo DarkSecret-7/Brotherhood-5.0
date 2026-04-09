@@ -20,7 +20,7 @@ class DatabaseManager {
                 this.openGlobalImportModal();
             }
             if (e.target.id === 'refresh-btn') {
-                this.refreshSnapshots(force=true);
+                this.refreshSnapshots(true);
             }
         });
 

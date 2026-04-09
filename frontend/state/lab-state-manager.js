@@ -106,6 +106,9 @@ class LabStateManager {
             const baseGraphUuid = localStorage.getItem('lab_baseGraphUuid');
             const baseGraphLabel = localStorage.getItem('lab_baseGraphLabel');
             const isPublic = localStorage.getItem('lab_isPublic');
+            const createdAt = localStorage.getItem('lab_createdAt');
+            const lastUpdated = localStorage.getItem('lab_lastUpdated');
+            const authors = localStorage.getItem('lab_authors');
 
             if (persistedNodes) {
                 const nodesData = JSON.parse(persistedNodes);
@@ -116,7 +119,7 @@ class LabStateManager {
                 const domainsData = JSON.parse(persistedDomains);
                 this.state.domains = domainsData;
             }
-            
+
             if (currentSnapshotUuid && currentSnapshotLabel) {
                 this.state.currentSnapshotUuid = currentSnapshotUuid;
                 this.state.currentVersionLabel = currentSnapshotLabel;
@@ -130,7 +133,23 @@ class LabStateManager {
             if (isPublic) {
                 this.state.isPublic = isPublic === 'true';
             }
-            
+
+            if (createdAt && createdAt !== JSON.stringify(null)) {
+                this.state.createdAt = new Date(createdAt);
+            } else {
+                this.state.createdAt = null;
+            }
+
+            if (lastUpdated && lastUpdated !== JSON.stringify(null)) {
+                this.state.lastUpdated = new Date(lastUpdated);
+            } else {
+                this.state.lastUpdated = null;
+            }
+
+            if (authors) {
+                this.state.authors = JSON.parse(authors);
+            }
+
             // Load graph state
             const graphNodes = localStorage.getItem('lab_graphNodes');
             const graphEdges = localStorage.getItem('lab_graphEdges');
@@ -183,8 +202,9 @@ class LabStateManager {
             localStorage.setItem('lab_baseGraphLabel', this.state.baseGraphLabel || '');
             localStorage.setItem('lab_baseGraphUuid', this.state.baseGraphUuid || '');
             localStorage.setItem('lab_isPublic', this.state.isPublic);
-            localStorage.setItem('lab_createdAt', this.state.createdAt && typeof this.state.createdAt.toISOString === 'function' ? this.state.createdAt.toISOString() : '');
-            localStorage.setItem('lab_lastUpdated', this.state.lastUpdated && typeof this.state.lastUpdated.toISOString === 'function' ? this.state.lastUpdated.toISOString() : '');
+            localStorage.setItem('lab_createdAt', this.state.createdAt ? this.state.createdAt.toISOString() : JSON.stringify(null));
+            localStorage.setItem('lab_lastUpdated', this.state.lastUpdated ? this.state.lastUpdated.toISOString() : JSON.stringify(null));
+            localStorage.setItem('lab_authors', JSON.stringify(this.state.authors));
 
             const graphState = this.state.graphState;
             localStorage.setItem('lab_graphNodes', JSON.stringify(graphState.nodes));
@@ -317,7 +337,8 @@ class LabStateManager {
             domains: this.state.domains,
             baseUuid: exportBaseUuid,
             overwrite: overwrite,
-            isPublic: this.state.isPublic
+            isPublic: this.state.isPublic,
+            lastUpdated: new Date().toISOString()
         };
 
         return workspaceDraft;
@@ -511,6 +532,9 @@ class LabStateManager {
      * @param {Object} nodeData - Node data
      */
     addNode(nodeData) {
+        console.log('node: ', nodeData);
+        
+
         // Check if node ID already exists
         const existingNode = this.state.nodes.find(node => node.id === nodeData.id);
         if (existingNode) {
@@ -521,10 +545,10 @@ class LabStateManager {
         // Process prerequisites if utils are available
         let processedPrerequisites = this.processPrerequisites(nodeData.prerequisites, nodeData.id);
         this.updateMentions(nodeData.id, processedPrerequisites, null);
+        nodeData.prerequisites = processedPrerequisites;
 
         const newNode = {
             ...nodeData,
-            prerequisites: processedPrerequisites,
             position: { x: null, y: null },
             isSelected: false,
             isEditing: false,
@@ -1211,15 +1235,15 @@ class LabStateManager {
     resetForm(formName) {
         switch (formName) {
             case 'newNode':
-                domainId = this.state.forms.newNode.domainId;
+                const domainId = this.state.forms.newNode.domainId;
                 this.state.forms.newNode = this.createEmptyNodeForm();
-                this.state.forms.newNode.domainId = domainId
+                this.state.forms.newNode.domainId = domainId;
                 break;
             case 'editNode':
                 this.state.forms.editNode = this.createEmptyNodeForm();
                 break;
             case 'newDomain':
-                parentId = this.state.forms.newDomain.parentId;
+                const parentId = this.state.forms.newDomain.parentId;
                 this.state.forms.newDomain = this.createEmptyDomainForm();
                 this.state.forms.newDomain.parentId = parentId;
                 break;

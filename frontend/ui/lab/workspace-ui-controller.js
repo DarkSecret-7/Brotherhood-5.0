@@ -37,7 +37,7 @@ class LabUIController {
         
         // Form elements
         this.elements.forms = {
-            node: {
+            newNode: {
                 domainId: document.getElementById('node-parent-domain'),
                 localId: document.getElementById('node-id'),
                 title: document.getElementById('node-title'),
@@ -59,6 +59,12 @@ class LabUIController {
                 localId: document.getElementById('edit-domain-id'),
                 title: document.getElementById('edit-domain-title'),
                 description: document.getElementById('edit-domain-desc')
+            },
+            newDomain: {
+                localId: document.getElementById('create-domain-id'),
+                title: document.getElementById('create-domain-title'),
+                description: document.getElementById('create-domain-desc'),
+                parentId: document.getElementById('domain-parent-id')
             }
         };
         
@@ -92,7 +98,8 @@ class LabUIController {
             editDomain: document.getElementById('editDomainModal'),
             source: document.getElementById('sourceModal'),
             llm: document.getElementById('llm-modal'),
-            dialog: document.getElementById('dialogModal')
+            dialog: document.getElementById('dialogModal'),
+            metadata: document.getElementById('metadata-modal')
         };
         
         // Status elements
@@ -102,9 +109,6 @@ class LabUIController {
             clearWorkspaceBtn: document.getElementById('btn-clear-workspace'),
             statusDot: document.getElementById('status-dot')
         };
-        
-        // Forms reference for easier access
-        this.forms = this.elements.forms;
     }
 
     /**
@@ -139,28 +143,91 @@ class LabUIController {
      * Bind form-specific listeners
      */
     bindFormListeners() {
+        // New node form field sync to state
+        if (this.elements.forms && this.elements.forms.newNode) {
+            const newNodeForm = this.elements.forms.newNode;
+            
+            // Sync all form fields to state on change (when user finishes with field)
+            if (newNodeForm.localId) {
+                newNodeForm.localId.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newNode', { localId: parseInt(e.target.value) || null });
+                });
+            }
+            if (newNodeForm.title) {
+                newNodeForm.title.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newNode', { title: e.target.value });
+                });
+            }
+            if (newNodeForm.description) {
+                newNodeForm.description.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newNode', { description: e.target.value });
+                });
+            }
+            if (newNodeForm.domainId) {
+                newNodeForm.domainId.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newNode', { domainId: parseInt(e.target.value) || null });
+                });
+            }
+            if (newNodeForm.assessable) {
+                newNodeForm.assessable.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newNode', { assessable: e.target.checked });
+                });
+            }
+            if (newNodeForm.prerequisite) {
+                newNodeForm.prerequisite.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newNode', { prerequisite: e.target.value });
+                });
+            }
+        }
+
+        // New domain form field sync to state
+        if (this.elements.forms && this.elements.forms.newDomain) {
+            const newDomainForm = this.elements.forms.newDomain;
+            
+            if (newDomainForm.localId) {
+                newDomainForm.localId.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newDomain', { localId: parseInt(e.target.value) || null });
+                });
+            }
+            if (newDomainForm.title) {
+                newDomainForm.title.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newDomain', { title: e.target.value });
+                });
+            }
+            if (newDomainForm.description) {
+                newDomainForm.description.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newDomain', { description: e.target.value });
+                });
+            }
+            if (newDomainForm.parentId) {
+                newDomainForm.parentId.addEventListener('change', (e) => {
+                    this.stateManager.updateForm('newDomain', { parentId: parseInt(e.target.value) || null });
+                });
+            }
+        }
+
         // Node form auto-simplify prerequisites (if element exists)
-        if (this.forms && this.forms.node && this.forms.node.prerequisite) {
+        if (this.elements.forms && this.elements.forms.newNode && this.elements.forms.newNode.prerequisite) {
             // Add input event for real-time validation only (no simplification)
-            this.forms.node.prerequisite.addEventListener('input', (e) => {
+            this.elements.forms.newNode.prerequisite.addEventListener('input', (e) => {
                 this.validatePrerequisites(e.target);
             });
             
             // Add blur event for auto-correction when unfocused
-            this.forms.node.prerequisite.addEventListener('blur', (e) => {
+            this.elements.forms.newNode.prerequisite.addEventListener('blur', (e) => {
                 this.autoSimplifyPrerequisites(e.target, true);
             });
         }
         
         // Edit node form auto-simplify prerequisites (if element exists)
-        if (this.forms && this.forms.editNode && this.forms.editNode.prerequisite) {
+        if (this.elements.forms && this.elements.forms.editNode && this.elements.forms.editNode.prerequisite) {
             // Add input event for real-time validation only (no simplification)
-            this.forms.editNode.prerequisite.addEventListener('input', (e) => {
+            this.elements.forms.editNode.prerequisite.addEventListener('input', (e) => {
                 this.validatePrerequisites(e.target);
             });
             
             // Add blur event for auto-correction when unfocused
-            this.forms.editNode.prerequisite.addEventListener('blur', (e) => {
+            this.elements.forms.editNode.prerequisite.addEventListener('blur', (e) => {
                 this.autoSimplifyPrerequisites(e.target, true);
             });
         }
@@ -257,8 +324,8 @@ class LabUIController {
         
         // Update draft count
         if (this.elements.workspace.draftCount) {
-            const totalItems = nodes.length + domains.length;
-            this.elements.workspace.draftCount.textContent = totalItems;
+            const ender = nodes.length === 1 ? ' node' : ' nodes';
+            this.elements.workspace.draftCount.textContent = nodes.length + ender;
         }
 
         console.log(this.stateManager.getSelectedItems());
@@ -562,42 +629,37 @@ class LabUIController {
         
         // Update dialog content if dialog is visible
         if (modals.dialog && dialog) {
-            const dialogTitle = document.getElementById('dialog-title');
-            const dialogBody = document.getElementById('dialog-body');
-            const dialogInput = document.getElementById('dialog-input');
-            const dialogInputContainer = document.getElementById('dialog-input-container');
-            const cancelBtn = document.getElementById('dialog-cancel-btn');
-            const confirmBtn = document.getElementById('dialog-confirm-btn');
-            
-            if (dialogTitle) dialogTitle.textContent = dialog.title || 'Confirm';
-            if (dialogBody) dialogBody.textContent = dialog.message || '';
-            if (dialogInput) dialogInput.value = dialog.defaultValue || '';
-            if (dialogInputContainer) {
-                dialogInputContainer.style.display = dialog.type === 'prompt' ? 'block' : 'none';
-            }
-            
-            // Show/hide cancel button based on dialog type
-            if (cancelBtn) {
-                cancelBtn.style.display = dialog.type === 'alert' ? 'none' : 'inline-block';
-            }
-            
-            // Update button text
-            if (confirmBtn) {
-                confirmBtn.textContent = dialog.confirmText || 'OK';
-            }
-            if (cancelBtn) {
-                cancelBtn.textContent = dialog.cancelText || 'Cancel';
-            }
+            this.renderDialogContent(dialog);
         }
         
-        // Update edit node modal sources when visible
+        // Update edit node modal when visible
         if (modals.editNode && forms.editNode) {
-            this.renderEditNodeSources(forms.editNode.sources || [], 'editNode');
+            this.renderEditNodeForm(forms.editNode);
         }
         
-        // Update new node modal sources (always visible on page)
+        // Update edit domain modal when visible
+        if (modals.editDomain && forms.editDomain) {
+            this.renderEditDomainForm(forms.editDomain);
+        }
+        
+        // Update metadata modal content when visible
+        if (modals.metadata) {
+            this.renderMetadataContent();
+        }
+    }
+
+    /**
+     * Render sidebar forms (new node, new domain) - call this when forms are reset
+     */
+    renderSidebarForms() {
+        const forms = this.stateManager.state.forms;
+        
         if (forms.newNode) {
-            this.renderEditNodeSources(forms.newNode.sources || [], 'newNode');
+            this.renderNewNodeForm(forms.newNode);
+        }
+        
+        if (forms.newDomain) {
+            this.renderNewDomainForm(forms.newDomain);
         }
     }
 
@@ -666,6 +728,161 @@ class LabUIController {
         this.openModal('llm');
     }
 
+    /**
+     * Open metadata modal
+     */
+    openMetadataModal() {
+        this.openModal('metadata');
+    }
+
+    /**
+     * Close metadata modal
+     */
+    closeMetadataModal() {
+        this.closeModal('metadata');
+    }
+
+    /**
+     * Render dialog content
+     * @param {Object} dialog - Dialog state object
+     */
+    renderDialogContent(dialog) {
+        const dialogTitle = document.getElementById('dialog-title');
+        const dialogBody = document.getElementById('dialog-body');
+        const dialogInput = document.getElementById('dialog-input');
+        const dialogInputContainer = document.getElementById('dialog-input-container');
+        const cancelBtn = document.getElementById('dialog-cancel-btn');
+        const confirmBtn = document.getElementById('dialog-confirm-btn');
+        
+        if (dialogTitle) dialogTitle.textContent = dialog.title || 'Confirm';
+        if (dialogBody) dialogBody.textContent = dialog.message || '';
+        if (dialogInput) dialogInput.value = dialog.defaultValue || '';
+        if (dialogInputContainer) {
+            dialogInputContainer.style.display = dialog.type === 'prompt' ? 'block' : 'none';
+        }
+        
+        // Show/hide cancel button based on dialog type
+        if (cancelBtn) {
+            cancelBtn.style.display = dialog.type === 'alert' ? 'none' : 'inline-block';
+        }
+        
+        // Update button text
+        if (confirmBtn) {
+            confirmBtn.textContent = dialog.confirmText || 'OK';
+        }
+        if (cancelBtn) {
+            cancelBtn.textContent = dialog.cancelText || 'Cancel';
+        }
+    }
+
+    /**
+     * Render edit node form based on form state
+     * @param {Object} form - Edit node form state
+     */
+    renderEditNodeForm(form) {
+        const editFormElements = this.elements.forms.editNode;
+        if (!editFormElements) return;
+        
+        if (editFormElements.localId) editFormElements.localId.value = form.localId || '';
+        if (editFormElements.title) editFormElements.title.value = form.title || '';
+        if (editFormElements.description) editFormElements.description.value = form.description || '';
+        if (editFormElements.prerequisite) editFormElements.prerequisite.value = form.prerequisite || '';
+        if (editFormElements.propagateChanges) editFormElements.propagateChanges.checked = form.propagateChanges !== false;
+        if (editFormElements.assessable) editFormElements.assessable.checked = form.assessable || false;
+        
+        // Render sources
+        this.renderEditNodeSources(form.sources || [], 'editNode');
+    }
+
+    /**
+     * Render edit domain form based on form state
+     * @param {Object} form - Edit domain form state
+     */
+    renderEditDomainForm(form) {
+        const editFormElements = this.elements.forms.editDomain;
+        if (!editFormElements) return;
+        
+        if (editFormElements.localId) editFormElements.localId.value = form.localId || '';
+        if (editFormElements.title) editFormElements.title.value = form.title || '';
+        if (editFormElements.description) editFormElements.description.value = form.description || '';
+        
+        // Update domain ID display in modal header
+        const domainIdDisplay = document.getElementById('edit-domain-id-display');
+        if (domainIdDisplay) {
+            domainIdDisplay.textContent = `#${form.localId}`;
+        }
+    }
+
+    /**
+     * Render new node form based on form state
+     * @param {Object} form - New node form state
+     */
+    renderNewNodeForm(form) {
+        const addFormElements = this.elements.forms.newNode;
+        if (!addFormElements) return;
+        
+        if (addFormElements.localId) addFormElements.localId.value = form.localId || '';
+        if (addFormElements.title) addFormElements.title.value = form.title || '';
+        if (addFormElements.description) addFormElements.description.value = form.description || '';
+        if (addFormElements.prerequisite) addFormElements.prerequisite.value = form.prerequisite || '';
+        if (addFormElements.domainId) addFormElements.domainId.value = form.domainId || '';
+        if (addFormElements.assessable) addFormElements.assessable.checked = form.assessable || false;
+        
+        // Render sources
+        this.renderEditNodeSources(form.sources || [], 'newNode');
+    }
+
+    /**
+     * Render new domain form based on form state
+     * @param {Object} form - New domain form state
+     */
+    renderNewDomainForm(form) {
+        const addFormElements = this.elements.forms.newDomain;
+        if (!addFormElements) return;
+        
+        if (addFormElements.localId) addFormElements.localId.value = form.localId || '';
+        if (addFormElements.title) addFormElements.title.value = form.title || '';
+        if (addFormElements.description) addFormElements.description.value = form.description || '';
+        if (addFormElements.parentId) addFormElements.parentId.value = form.parentId || '';
+    }
+
+    /**
+     * Render metadata content
+     */
+    renderMetadataContent() {
+        const state = this.stateManager.state;
+        const metadataContent = document.getElementById('metadata-content');
+
+        if (metadataContent) {
+            const metadata = {
+                'Current Version Label': state.currentVersionLabel || 'None',
+                'Current Snapshot UUID': state.currentSnapshotUuid || 'None',
+                'Base Graph Label': state.baseGraphLabel || 'None',
+                'Base Graph UUID': state.baseGraphUuid || 'None',
+                'Node Count': state.nodes.length,
+                'Domain Count': state.domains.length,
+                'Redirect Count': state.redirects.length,
+                'Created At': state.createdAt ? new Date(state.createdAt).toLocaleString() : 'None',
+                'Last Updated': state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'None',
+                'Is Public': state.isPublic ? 'Yes' : 'No',
+                'Authors': state.authors.map(author => author.username).join(', ')
+            };
+            
+            let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">';
+            for (const [key, value] of Object.entries(metadata)) {
+                html += `
+                    <div style="padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                        <div style="font-weight: 600; color: #5f6368; font-size: 0.9em; margin-bottom: 5px;">${key}</div>
+                        <div style="word-break: break-all; font-family: monospace; font-size: 0.85em;">${value}</div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            
+            metadataContent.innerHTML = html;
+        }
+    }
+
 
     /**
      * Validate prerequisites without simplifying (for real-time feedback during typing)
@@ -731,7 +948,7 @@ class LabUIController {
         
         try {
             // Get current node context for simplification
-            const currentNodeId = this.forms.node.localId.value ? parseInt(this.forms.node.localId.value) : null;
+            const currentNodeId = this.elements.forms.newNode.localId.value ? parseInt(this.elements.forms.newNode.localId.value) : null;
             const contextNodes = this.stateManager.state.nodes;
             
             // First validate with node existence check
@@ -1029,18 +1246,11 @@ class LabUIController {
         // Add Toolbar
         const toolbar = document.createElement('div');
         toolbar.className = 'llm-toolbar';
-        toolbar.style.marginBottom = '15px';
-        toolbar.style.padding = '10px';
-        toolbar.style.backgroundColor = '#f1f3f4';
-        toolbar.style.borderRadius = '8px';
-        toolbar.style.display = 'flex';
-        toolbar.style.justifyContent = 'space-between';
-        toolbar.style.alignItems = 'center';
         
         toolbar.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="llm-select-all" onchange="labUIController.toggleSelectAllLLM(this)" style="width: auto; margin: 0; cursor: pointer;">
-                <label for="llm-select-all" style="margin: 0; font-weight: 600; cursor: pointer;">Select All</label>
+            <div class="llm-toolbar-label-group">
+                <input type="checkbox" id="llm-select-all" onchange="labUIController.toggleSelectAllLLM(this)">
+                <label for="llm-select-all" class="llm-toolbar-label">Select All</label>
             </div>
             <button class="btn-primary btn-small" onclick="window.llmOpsController.importLLMSelected()">Import Selected</button>
         `;
@@ -1049,20 +1259,15 @@ class LabUIController {
         suggestions.forEach((suggestion, index) => {
             const card = document.createElement('div');
             card.className = 'llm-suggestion-card';
-            card.style.border = '1px solid #e0e0e0';
-            card.style.borderRadius = '8px';
-            card.style.padding = '15px';
-            card.style.marginBottom = '10px';
-            card.style.backgroundColor = '#f9f9f9';
             
             card.innerHTML = `
-                <div style="display: flex; gap: 12px; align-items: flex-start;">
-                    <div style="padding-top: 4px;">
-                        <input type="checkbox" class="llm-suggestion-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                <div class="llm-suggestion-content">
+                    <div>
+                        <input type="checkbox" class="llm-suggestion-checkbox">
                     </div>
                     <div style="flex: 1;">
-                        <h4 style="margin-top: 0; color: #1a73e8; margin-bottom: 5px;">${this.escapeHtml(suggestion.title)}</h4>
-                        <p style="margin-bottom: 10px; color: #444;">${this.escapeHtml(suggestion.description)}</p>
+                        <h4 class="llm-suggestion-title">${this.escapeHtml(suggestion.title)}</h4>
+                        <p class="llm-suggestion-description">${this.escapeHtml(suggestion.description)}</p>
                         <button class="btn-secondary btn-small" onclick="window.llmOpsController.importSingleLLMNode('${this.escapeHtml(suggestion.title).replace(/'/g, "\\'")}', '${this.escapeHtml(suggestion.description).replace(/'/g, "\\'")}')">Use This Single</button>
                         <div style="display:none;" class="suggestion-data">
                             <span class="s-title">${this.escapeHtml(suggestion.title)}</span>
@@ -1131,6 +1336,7 @@ class LabUIController {
                     <strong>${source.title || 'Untitled'}</strong>
                     ${source.author ? `<span style="color: #666;"> - ${source.author}</span>` : ''}
                 </div>
+                ${source.url ? `<a href="${source.url}" target="_blank" class="source-link-btn">🔗</a>` : ''}
                 <button class="btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
                 <button class="btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
             `;

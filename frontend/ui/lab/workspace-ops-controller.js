@@ -56,7 +56,7 @@ class WorkspaceOpsController {
             return;
         }
 
-        if (!nodeData.id || nodeData.id <= 0) {
+        if (!nodeData.id || nodeData.id <= 0 || typeof nodeData.id !== 'number') {
             this.stateManager.customAlert('Valid node ID is required');
             return;
         }
@@ -65,10 +65,12 @@ class WorkspaceOpsController {
         try {
             this.stateManager.addNode(nodeData);
             
-            // Reset form (except domainId)
-            const currentDomainId = this.elements.addNode.domainId.value;
+            // Reset form (preserves domainId)
             this.stateManager.resetForm('newNode');
-            this.elements.addNode.domainId.value = currentDomainId;
+            
+            // Render sidebar forms to update UI
+            window.labUIController.renderSidebarForms();
+            
             this.stateManager.showMessage('Node added successfully', 'success');
         } catch (error) {
             this.stateManager.showMessage(error.message, 'error');
@@ -91,7 +93,7 @@ class WorkspaceOpsController {
             return;
         }
 
-        if (!domainData.id || domainData.id <= 0) {
+        if (!domainData.id || domainData.id <= 0 || typeof domainData.id !== 'number') {
             this.stateManager.customAlert('Valid domain ID is required');
             return;
         }
@@ -123,6 +125,12 @@ class WorkspaceOpsController {
                 this.stateManager.showMessage('Domain added successfully', 'success');
             }
 
+            // Reset form (preserves parentId)
+            this.stateManager.resetForm('newDomain');
+            
+            // Render sidebar forms to update UI
+            window.labUIController.renderSidebarForms();
+            
             this.stateManager.toggleModal('createDomain', false);
         } catch (error) {
             this.stateManager.showMessage(error.message, 'error');
@@ -151,7 +159,7 @@ class WorkspaceOpsController {
             return;
         }
         
-        if (!nodeData.id || nodeData.id <= 0) {
+        if (!nodeData.id || nodeData.id <= 0 || typeof nodeData.id !== 'number') {
             this.stateManager.customAlert('Valid node ID is required');
             return;
         }
@@ -198,7 +206,7 @@ class WorkspaceOpsController {
             return;
         }
         
-        if (!domainData.id || domainData.id <= 0) {
+        if (!domainData.id || domainData.id <= 0 || typeof domainData.id !== 'number') {
             this.stateManager.customAlert('Valid domain ID is required');
             return;
         }
@@ -224,17 +232,14 @@ class WorkspaceOpsController {
      */
     deleteNode(nodeId) {
         // Show dialog via state manager
-        this.stateManager.updateForm('dialog', {
-            title: 'Delete Node',
-            message: 'Are you sure you want to delete this node?',
-            input: '',
-            callback: (confirmed) => {
+        this.stateManager.customConfirm(
+            'Are you sure you want to delete this node?',
+            (confirmed) => {
                 if (confirmed) {
                     this.stateManager.deleteNode(nodeId);
                 }
             }
-        });
-        this.stateManager.toggleModal('dialog', true);
+        );
     }
 
     /**
@@ -243,11 +248,9 @@ class WorkspaceOpsController {
      */
     deleteDomain(domainId) {
         // Show dialog via state manager
-        this.stateManager.showDialog(
-            title = 'Delete Domain', 
-            message = 'Are you sure you want to delete this domain and all its contents?', 
-            type = 'alert', 
-            callback = (confirmed) => {
+        this.stateManager.customConfirm(
+            'Are you sure you want to delete this domain and all its contents?',
+            (confirmed) => {
                 if (confirmed) {
                     this.stateManager.deleteDomain(domainId);
                 }
@@ -265,18 +268,15 @@ class WorkspaceOpsController {
 
         // Populate edit form via state manager
         const form = this.stateManager.state.forms.editNode;
-        Object.assign(form, node);
-
-        // Populate HTML form elements
-        const editFormElements = window.labUIController.elements.forms.editNode;
-        if (editFormElements) {
-            editFormElements.localId.value = node.id || '';
-            editFormElements.title.value = node.title || '';
-            editFormElements.description.value = node.description || '';
-            editFormElements.prerequisite.value = node.prerequisites || '';
-            editFormElements.propagateChanges.checked = node.propagateChanges !== false; // Default to true
-            editFormElements.assessable.checked = node.assessable || false;
-        }
+        Object.assign(form, {
+            localId: node.id,
+            title: node.title,
+            description: node.description,
+            prerequisite: node.prerequisites,
+            propagateChanges: node.propagateChanges !== false,
+            assessable: node.assessable || false,
+            sources: node.sources || []
+        });
 
         // Open modal via state manager - UI controller will render via handleStateChange
         this.stateManager.toggleModal('editNode', true);
@@ -292,23 +292,13 @@ class WorkspaceOpsController {
 
         // Populate edit form via state manager
         const form = this.stateManager.state.forms.editDomain;
-        Object.assign(form, domain);
+        Object.assign(form, {
+            localId: domain.id,
+            title: domain.title,
+            description: domain.description
+        });
 
-        // Populate HTML form elements
-        const editFormElements = window.labUIController.elements.forms.editDomain;
-        if (editFormElements) {
-            editFormElements.localId.value = domain.id || '';
-            editFormElements.title.value = domain.title || '';
-            editFormElements.description.value = domain.description || '';
-        }
-
-        // Update domain ID display in modal header
-        const domainIdDisplay = document.getElementById('edit-domain-id-display');
-        if (domainIdDisplay) {
-            domainIdDisplay.textContent = `#${domain.id}`;
-        }
-
-        // Open modal via state manager
+        // Open modal via state manager - UI controller will render via handleStateChange
         this.stateManager.toggleModal('editDomain', true);
     }
 

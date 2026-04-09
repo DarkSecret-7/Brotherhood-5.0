@@ -51,6 +51,14 @@ class SnapshotsTransformer {
             metadata_only: metadataOnly
         };
 
+        // Preserve original dates for imported graphs
+        if (frontendSnapshot.createdAt) {
+            backendSnapshot.created_at = frontendSnapshot.createdAt.toISOString();
+        }
+        if (frontendSnapshot.lastUpdated) {
+            backendSnapshot.last_updated = frontendSnapshot.lastUpdated.toISOString();
+        }
+
         // Only include nodes/domains for full updates
         if (!metadataOnly) {
             backendSnapshot.nodes = this.transformNodesToBackend(frontendSnapshot.nodes || []);

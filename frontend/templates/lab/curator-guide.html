@@ -76,9 +76,21 @@
             <li><strong>Title</strong>: What is this concept called?</li>
             <li><strong>Description</strong>: A short explanation.</li>
             <li><strong>Under Domain ID</strong>: Type the ID of the Domain this node belongs to (e.g., 100).</li>
-            <li><strong>Sources</strong>: Where can one learn about this? Click <strong>Add Source</strong> to link it to a resource (e.g., a PDF, a video, or others) </li>
+            <li><strong>Sources</strong>: Where can one learn about this? Click <strong>Add Source</strong> to link it to a resource.</li>
             <li><strong>Click "Add to Draft"</strong>: Watch it appear in your list above!</li>
         </ul>
+
+        <h3>📚 Sources &amp; Bibliography</h3>
+        <p>Each node can have multiple sources linked to it. Sources are stored in a shared bibliography:</p>
+        <ul>
+            <li><strong>Title</strong>: Name of the resource (e.g., "Introduction to Python")</li>
+            <li><strong>Author</strong>: Who created the resource</li>
+            <li><strong>Type</strong>: PDF, Video, or Other</li>
+            <li><strong>Year</strong>: Publication year (optional)</li>
+            <li><strong>URL</strong>: Link to the resource (optional)</li>
+            <li><strong>Fragment</strong>: For specific sections (e.g., "Chapter 3" or "00:05:30-00:10:00")</li>
+        </ul>
+        <p>Sources are reused across nodes - if multiple nodes reference the same book, they share the same bibliography entry.</p>
 
         <h2>3. Connecting the Dots (Prerequisites) 🔗</h2>
         <p>This is the most powerful part! You can define what needs to be learned <em>before</em> something else.</p>
@@ -95,27 +107,21 @@
             </li>
         </ul>
 
-        <h2>4. Visualizing Your Work 👁️</h2>
+        <h2>4. Graph Visualization (Under Development) 👁️</h2>
+        <p>The graph visualization feature is currently under active development and may not be fully functional.</p>
+
+        <h3>Current Architecture</h3>
         <ul>
-            <li>Click the <strong>Graph Visualizer</strong> tab at the top.</li>
-            <li>You'll see arrows pointing from the <em>prerequisite</em> to the <em>dependent</em> node.</li>
-            <li><strong>Moving Groups</strong>: You can collapse a Domain (Right-click -> Collapse) and drag it to a new location. All its nodes and nested domains will move with it!</li>
-            <li>If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.</li>
+            <li><strong>Core Visualizer</strong>: <code>frontend/components/graph-visualizer.js</code> (vis.js-based)</li>
+            <li><strong>Workspace Controller</strong>: <code>frontend/ui/lab/graph-controller.js</code></li>
+            <li><strong>Gallery Processor</strong>: <code>frontend/components/gallery-graph-processor.js</code></li>
         </ul>
 
-        <h3>Graph Layout Controls</h3>
-        <p>Use the buttons at the top of the Graph Visualizer to manage your layout:</p>
+        <h3>Planned Features</h3>
         <ul>
-            <li><strong>Fix Positions</strong>: Locks all nodes in their current places. This saves the coordinates to your local workspace, ensuring they stay put even if you refresh.</li>
-            <li><strong>Reset Layout</strong>: Restores the last <em>saved</em> positions. If you've dragged things around but haven't clicked "Fix Positions", this will snap everything back to the last save.</li>
-            <li><strong>Randomise</strong>: Scrambles the graph layout. Useful if you're stuck in a local minimum or just want a fresh start to untangle nodes manually.</li>
-        </ul>
-
-        <h3>Interactive Pathways (Advanced)</h3>
-        <p>For nodes with complex prerequisites (like "A OR B"), you can interact with the connections:</p>
-        <ul>
-            <li><strong>Click an Edge</strong>: If a node requires "A OR B", clicking the arrow from "A" will highlight the pathway where "A" is the active prerequisite. Clicking the arrow from "B" will switch the active pathway to "B".</li>
-            <li>This helps visualize different ways a requirement can be met!</li>
+            <li>Drag-and-drop node positioning</li>
+            <li>Domain grouping visualization with convex hulls</li>
+            <li>Interactive prerequisite pathway exploration</li>
         </ul>
 
         <h2>5. Saving & Publishing 💾</h2>
@@ -135,13 +141,21 @@
         <p>Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a <strong>Redirect ID</strong>. This tells the system where the "capability" formerly represented by that node has moved to.</p>
         <ul>
             <li><strong>Mandatory Overwrite Protection</strong>: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.</li>
-            <li><strong>Version Control</strong>: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved.</li>
+            <li><strong>Version Control</strong>: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved. Each redirect records when the change occurred, preserving the complete history of capability transformations.</li>
         </ul>
 
         <h3>🔒 Ownership & Remixing</h3>
         <ul>
             <li><strong>Updating Your Work</strong>: If you are the original creator of the graph, you will see the <strong>Overwrite base graph</strong> checkbox. Check this if you want to update your existing version.</li>
             <li><strong>Remixing Others' Work</strong>: If you are building on top of someone else's graph, the <strong>Overwrite</strong> option will be hidden. This protects their original work! You can still make changes and save, but it will automatically be saved as a <strong>new</strong> graph (your own copy).</li>
+        </ul>
+
+        <h3>👥 Managing Graph Authors</h3>
+        <p>Graphs support multiple authors with role-based permissions:</p>
+        <ul>
+            <li><strong>Roles</strong>: Authors can be assigned roles - <strong>Curator</strong> (full control), <strong>Editor</strong> (can modify content), <strong>Viewer</strong> (read-only).</li>
+            <li><strong>Adding Authors</strong>: Existing authors can add new authors via the API (UI feature coming soon).</li>
+            <li><strong>Last Author Protection</strong>: The system prevents removing the last remaining author to ensure graphs always have ownership.</li>
         </ul>
 
         <h2>6. AI Assistance 🤖</h2>

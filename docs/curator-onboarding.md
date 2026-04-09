@@ -25,8 +25,21 @@ Nodes are the specific topics, facts, or concepts within those domains.
 *   **Title**: What is this concept called?
 *   **Description**: A short explanation.
 *   **Under Domain ID**: Type the ID of the Domain this node belongs to (e.g., 100).
-*   **Sources**: Where can one learn about this? Click **Add Source** to link it to a resource (e.g., a PDF, a video, or others).
+*   **Sources**: Where can one learn about this? Click **Add Source** to link it to a resource.
 *   **Click "Add to Draft"**: Watch it appear in your list above!
+
+### 📚 Sources & Bibliography
+
+Each node can have multiple sources linked to it. Sources are stored in a shared bibliography:
+
+*   **Title**: Name of the resource (e.g., "Introduction to Python")
+*   **Author**: Who created the resource
+*   **Type**: PDF, Video, or Other
+*   **Year**: Publication year (optional)
+*   **URL**: Link to the resource (optional)
+*   **Fragment**: For specific sections (e.g., "Chapter 3" or "00:05:30-00:10:00")
+
+Sources are reused across nodes - if multiple nodes reference the same book, they share the same bibliography entry.
 
 ## 3. Connecting the Dots (Prerequisites) 🔗
 
@@ -39,27 +52,16 @@ This is the most powerful part! You can define what needs to be learned *before*
     *   Complex: `(1 AND 2) OR 3`.
     *   **CRITICAL**: You must **click outside the box** (unfocus) for the system to process and simplify your expression!
 
-## 4. Visualizing Your Work 👁️
+## 4. Graph Visualization (Under Development) 👁️
 
-*   Click the **Graph Visualizer** tab at the top.
-*   You'll see arrows pointing from the *prerequisite* to the *dependent* node.
-*   **Moving Groups**: You can collapse a Domain (Right-click -> Collapse) and drag it to a new location. All its nodes and nested domains will move with it!
-*   If the arrows look like a tangled mess, don't worry! It means you're building something complex and interesting.
+The graph visualization feature is currently under active development and may not be fully functional.
 
-### Graph Layout Controls
+**Current Architecture:**
+- Core visualizer: `frontend/components/graph-visualizer.js` (vis.js-based)
+- Workspace controller: `frontend/ui/lab/graph-controller.js`
+- Gallery processor: `frontend/components/gallery-graph-processor.js`
 
-Use the buttons at the top of the Graph Visualizer to manage your layout:
-
-*   **Fix Positions**: Locks all nodes in their current places. This saves the coordinates to your local workspace, ensuring they stay put even if you refresh.
-*   **Reset Layout**: Restores the last *saved* positions. If you've dragged things around but haven't clicked "Fix Positions", this will snap everything back to the last save.
-*   **Randomise**: Scrambles the graph layout. Useful if you're stuck in a local minimum or just want a fresh start to untangle nodes manually.
-
-### Interactive Pathways (Advanced)
-
-For nodes with complex prerequisites (like "A OR B"), you can interact with the connections:
-
-*   **Click an Edge**: If a node requires "A OR B", clicking the arrow from "A" will highlight the pathway where "A" is the active prerequisite. Clicking the arrow from "B" will switch the active pathway to "B".
-*   This helps visualize different ways a requirement can be met!
+Future features planned: drag-and-drop node positioning, domain grouping visualization, and interactive prerequisite pathway exploration.
 
 ## 5. Saving & Publishing 💾
 
@@ -75,12 +77,19 @@ Once you're happy with your draft:
 Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a **Redirect ID**. This tells the system where the "capability" formerly represented by that node has moved to. 
 
 *   **Mandatory Overwrite Protection**: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.
-*   **Version Control**: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved.
+*   **Version Control**: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved. Each redirect records when the change occurred, preserving the complete history of capability transformations.
 
 ### 🔒 Ownership & Remixing
 *   **Updating Your Work**: You can overwrite your own graphs by checking the **Overwrite** option during save.
 *   **Remixing Others' Work**: You can save a copy of someone else's graph as a new version (e.g., "My Remix v1"). If you try to overwrite their graph directly, the system will warn you.
 *   **Import/Export**: You can now export your graphs to `.knw` files to share them or back them up. To import a graph, use the "Import Graph" button on the dashboard or inside a graph's settings to overwrite it.
+
+### 👥 Managing Graph Authors
+Graphs support multiple authors with role-based permissions:
+
+*   **Roles**: Authors can be assigned roles - **Curator** (full control), **Editor** (can modify content), **Viewer** (read-only).
+*   **Adding Authors**: Existing authors can add new authors via the API (UI feature coming soon).
+*   **Last Author Protection**: The system prevents removing the last remaining author to ensure graphs always have ownership.
 
 ## 6. AI Assistance 🤖
 

@@ -24,10 +24,13 @@ The current codebase is **mid-refactor** and follows a strict layering model. Th
 ### Backend Layers (Target)
 1. **CRUD**  
    Dumb persistence only: model reads/writes and query helpers.
+   - Includes: `snapshots`, `users`, `proposals`, `authorship`, `access_control`, `bibliography`, `assessments`, `invitations`
 2. **Services**  
    Business logic, orchestration, authorization decisions, validation rules.
+   - Includes: `snapshots`, `bibliography`, `assessments`, `proposals`, `invitations`
 3. **API**  
    HTTP endpoints for frontend consumption; converts request/response at the boundary.
+   - Includes: `auth`, `snapshots`, `proposals`, `authorship`, `utility`, `llm`, `assessments`
 
 ### Frontend Layers (Target)
 1. **API**  
@@ -85,15 +88,15 @@ This split separates draft editing from direct backend communication.
 ```text
 .
 ├─ app/
-│  ├─ api/                    # FastAPI route handlers
-│  ├─ crud/                   # Pure database operations
-│  ├─ services/               # Business logic layer
+│  ├─ api/                    # FastAPI route handlers (auth, snapshots, proposals, authorship, utility, llm, assessments)
+│  ├─ crud/                   # Pure database operations (snapshots, users, proposals, authorship, access_control, etc.)
+│  ├─ services/               # Business logic layer (snapshots, bibliography, assessments, proposals, invitations)
 │  ├─ main.py                 # FastAPI application entry point
 │  ├─ database.py             # Engine/session setup
 │  ├─ models.py               # SQLAlchemy models
 │  ├─ schemas.py              # Pydantic request/response schemas
-│  ├─ utils.py                # Auth helpers, utilities
-│  └─ crud.py                 # Transitional/deprecated monolith
+│  ├─ utils.py                # Auth helpers, email utilities, import/export (.knw), validation
+│  └─ crud.py                 # DEPRECATED: Transitional monolith (being migrated to app/crud/)
 ├─ frontend/
 │  ├─ api/                    # HTTP client and endpoint services
 │  ├─ assets/                 # Static assets (images, icons)
@@ -185,15 +188,12 @@ The system supports a custom `.knw` (Knowledge Graph) file format for sharing gr
 - **Overwrite**: Inside an existing graph's settings, you can import a `.knw` file to completely replace the current graph content (requires confirmation).
 - **Smart Resolution**: The importer automatically resolves user references (creators) and base graph links. If a referenced user or graph is missing, it defaults to safe values ("Unknown" or null) to prevent errors.
 
-### 6. Interactive Graph Management
-- **Visual Drag & Drop**: Rearrange nodes freely in the workspace. Your custom layout is saved with the snapshot.
-- **Group Movement**: Collapse a Domain to treat it as a single unit. Dragging a collapsed domain automatically moves all its internal nodes and nested domains, maintaining their relative positions.
-- **Background Rendering**: Domains are visualized as convex hulls that encompass their nodes, providing a clear visual hierarchy.
-- **Layout Controls**:
-  - **Fix Positions**: Saves current node coordinates to the local workspace.
-  - **Reset Layout**: Reverts to the last saved configuration.
-  - **Randomise**: Scrambles the layout to help untangle dense clusters.
-- **Alternative Pathways**: Click on edges to cycle through active prerequisites for nodes with complex logic (e.g., OR conditions).
+### 6. Graph Visualization (Under Development)
+The graph visualization system is currently under active development. The architecture consists of:
+- **GraphVisualizer** (`frontend/components/graph-visualizer.js`): Core visualization component using vis.js
+- **Domain-specific controllers**: `graph-controller.js` for workspace, `gallery-graph-processor.js` for gallery
+
+Planned features include drag-and-drop positioning, domain grouping, and interactive pathway exploration.
 
 ## Advanced Features
 
@@ -208,6 +208,20 @@ When you edit a prerequisite in the Web UI, the system automatically:
 2. Performs **Transitive Reduction** (e.g., if A depends on B and B depends on C, then A depending on C is redundant and removed).
 
 > **CRITICAL**: The simplification triggers when you **unfocus** (click away) from the input field.
+
+### Graph Governance (Proposals)
+A consent-based governance system for graph management:
+- **Proposal Types**: Join (request to join as author), Invite (invite another user), Merge (merge graphs), Delete (remove graph)
+- **Voting**: Authors vote approve/reject on proposals
+- **Automatic Execution**: Delete proposals execute immediately when approved
+- **API**: `/api/v1/proposals/*` endpoints
+
+### Authorship Management
+Multi-author graph collaboration:
+- **Add Authors**: Existing authors can add new authors with roles (Curator, Editor, Viewer)
+- **Role-Based Access**: Different permission levels for graph modifications
+- **Last Author Protection**: Cannot remove the sole remaining author
+- **API**: `/api/v1/snapshots/{uuid}/authors/*` endpoints
 
 ### Reference Integrity
 - **Mentions**: Each node tracks which other nodes reference it in their prerequisites.
@@ -300,7 +314,7 @@ Served by backend:
 - `/lab/workspace`
 - `/lab/database`
 - `/lab/curator-guide`
-- `/profile/{user_uuid}` (user profiles)
+- `/profile/{user_uuid}` (user profiles - UI under development)
 
 API and health:
 - `/api/v1/*`
@@ -345,16 +359,33 @@ If the logs show `!!! WARNING: No database environment variable found`, it means
 
 ## Authentication & Security
 
-- **Invite-Only Signup**: Registration is restricted to users with a valid invitation code.
-- **JWT Authorization**: Backend endpoints are protected using OAuth2 with Password Flow and JWT tokens.
-- **Secure Access**: The static dashboard is only accessible to authenticated users.
+- **Invite-Only Signup**: Registration is restricted to users with a valid invitation code. Administrators must generate invitation codes via the backend/admin interface.
+- **JWT Authorization**: Backend endpoints are protected using OAuth2 with Password Flow and JWT tokens (2-day expiry).
+- **Secure Access**: The workspace is only accessible to authenticated users.
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `APP_MODE` | `production`, `docker`, or `local`. Controls database connection strategy. | Yes |
+| `DATABASE_URL` | PostgreSQL connection string (required for docker/production). | For docker/prod |
+| `GEMINI_API_KEY` | Google Gemini API key for AI node suggestions. If missing, returns mock data. | No |
+| `SECRET_KEY` | JWT signing key (has hardcoded default for development only). | Production |
+| `EMAIL_HOST` | SMTP server hostname for contact form. | For contact form |
+| `EMAIL_PORT` | SMTP server port. | For contact form |
+| `EMAIL_USER` | SMTP authentication username. | For contact form |
+| `EMAIL_PASSWORD` | SMTP authentication password. | For contact form |
 
 ## Refactor Status and Expectations
 The repository still contains transitional patterns.
-Examples include:
-- mixed usage of layered modules and older monolithic patterns
-- places where frontend controller logic still overlaps with responsibilities that should move to stricter layer boundaries
 
+### Legacy Code (Migration in Progress)
+- **`app/crud.py`**: DEPRECATED - Transitional monolith being migrated to `app/crud/` module. Do not add new code here.
+- **`static [LEGACY]/`**: Old frontend assets. Being replaced by `frontend/` architecture.
+- **`templates [LEGACY]/`**: Old HTML templates. Being replaced by `frontend/templates/`.
+- **`profile [LEGACY]/`**: Old profile management. Being replaced by `frontend/templates/lab/user-profile.html`.
+
+### Current Patterns to Follow
 When adding or changing features:
 1. Preserve the target layer boundaries from this README.
 2. Move logic toward `CRUD -> Services -> API` on backend.
