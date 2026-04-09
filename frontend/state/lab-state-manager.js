@@ -5,20 +5,31 @@
 class LabStateManager {
     constructor() {
         this.state = {
-            // Current workspace state
-            currentSnapshot: null,
-            baseSnapshot: null,
+            // Current workspace state - separate fields instead of monolithic objects
             nodes: [],
             domains: [],
+            redirects: [],
+
+            // Snapshot metadata
+            currentSnapshotUuid: null,
+            currentVersionLabel: '',
+            baseGraphUuid: null,
+            baseGraphLabel: null,
+            createdAt: null,
+            lastUpdated: null,
+            isPublic: false,
+            authors: [],
+
+            // Selection state
             selectedNodes: new Set(),
             selectedDomains: new Set(),
-            
+
             // UI state
             activeTab: 'workspace', // workspace, graph, save
             isLoading: false,
             isDirty: false,
             error: null,
-            
+
             // Modal states
             modals: {
                 editNode: false,
@@ -28,7 +39,7 @@ class LabStateManager {
                 llm: false,
                 dialog: false
             },
-            
+
             // Form states
             forms: {
                 newNode: this.createEmptyNodeForm(),
@@ -36,7 +47,7 @@ class LabStateManager {
                 newDomain: this.createEmptyDomainForm(),
                 editDomain: this.createEmptyDomainForm(),
                 source: this.createEmptySourceForm(),
-                llm: { query: '' },
+                llm: this.createEmptyLLMForm(),
             },
 
             dialog: {
@@ -49,7 +60,7 @@ class LabStateManager {
                 callback: null,
                 resolve: null
             },
-            
+
             // Graph visualization state
             graphState: {
                 nodes: [],
@@ -61,14 +72,9 @@ class LabStateManager {
                 lastUpdated: null,
                 network: null
             },
-            
+
             // Snapshot management
-            snapshotList: [],
-            isSnapshotListOpen: false,
-            currentVersionLabel: '',
-            baseGraphLabel: null,
-            overwriteMode: false,
-            isPublic: false
+            overwriteMode: false
         };
 
         // Initialize subscribers array
@@ -95,7 +101,9 @@ class LabStateManager {
         try {
             const persistedNodes = localStorage.getItem('lab_nodes');
             const persistedDomains = localStorage.getItem('lab_domains');
+            const currentSnapshotUuid = localStorage.getItem('lab_currentSnapshotUuid');
             const currentSnapshotLabel = localStorage.getItem('lab_currentSnapshotLabel');
+            const baseGraphUuid = localStorage.getItem('lab_baseGraphUuid');
             const baseGraphLabel = localStorage.getItem('lab_baseGraphLabel');
             const isPublic = localStorage.getItem('lab_isPublic');
 
@@ -109,11 +117,13 @@ class LabStateManager {
                 this.state.domains = domainsData;
             }
             
-            if (currentSnapshotLabel) {
+            if (currentSnapshotUuid && currentSnapshotLabel) {
+                this.state.currentSnapshotUuid = currentSnapshotUuid;
                 this.state.currentVersionLabel = currentSnapshotLabel;
             }
             
-            if (baseGraphLabel) {
+            if (baseGraphUuid && baseGraphLabel) {
+                this.state.baseGraphUuid = baseGraphUuid;
                 this.state.baseGraphLabel = baseGraphLabel;
             }
             
@@ -167,11 +177,15 @@ class LabStateManager {
         try {
             localStorage.setItem('lab_nodes', JSON.stringify(this.state.nodes));
             localStorage.setItem('lab_domains', JSON.stringify(this.state.domains));
+            localStorage.setItem('lab_redirects', JSON.stringify(this.state.redirects));
             localStorage.setItem('lab_currentSnapshotLabel', this.state.currentVersionLabel);
-            localStorage.setItem('lab_baseGraphLabel', this.state.baseGraphLabel);
+            localStorage.setItem('lab_currentSnapshotUuid', this.state.currentSnapshotUuid || '');
+            localStorage.setItem('lab_baseGraphLabel', this.state.baseGraphLabel || '');
+            localStorage.setItem('lab_baseGraphUuid', this.state.baseGraphUuid || '');
             localStorage.setItem('lab_isPublic', this.state.isPublic);
-            
-            // Persist graph state
+            localStorage.setItem('lab_createdAt', this.state.createdAt && typeof this.state.createdAt.toISOString === 'function' ? this.state.createdAt.toISOString() : '');
+            localStorage.setItem('lab_lastUpdated', this.state.lastUpdated && typeof this.state.lastUpdated.toISOString === 'function' ? this.state.lastUpdated.toISOString() : '');
+
             const graphState = this.state.graphState;
             localStorage.setItem('lab_graphNodes', JSON.stringify(graphState.nodes));
             localStorage.setItem('lab_graphEdges', JSON.stringify(graphState.edges));
@@ -231,32 +245,37 @@ class LabStateManager {
     loadSnapshot(frontendSnapshot) {
         this.setLoading(true);
         this.setError(null);
-        
+
         try {
             console.log('Loading snapshot:', frontendSnapshot);
 
             // Update state with transformed data (transformer already called this)
-            this.state.currentSnapshot = frontendSnapshot;
             this.state.nodes = frontendSnapshot.nodes || [];
             this.state.domains = frontendSnapshot.domains || [];
-            this.state.currentVersionLabel = frontendSnapshot.versionLabel;
-            this.state.baseGraphLabel = frontendSnapshot.baseGraphLabel;
+            this.state.redirects = frontendSnapshot.redirects || [];
+            this.state.currentSnapshotUuid = frontendSnapshot.currentSnapshotUuid || null;
+            this.state.currentVersionLabel = frontendSnapshot.currentVersionLabel || '';
+            this.state.baseGraphUuid = frontendSnapshot.baseGraphUuid || null;
+            this.state.baseGraphLabel = frontendSnapshot.baseGraphLabel || null;
+            this.state.createdAt = frontendSnapshot.createdAt || null;
+            this.state.lastUpdated = frontendSnapshot.lastUpdated || null;
             this.state.isPublic = frontendSnapshot.isPublic || false;
-            
+            this.state.authors = frontendSnapshot.authors || [];
+
             // Update graph visualization
             this.updateGraphVisualization();
-            
+
             // Mark as clean
             this.state.isDirty = false;
-            
+
             // Persist state
             this.persistState();
-            
+
             // Notify listeners
             this.notifyStateChange();
-            
+
             return frontendSnapshot;
-            
+
         } catch (error) {
             this.setError(error);
             this.setLoading(false);
@@ -267,35 +286,175 @@ class LabStateManager {
     }
 
     /**
-     * Set base snapshot
-     * @param {Object} baseSnapshot - Base snapshot object from transformer
-     */
-    setBaseSnapshot(baseSnapshot) {
-        this.state.baseSnapshot = baseSnapshot;
-        this.notifyStateChange();
-    }
-
-    /**
      * Export current workspace draft for delegated persistence.
      * No API/transformer calls happen here; orchestration layer handles that.
      * @param {Object} saveOptions - Save options
      * @returns {Object} Raw draft payload for database management orchestration
      */
     exportWorkspace(saveOptions = {}) {
-        const currentSnapshotUuid = this.state.currentSnapshot?.uuid || null;
-        const baseUuid = this.state.baseSnapshot?.uuid || currentSnapshotUuid || null;
+        const overwrite = saveOptions.overwrite || false;
+
+        // Determine base_uuid and version_label based on overwrite logic (same as exportToFile)
+        let currentSnapshotUuid = null;
+        let exportBaseUuid = null;
+        let exportVersionLabel = null;
+
+        if (overwrite) {
+            // Overwrite: keep current base graph as base
+            currentSnapshotUuid = this.state.currentSnapshotUuid || null;
+            exportBaseUuid = this.state.baseGraphUuid || null;
+            exportVersionLabel = this.state.currentVersionLabel || 'Unnamed Workspace Graph';
+        } else {
+            // New version: current graph becomes base, no UUID
+            exportBaseUuid = this.state.currentSnapshotUuid || null;
+            exportVersionLabel = saveOptions.versionLabel || 'Unnamed Workspace Graph';
+        }
 
         const workspaceDraft = {
-            versionLabel: saveOptions.versionLabel || this.state.currentVersionLabel,
+            currentSnapshotUuid: currentSnapshotUuid,
+            versionLabel: exportVersionLabel,
             nodes: this.state.nodes,
             domains: this.state.domains,
-            currentSnapshotUuid,
-            baseUuid,
-            overwrite: saveOptions.overwrite || false,
+            baseUuid: exportBaseUuid,
+            overwrite: overwrite,
             isPublic: this.state.isPublic
         };
-        
+
         return workspaceDraft;
+    }
+
+    /**
+     * Export current workspace to .knw file (client-side only)
+     * @param {Object} exportOptions - Export options (versionLabel, overwrite)
+     * @returns {void} - Triggers browser download
+     */
+    exportToFile(exportOptions = {}) {
+        const versionLabel = exportOptions.versionLabel || this.state.currentVersionLabel || 'workspace';
+        const overwrite = exportOptions.overwrite || false;
+
+        // Get current user info from auth service
+        const currentUser = window.authApiService ? window.authApiService.getCurrentUserFromToken() : null;
+
+        // Use transformer to convert to backend format for export
+        let backendNodes = [];
+        let backendDomains = [];
+
+        if (window.snapshotsTransformer) {
+            // Use transformer for exact backend compatibility
+            const frontendNodes = this.state.nodes.map(node => ({
+                ...node,
+                // Ensure position exists for transformation
+                position: node.position || { x: null, y: null }
+            }));
+            const frontendDomains = this.state.domains;
+            backendNodes = window.snapshotsTransformer.transformNodesToBackend(frontendNodes);
+            backendDomains = window.snapshotsTransformer.transformDomainsToBackend(frontendDomains);
+        }
+
+        // Determine base_uuid and base_graph_label based on overwrite logic
+        let exportBaseUuid = null;
+        let exportBaseGraphLabel = null;
+        let exportVersionLabel = versionLabel;
+
+        if (overwrite) {
+            // Overwrite: keep current base graph as base
+            exportBaseUuid = this.state.baseGraphUuid || null;
+            exportBaseGraphLabel = this.state.baseGraphLabel;
+            exportVersionLabel = versionLabel || this.state.currentVersionLabel;
+        } else {
+            // New version: current graph becomes base
+            exportBaseUuid = this.state.currentSnapshotUuid || null;
+            exportBaseGraphLabel = this.state.currentVersionLabel;
+            exportVersionLabel = versionLabel || 'Unknown Workspace Graph';
+        }
+
+        // Build export data in backend-compatible format
+        const exportData = {
+            public_uuid: overwrite ? this.state.currentSnapshotUuid : null,
+            base_uuid: exportBaseUuid,
+            version_label: exportVersionLabel,
+            base_graph_label: exportBaseGraphLabel,
+            created_at: this.state.createdAt?.toISOString() || new Date().toISOString(),
+            last_updated: new Date().toISOString(),
+            authors: currentUser ? [{
+                user_uuid: currentUser.user_uuid,
+                username: currentUser.username
+            }] : [],
+            nodes: backendNodes,
+            domains: backendDomains,
+            redirects: []
+        };
+
+        // Create JSON string
+        const jsonString = JSON.stringify(exportData, null, 2);
+
+        // Create blob and download
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${exportVersionLabel}.knw`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Import workspace from .knw file (client-side only)
+     * @param {Object} importData - Parsed import data
+     * @returns {void} - Replaces current workspace
+     */
+    importFromFile(importData) {
+        // Validate import data structure
+        if (!importData || typeof importData !== 'object') {
+            throw new Error('Invalid import data');
+        }
+
+        if (!window.snapshotsTransformer) {
+            throw new Error('Snapshots transformer not available. Please ensure the transformer is loaded.');
+        }
+
+        // Clear workspace first
+        this.clearWorkspace();
+
+        // Use transformer to convert backend format to frontend format
+        const backendFormat = {
+            nodes: importData.nodes || [],
+            domains: importData.domains || []
+        };
+
+        const frontendNodes = window.snapshotsTransformer.transformNodesFromBackend(backendFormat.nodes);
+        const frontendDomains = window.snapshotsTransformer.transformDomainsFromBackend(backendFormat.domains);
+
+        // Mark all imported items as dirty since they're new to the workspace
+        frontendNodes.forEach(node => {
+            node._isDirty = true;
+        });
+        frontendDomains.forEach(domain => {
+            domain._isDirty = true;
+        });
+
+        // Update state
+        this.state.nodes = frontendNodes;
+        this.state.domains = frontendDomains;
+        this.state.redirects = importData.redirects || [];
+        this.state.currentSnapshotUuid = importData.public_uuid || null;
+        this.state.currentVersionLabel = importData.version_label || 'Imported Graph';
+        this.state.baseGraphUuid = importData.base_uuid || null;
+        this.state.baseGraphLabel = importData.base_graph_label || null;
+        this.state.createdAt = importData.created_at ? new Date(importData.created_at) : null;
+        this.state.lastUpdated = importData.last_updated ? new Date(importData.last_updated) : null;
+        this.state.authors = importData.authors || [];
+        this.state.isPublic = false;
+        this.state.isDirty = true;
+
+        // Update graph visualization
+        this.updateGraphVisualization();
+
+        // Persist and notify
+        this.persistState();
+        this.notifyStateChange();
     }
 
     /**
@@ -829,16 +988,21 @@ class LabStateManager {
     }
 
     clearWorkspace() {
-        this.state.currentSnapshot = null;
-        this.state.baseSnapshot = null;
         this.state.nodes = [];
         this.state.domains = [];
+        this.state.redirects = [];
+        this.state.currentSnapshotUuid = null;
+        this.state.currentVersionLabel = '';
+        this.state.baseGraphUuid = null;
+        this.state.baseGraphLabel = null;
+        this.state.createdAt = null;
+        this.state.lastUpdated = null;
+        this.state.authors = [];
+        this.state.isPublic = false;
         this.state.selectedNodes.clear();
         this.state.selectedDomains.clear();
-        this.state.currentVersionLabel = '';
-        this.state.baseGraphLabel = null;
         this.state.isDirty = false;
-        
+
         this.updateGraphVisualization();
         this.persistState();
         this.notifyStateChange();
@@ -1181,8 +1345,6 @@ class LabStateManager {
      * Notify state change listeners
      */
     notifyStateChange() {
-        console.log(this.state.currentSnapshot);
-        
         // Use only the subscribers array pattern
         if (this.subscribers && this.subscribers.length > 0) {
             this.subscribers.forEach(callback => {
@@ -1320,4 +1482,3 @@ if (typeof module !== 'undefined' && module.exports) {
     window.LabStateManager = LabStateManager;
     window.labStateManager = labStateManager;
 }
-

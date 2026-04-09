@@ -68,7 +68,14 @@ class LabUIController {
             addDomain: document.getElementById('btn-group-domain'),
             llmSuggest: document.getElementById('btn-llm-suggest'),
             clearWorkspace: document.getElementById('btn-clear-workspace'),
-            saveSnapshot: document.getElementById('btn-save-snapshot')
+            saveSnapshot: document.getElementById('btn-save-snapshot'),
+            importWorkspace: document.getElementById('btn-import-workspace'),
+            exportWorkspace: document.getElementById('btn-export-workspace')
+        };
+
+        // Import/Export elements
+        this.elements.importExport = {
+            fileInput: document.getElementById('import-file-input')
         };
                 
         // Save elements
@@ -117,6 +124,15 @@ class LabUIController {
 
         // Form submissions
         this.bindFormListeners();
+
+        // Import file input change listener
+        if (this.elements.importExport && this.elements.importExport.fileInput) {
+            this.elements.importExport.fileInput.addEventListener('change', (e) => {
+                if (window.workspaceOpsController && window.workspaceOpsController.handleFileImport) {
+                    window.workspaceOpsController.handleFileImport(e);
+                }
+            });
+        }
     }
 
     /**
@@ -154,6 +170,33 @@ class LabUIController {
             this.elements.save.versionLabel.addEventListener('blur', () => {
                 //this.renderAssessableChanges();
                 //this.validateAllRedirects();
+            });
+        }
+
+        // Overwrite toggle listener (if element exists)
+        if (this.elements && this.elements.save && this.elements.save.overwriteToggle) {
+            this.elements.save.overwriteToggle.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                const versionLabelInput = this.elements.save.versionLabel;
+                const { currentVersionLabel, currentSnapshotUuid } = this.stateManager.state;
+
+                // Prevent overwrite if there's no version label or UUID
+                if (isChecked && (!currentVersionLabel || !currentSnapshotUuid)) {
+                    e.target.checked = false;
+                    this.stateManager.showMessage('Cannot overwrite: missing version label or UUID', 'error');
+                    return;
+                }
+
+                if (isChecked && versionLabelInput) {
+                    // Lock version label to base current version label
+                    if (currentVersionLabel) {
+                        versionLabelInput.value = currentVersionLabel;
+                        versionLabelInput.disabled = true;
+                    }
+                } else if (versionLabelInput) {
+                    // Unlock version label
+                    versionLabelInput.disabled = false;
+                }
             });
         }
     }
@@ -463,7 +506,7 @@ class LabUIController {
     }
 
     updateStatusDisplay() {
-        const { currentVersionLabel, baseGraphLabel, currentSnapshot } = this.stateManager.state;
+        const { currentVersionLabel, currentSnapshotUuid } = this.stateManager.state;
         
         // Update current version label
         if (this.elements.status.currentVersionLabel) {
@@ -478,7 +521,28 @@ class LabUIController {
 
         // Update overwrite toggle
         if (this.elements.save.overwriteToggle) {
-            this.elements.save.overwriteToggle.checked = !!baseGraphLabel;
+            const hasGraphMetadata = currentVersionLabel && currentSnapshotUuid;
+            
+            // Disable overwrite checkbox if there's no version label or UUID
+            this.elements.save.overwriteToggle.disabled = !hasGraphMetadata;
+            
+            // Only check the toggle if metadata exists
+            if (hasGraphMetadata) {
+                this.elements.save.overwriteToggle.checked = true;
+                
+                // Lock version label to base graph label when overwrite is checked
+                if (this.elements.save.versionLabel) {
+                    this.elements.save.versionLabel.value = currentVersionLabel;
+                    this.elements.save.versionLabel.disabled = true;
+                }
+            } else {
+                this.elements.save.overwriteToggle.checked = false;
+                
+                // Unlock version label when overwrite is unchecked
+                if (this.elements.save.versionLabel) {
+                    this.elements.save.versionLabel.disabled = false;
+                }
+            }
         }
     }
 

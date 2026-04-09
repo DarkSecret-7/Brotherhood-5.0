@@ -13,7 +13,8 @@ def get_snapshot_by_uuid(db: Session, snapshot_uuid: UUID):
         joinedload(models.GraphSnapshot.nodes),
         joinedload(models.GraphSnapshot.domains),
         joinedload(models.GraphSnapshot.redirects),
-        joinedload(models.GraphSnapshot.authors_ref)
+        joinedload(models.GraphSnapshot.authors_ref),
+        joinedload(models.GraphSnapshot.base_snapshot)
     ).filter(models.GraphSnapshot.public_uuid == snapshot_uuid).first()
 
 def get_snapshot_by_id(db: Session, snapshot_id: int):
@@ -26,7 +27,8 @@ def get_snapshot_by_label(db: Session, version_label: str):
         joinedload(models.GraphSnapshot.nodes),
         joinedload(models.GraphSnapshot.domains),
         joinedload(models.GraphSnapshot.redirects),
-        joinedload(models.GraphSnapshot.authors_ref)
+        joinedload(models.GraphSnapshot.authors_ref),
+        joinedload(models.GraphSnapshot.base_snapshot)
     ).filter(models.GraphSnapshot.version_label == version_label).first()
 
 def create_snapshot_record(db: Session, **kwargs):

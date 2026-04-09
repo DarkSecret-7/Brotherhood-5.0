@@ -12,22 +12,17 @@ class SnapshotsTransformer {
     transformSnapshotFromBackend(backendSnapshot) {
         if (!backendSnapshot) return null;
 
-        // Transform nodes and domains separately
-        const frontendNodes = this.transformNodesFromBackend(backendSnapshot.nodes || []);
-        const frontendDomains = this.transformDomainsFromBackend(backendSnapshot.domains || []);
-
         const frontendSnapshot = {
-            uuid: backendSnapshot.public_uuid,
-            baseUuid: backendSnapshot.base_uuid || null,
+            currentSnapshotUuid: backendSnapshot.public_uuid,
+            currentVersionLabel: backendSnapshot.version_label || '',
+            baseGraphUuid: backendSnapshot.base_uuid || null,
             baseGraphLabel: backendSnapshot.base_graph_label || null,
-            versionLabel: backendSnapshot.version_label || '',
-            description: backendSnapshot.description || '',
             createdAt: backendSnapshot.created_at ? new Date(backendSnapshot.created_at) : null,
             lastUpdated: backendSnapshot.last_updated ? new Date(backendSnapshot.last_updated) : null,
             isPublic: backendSnapshot.is_public || false,
             authors: this.transformAuthorsFromBackend(backendSnapshot.authors || []),
-            nodes: frontendNodes,
-            domains: frontendDomains,
+            nodes: this.transformNodesFromBackend(backendSnapshot.nodes || []),
+            domains: this.transformDomainsFromBackend(backendSnapshot.domains || []),
             redirects: this.transformRedirectsFromBackend(backendSnapshot.redirects || []),
             // Computed properties
             nodeCount: backendSnapshot.node_count || 0,
@@ -60,11 +55,11 @@ class SnapshotsTransformer {
         if (!metadataOnly) {
             backendSnapshot.nodes = this.transformNodesToBackend(frontendSnapshot.nodes || []);
             backendSnapshot.domains = this.transformDomainsToBackend(frontendSnapshot.domains || []);
-        }
 
-        // Optional fields
-        if (frontendSnapshot.redirects && frontendSnapshot.redirects.length > 0) {
-            backendSnapshot.redirects = this.transformRedirectsToBackend(frontendSnapshot.redirects);
+            // Optional fields
+            if (frontendSnapshot.redirects && frontendSnapshot.redirects.length > 0) {
+                backendSnapshot.redirects = this.transformRedirectsToBackend(frontendSnapshot.redirects);
+            }
         }
 
         return backendSnapshot;
@@ -178,9 +173,6 @@ class SnapshotsTransformer {
         backendPayload.created_by = {
             user_uuid: currentUserUuid
         };
-
-        console.log('backendPayload', JSON.stringify(backendPayload, null, 2));
-        console.log('First node sources:', JSON.stringify(backendPayload.nodes?.[0]?.source_items, null, 2));
 
         // Determine create vs update
         const overwriteTargetUuid = options.currentSnapshotUuid || null;
@@ -366,8 +358,7 @@ class SnapshotsTransformer {
 
         return backendAuthors.map(author => ({
             uuid: author.user_uuid,
-            username: author.username,
-            displayName: author.username
+            username: author.username
         }));
     }
 
@@ -415,6 +406,7 @@ class SnapshotsTransformer {
         return backendList.map(snapshot => ({
             uuid: snapshot.public_uuid,
             versionLabel: snapshot.version_label || '',
+            baseUuid: snapshot.base_uuid || null,
             baseGraphLabel: snapshot.base_graph_label || null,
             createdAt: snapshot.created_at ? new Date(snapshot.created_at) : null,
             lastUpdated: snapshot.last_updated ? new Date(snapshot.last_updated) : null,

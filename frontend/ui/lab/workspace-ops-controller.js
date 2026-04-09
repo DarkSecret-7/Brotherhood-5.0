@@ -461,7 +461,7 @@ class WorkspaceOpsController {
                                 // Keep workspace synced to canonical saved snapshot
                                 this.stateManager.loadSnapshot(savedSnapshot);
                                 // Show success alert
-                                this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.uuid}).`);
+                                this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.currentSnapshotUuid}).`);
                             } catch (error) {
                                 this.stateManager.customAlert(`Save Error: ${error.message}`);
                             } finally {
@@ -476,13 +476,12 @@ class WorkspaceOpsController {
             }
 
             // Normal save (no overwrite)
-            console.log('workspaceDraft', workspaceDraft);
             const savedSnapshot = await this.databaseStateManager.saveWorkspaceSnapshot(workspaceDraft);
 
             // Keep workspace synced to canonical saved snapshot
             this.stateManager.loadSnapshot(savedSnapshot);
             // Show success alert
-            this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.uuid}).`);
+            this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.currentSnapshotUuid}).`);
         } catch (error) {
             this.stateManager.customAlert(`Save Error: ${error.message}`);
         } finally {
@@ -515,6 +514,91 @@ class WorkspaceOpsController {
             // Update state or perform other actions as needed
             console.log('Overwrite toggle:', isChecked);
         }
+    }
+
+    /**
+     * Handle export workspace to .knw file (client-side)
+     */
+    handleExportWorkspace() {
+        // Get version label and overwrite settings from the same inputs used for database save
+        const versionLabelElement = document.getElementById('version-label');
+        const overwriteToggleElement = document.getElementById('overwrite-toggle');
+        
+        const versionLabel = versionLabelElement ? versionLabelElement.value.trim() : '';
+        const overwrite = overwriteToggleElement ? overwriteToggleElement.checked : false;
+
+        if (!versionLabel) {
+            this.stateManager.customAlert('Version label is required for export');
+            return;
+        }
+
+        try {
+            this.stateManager.exportToFile({ versionLabel, overwrite });
+            this.stateManager.showMessage(`Exported successfully as ${versionLabel}.knw`, 'success');
+        } catch (error) {
+            this.stateManager.showMessage(`Export Error: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Handle import workspace from .knw file (client-side)
+     */
+    handleImportWorkspace() {
+        // Trigger file input click
+        const fileInput = document.getElementById('import-file-input');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    /**
+     * Handle file input change for import
+     * @param {Event} event - File input change event
+     */
+    handleFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file extension
+        if (!file.name.endsWith('.knw')) {
+            this.stateManager.showMessage('Please select a .knw file', 'error');
+            event.target.value = ''; // Clear file input
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const fileContent = e.target.result;
+                const importData = JSON.parse(fileContent);
+
+                // Show confirmation dialog before replacing workspace
+                this.stateManager.customConfirm(
+                    `Are you sure you want to import "${file.name}"? This will replace the current workspace with all unsaved changes lost.`,
+                    (confirmed) => {
+                        if (confirmed) {
+                            try {
+                                this.stateManager.importFromFile(importData);
+                                this.stateManager.showMessage(`Imported successfully from ${file.name}`, 'success');
+                            } catch (error) {
+                                this.stateManager.showMessage(`Import Error: ${error.message}`, 'error');
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                this.stateManager.showMessage(`Failed to parse file: ${error.message}`, 'error');
+            }
+        };
+
+        reader.onerror = () => {
+            this.stateManager.showMessage('Failed to read file', 'error');
+        };
+
+        reader.readAsText(file);
+
+        // Clear file input
+        event.target.value = '';
     }
 }
 

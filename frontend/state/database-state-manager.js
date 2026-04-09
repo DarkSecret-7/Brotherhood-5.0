@@ -72,13 +72,12 @@ class DatabaseStateManager {
      * @param {Object} frontendSnapshot - Transformed snapshot object
      */
     stagePendingWorkspaceSnapshot(frontendSnapshot) {
-        if (!frontendSnapshot || !frontendSnapshot.uuid) {
+        if (!frontendSnapshot || !frontendSnapshot.currentSnapshotUuid) {
             throw new Error('Cannot stage pending snapshot without UUID');
         }
 
         const pendingEnvelope = {
-            snapshotUuid: frontendSnapshot.uuid,
-            snapshotHash: frontendSnapshot.hash || null,
+            snapshotUuid: frontendSnapshot.currentSnapshotUuid,
             stagedAt: new Date().toISOString(),
             snapshot: frontendSnapshot
         };
@@ -102,7 +101,7 @@ class DatabaseStateManager {
             const parsed = JSON.parse(rawPayload);
             const snapshot = parsed?.snapshot ? parsed.snapshot : parsed;
 
-            if (!snapshot || !snapshot.uuid) {
+            if (!snapshot || !snapshot.currentSnapshotUuid) {
                 localStorage.removeItem('pendingSnapshotLoad');
                 return null;
             }
@@ -522,7 +521,7 @@ class DatabaseStateManager {
                 overwrite: shouldOverwrite
             });
 
-            if (!savedFrontendSnapshot || !savedFrontendSnapshot.uuid) {
+            if (!savedFrontendSnapshot || !savedFrontendSnapshot.currentSnapshotUuid) {
                 throw new Error('Saved snapshot response missing UUID');
             }
 
@@ -677,8 +676,10 @@ class DatabaseStateManager {
             
             // Transform backend snapshot to frontend format
             const frontendSnapshot = this.snapshotsTransformer.transformSnapshotFromBackend(backendSnapshot);
+
+            console.log('fetched snaphot:', frontendSnapshot);
             
-            if (!frontendSnapshot || !frontendSnapshot.uuid) {
+            if (!frontendSnapshot || !frontendSnapshot.currentSnapshotUuid) {
                 throw new Error('Transformed snapshot missing UUID');
             }
 

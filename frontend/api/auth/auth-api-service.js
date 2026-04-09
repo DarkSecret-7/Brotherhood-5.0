@@ -43,11 +43,15 @@ class AuthApiService extends BaseApiService {
             localStorage.setItem('access_token', data.access_token);
             // Also set cookie for server-side authentication
             document.cookie = `access_token=${data.access_token}; path=/; max-age=604800; secure; samesite=lax`;
-            
-            // Extract and save user UUID from token
+
+            // Extract and save user UUID and username from token
             const userUuid = this.extractUserUuidFromToken(data.access_token);
+            const username = this.extractUsernameFromToken(data.access_token);
             if (userUuid) {
                 localStorage.setItem('user_uuid', userUuid);
+            }
+            if (username) {
+                localStorage.setItem('username', username);
             }
         }
         
@@ -67,12 +71,35 @@ class AuthApiService extends BaseApiService {
                 console.error('Invalid JWT token format');
                 return null;
             }
-            
+
             // Decode the payload (second part)
             const payload = JSON.parse(atob(parts[1]));
             return payload.user_uuid || null;
         } catch (error) {
             console.error('Failed to extract user UUID from token:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Extract username from JWT token
+     * @param {string} token - JWT token
+     * @returns {string|null} - Username or null if extraction fails
+     */
+    extractUsernameFromToken(token) {
+        try {
+            // JWT tokens have 3 parts separated by dots
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                console.error('Invalid JWT token format');
+                return null;
+            }
+
+            // Decode the payload (second part)
+            const payload = JSON.parse(atob(parts[1]));
+            return payload.username || null;
+        } catch (error) {
+            console.error('Failed to extract username from token:', error);
             return null;
         }
     }
@@ -94,9 +121,10 @@ class AuthApiService extends BaseApiService {
         } catch (error) {
             console.warn('Logout request failed:', error);
         } finally {
-            // Always clear local token and user UUID
+            // Always clear local token and user info
             localStorage.removeItem('access_token');
             localStorage.removeItem('user_uuid');
+            localStorage.removeItem('username');
             document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
         }
     }
@@ -107,6 +135,27 @@ class AuthApiService extends BaseApiService {
      */
     async getCurrentUser() {
         return await this.get('/auth/me');
+    }
+
+    /**
+     * Get current user info from JWT token (client-side, no backend call)
+     * @returns {Object|null} - { username, user_uuid } or null
+     */
+    getCurrentUserFromToken() {
+        try {
+            const userUuid = localStorage.getItem('user_uuid');
+            const username = localStorage.getItem('username');
+
+            if (userUuid) {
+                return {
+                    username: username || null,
+                    user_uuid: userUuid
+                };
+            }
+        } catch (error) {
+            console.warn('Failed to get current user from localStorage:', error);
+        }
+        return null;
     }
 
     /**

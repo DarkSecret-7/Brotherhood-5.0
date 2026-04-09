@@ -54,7 +54,10 @@
         <div id="active-version-info">
             Working on: <span id="current-version-label">None</span>
         </div>
-        <button id="btn-clear-workspace" class="btn-secondary btn-small destructive-hover" onclick="workspaceOpsController.handleClearWorkspace()">Clear Workspace</button>
+        <div class="workspace-buttons" style="align-self: right;">
+            <button id="btn-import-workspace" class="btn-secondary btn-small" onclick="workspaceOpsController.handleImportWorkspace()">Import</button>
+            <button id="btn-clear-workspace" class="btn-secondary btn-small destructive-hover" onclick="workspaceOpsController.handleClearWorkspace()">Clear Workspace</button>
+        </div>
     </div>
 
     <div class="main-container">
@@ -169,10 +172,14 @@
                     </div>
 
                     <button id="btn-save-snapshot" class="btn-primary" onclick="workspaceOpsController.handleSaveSnapshot()">Save Snapshot</button>
+                    <button id="btn-export-workspace" class="btn-secondary" onclick="workspaceOpsController.handleExportWorkspace()">Export .knw</button>
                 </div>
             </div>
 
     </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="import-file-input" accept=".knw" style="display: none;">
 
     <!-- Edit Node Modal -->
     <div id="editModal" class="modal">
@@ -488,7 +495,7 @@
                     console.log('Pending snapshot:', pendingSnapshot);
                     
 
-                    if (pendingSnapshot && pendingSnapshot.uuid) {
+                    if (pendingSnapshot && pendingSnapshot.currentSnapshotUuid) {
                         stateManager.loadSnapshot(pendingSnapshot);
                     } else {
                         // Keep persisted local draft if no staged backend snapshot is present

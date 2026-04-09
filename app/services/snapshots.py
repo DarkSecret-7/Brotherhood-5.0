@@ -788,6 +788,7 @@ class SnapshotService:
         return schemas.GraphSnapshotRead(
             public_uuid=db_snapshot.public_uuid,
             base_uuid=db_snapshot.base_uuid,
+            base_graph_label=db_snapshot.base_graph_label,
             version_label=db_snapshot.version_label,
             is_public=db_snapshot.is_public,
             created_at=db_snapshot.created_at,
