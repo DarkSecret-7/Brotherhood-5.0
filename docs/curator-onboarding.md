@@ -91,7 +91,26 @@ Graphs support multiple authors with role-based permissions:
 *   **Adding Authors**: Existing authors can add new authors via the API (UI feature coming soon).
 *   **Last Author Protection**: The system prevents removing the last remaining author to ensure graphs always have ownership.
 
-## 6. AI Assistance 🤖
+## 6. Standalone Workspace: No Database Required 💻
+
+The workspace can function as a **standalone web app** without any database connection - perfect for creating personal graphs privately!
+
+### How It Works
+*   **Local Storage**: Your graph data is saved to your browser's local storage.
+*   **No Database Needed**: Create, edit, and visualize graphs entirely offline.
+
+### Import/Export Directly in Workspace
+*   **Export**: Click **"Export Graph (.knw)"** at the top of the workspace to download your graph as a file.
+*   **Import**: Click **"Import Graph (.knw)"** to load a previously exported graph into your workspace.
+*   **Share**: Send the `.knw` file to others - they can import it into their own standalone workspace.
+
+### When to Use Standalone Mode
+*   Creating personal knowledge graphs you don't want to publish
+*   Drafting graphs offline before uploading to the database
+*   Sharing graphs with friends without them needing accounts
+*   Privacy-sensitive content that stays local-only
+
+## 7. AI Assistance 🤖
 
 Stuck on what to add next? Let the AI help you!
 

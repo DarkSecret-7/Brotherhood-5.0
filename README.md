@@ -13,7 +13,7 @@ For more information on The Brotherhood project, please check out the docs or vi
 The project currently functions with two main components:
 
 ### The Brotherhood Curator Lab
-A local-first graph management system built with Python, FastAPI, and PostgreSQL. It features an interactive Web UI and a powerful CLI for managing complex node dependencies with automated validation and simplification. Currently invite-only.
+A local-first graph management system built with Python, FastAPI, and PostgreSQL. It features an interactive Web UI for managing complex node dependencies with automated validation and simplification. Currently invite-only.
 
 ### The Brotherhood Public Site
 A static, public-facing website built with HTML, CSS, and JavaScript. It features a manifesto, read-only graph gallery, and contact forms.
@@ -135,7 +135,7 @@ This split separates draft editing from direct backend communication.
 ## Prerequisites
 
 - **Docker Desktop** must be installed and running.
-- **Python 3.10+** (for the CLI client and local development).
+- **Python 3.10+** (for local development outside Docker).
 
 ## Quick Start
 
@@ -151,8 +151,8 @@ To connect to a remote database (e.g., Render), create a `.env` file in the proj
 DATABASE_URL=postgresql://user:password@hostname:port/database
 ```
 
-### 3. Install CLI Dependencies (Optional)
-If you plan to use the CLI tool locally, install the required packages:
+### 3. Install Python Dependencies (Optional)
+For local development outside Docker:
 ```powershell
 pip install -r requirements.txt
 ```
