@@ -517,13 +517,13 @@ class SnapshotService:
                     domain_local_id_to_obj[local_id] = existing_domain
                 else:
                     # Create new domain
-                    db_domain = models.Domain(
+                    db_domain = crud.snapshots.create_domain_record(
+                        db,
                         snapshot_id=snapshot_id,
                         local_id=local_id,
                         title=d_data.title,
                         description=d_data.description
                     )
-                    crud.snapshots.create_domain_record(db, db_domain)
                     domain_local_id_to_obj[local_id] = db_domain
             else:
                 # Unchanged - just load for reference

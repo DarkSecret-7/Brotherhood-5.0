@@ -403,6 +403,8 @@ class DatabaseStateManager {
         
         try {
             const backendSnapshots = await this.snapshotsApiService.getUserSnapshots();
+
+            console.log('Backend snapshots:', backendSnapshots);
             
             if (!backendSnapshots || backendSnapshots.length === 0) {
                 this.clearCachedSnapshots();
@@ -469,7 +471,7 @@ class DatabaseStateManager {
                 metadataOnly: true
             });
 
-            if (!savedFrontendSnapshot || !savedFrontendSnapshot.uuid) {
+            if (!savedFrontendSnapshot || !savedFrontendSnapshot.currentSnapshotUuid) {
                 throw new Error('Updated snapshot response missing UUID');
             }
 
@@ -714,6 +716,4 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { DatabaseStateManager, databaseStateManager };
 }
-
-
 

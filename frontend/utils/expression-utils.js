@@ -827,12 +827,12 @@ class ExpressionUtils {
         
         if (tree.and && Array.isArray(tree.and)) {
             const parts = tree.and.map(part => this.treeToPrerequisiteString(part));
-            return `(${parts.join(' AND ')})`;
+            return parts.join(' AND ');
         }
         
         if (tree.or && Array.isArray(tree.or)) {
             const parts = tree.or.map(part => this.treeToPrerequisiteString(part));
-            return `(${parts.join(' OR ')})`;
+            return parts.join(' OR ');
         }
         
         return '';
@@ -1069,12 +1069,12 @@ class OpNode {
         
         if (tree.and && Array.isArray(tree.and)) {
             const parts = tree.and.map(part => this.treeToPrerequisiteString(part));
-            return `(${parts.join(' AND ')})`;
+            return parts.join(' AND ');
         }
         
         if (tree.or && Array.isArray(tree.or)) {
             const parts = tree.or.map(part => this.treeToPrerequisiteString(part));
-            return `(${parts.join(' OR ')})`;
+            return parts.join(' OR ');
         }
         
         return '';

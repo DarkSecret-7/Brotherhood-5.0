@@ -338,7 +338,7 @@ class LabStateManager {
             baseUuid: exportBaseUuid,
             overwrite: overwrite,
             isPublic: this.state.isPublic,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date()
         };
 
         return workspaceDraft;
