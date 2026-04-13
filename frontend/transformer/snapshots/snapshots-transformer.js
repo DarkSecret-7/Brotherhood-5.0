@@ -90,8 +90,8 @@ class SnapshotsTransformer {
             sources: this.transformSourcesFromBackend(node.source_items || []),
             domainId: node.domain_id || null,
             position: {
-                x: node.x || null,
-                y: node.y || null
+                x: node.x ?? null,
+                y: node.y ?? null
             },
             assessable: node.assessable || false,
             // UI state
@@ -119,8 +119,8 @@ class SnapshotsTransformer {
                 mentions: this.transformMentionsToBackend(node.mentions),
                 source_items: this.transformSourcesToBackend(node.sources || []),
                 domain_id: node.domainId,
-                x: node.position?.x || null,
-                y: node.position?.y || null,
+                x: node.position?.x ?? null,
+                y: node.position?.y ?? null,
                 assessable: node.assessable,
                 updated: node._isDirty || false,
                 deleted: node._isDeleted || false

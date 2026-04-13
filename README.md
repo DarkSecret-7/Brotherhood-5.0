@@ -130,6 +130,10 @@ This split separates draft editing from direct backend communication.
 ├─ LICENSES.txt               # GNU GPL v3.0 open-source license
 ├─ README.md                  # Overview of the repositiory
 ├─ start-services.sh          # Orchestrator for the project, to be copied inside the docker container
+├─ alembic.ini                # Alembic database migration configuration
+├─ alembic/                   # Database migration scripts
+│  ├─ versions/               # Migration version files
+│  └─ run_migration.py        # Helper script to upgrade database to latest config
 ```
 
 ## Prerequisites
@@ -194,6 +198,28 @@ The graph visualization system is currently under active development. The archit
 - **Domain-specific controllers**: `graph-controller.js` for workspace, `gallery-graph-processor.js` for gallery
 
 Planned features include drag-and-drop positioning, domain grouping, and interactive pathway exploration.
+
+### 7. Database Migrations (Alembic)
+The project uses Alembic for database schema migrations. Migrations run automatically when the Docker container starts.
+
+**Migration Files:** Located in `alembic/versions/`
+
+**Running Migrations Manually:**
+```bash
+# Using the helper script
+python alembic/run_migration.py upgrade
+
+# Or directly with Alembic
+python -m alembic upgrade head
+
+# Check current version
+python alembic/run_migration.py current
+
+# Show migration history
+python alembic/run_migration.py history
+```
+
+**Note:** When building the Docker container, migrations run automatically via `start-services.sh` before the application starts.
 
 ## Advanced Features
 

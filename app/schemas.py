@@ -111,8 +111,8 @@ class NodeBase(BaseModel):
     mentions: Optional[dict] = None             # dict matches directly to JSONB
     source_items: Optional[List[SourceRead]] = []
     domain_id: Optional[int] = None
-    x: Optional[int] = None
-    y: Optional[int] = None
+    x: Optional[float] = None
+    y: Optional[float] = None
     assessable: Optional[bool] = False
 
 class NodeUpdate(NodeBase):

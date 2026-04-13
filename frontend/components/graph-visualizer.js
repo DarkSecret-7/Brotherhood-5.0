@@ -42,7 +42,11 @@ class GraphVisualizer {
                 margin: 10,
                 font: {
                     size: 14,
-                    face: 'Arial'
+                    face: 'Arial',
+                    multi: 'html'
+                },
+                widthConstraint: {
+                    maximum: 150
                 },
                 borderWidth: 2,
                 color: {
@@ -272,7 +276,10 @@ class GraphVisualizer {
      */
     getDomainPoints(domain, positions) {
         const points = [];
-        const nodeRadius = 30;
+        const baseMargin = 15;  // Base margin around the node
+        const maxWidth = 150;   // Same as widthConstraint.maximum
+        const charWidth = 7;    // Approximate width per character
+        const lineHeight = 20;  // Height per line of text
 
         // Add points for nodes in this domain
         if (this.graphState && this.graphState.nodes) {
@@ -280,15 +287,27 @@ class GraphVisualizer {
                 // Handle both string and number domain IDs
                 const nodeDomainId = String(node.domainId || '');
                 const domainId = String(domain.id || '');
-                
+
                 if (nodeDomainId === domainId) {
                     const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
                     if (pos) {
-                        // Add bounding box points around node
-                        points.push({x: pos.x - nodeRadius, y: pos.y - nodeRadius});
-                        points.push({x: pos.x + nodeRadius, y: pos.y - nodeRadius});
-                        points.push({x: pos.x + nodeRadius, y: pos.y + nodeRadius});
-                        points.push({x: pos.x - nodeRadius, y: pos.y + nodeRadius});
+                        // Calculate node box dimensions based on label text
+                        const label = `${node.id}: ${node.title || 'Untitled'}`;
+
+                        // Calculate how many lines the text will wrap to
+                        const textWidth = label.length * charWidth;
+                        const numLines = Math.ceil(textWidth / maxWidth);
+                        const actualLines = Math.max(1, numLines);
+
+                        // Calculate dimensions
+                        const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
+                        const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
+
+                        // Add bounding box corners (full extent of the node box)
+                        points.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
+                        points.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
+                        points.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
+                        points.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
                     }
                 }
             });
@@ -428,7 +447,7 @@ class GraphVisualizer {
             
             const visNode = {
                 id: node.id,
-                label: `${node.id}`
+                label: `${node.id}: ${node.title || 'Untitled'}`
             };
 
             // Set position if available

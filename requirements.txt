@@ -1,11 +1,11 @@
 fastapi
 uvicorn
 sqlalchemy
+alembic
 psycopg2-binary
 pydantic
 pydantic-settings
 requests
-typer
 pytest
 httpx
 rich

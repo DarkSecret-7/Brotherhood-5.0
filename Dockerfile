@@ -5,7 +5,11 @@ WORKDIR /app
 # Install backend dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
+
+# Copy migrations configuration for database migrations
+COPY --chown=app:app alembic.ini .
+COPY --chown=app:app migrations/ ./migrations/
 
 # Copy all application files
 COPY app/ ./app/

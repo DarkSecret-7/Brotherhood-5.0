@@ -223,7 +223,6 @@ class GraphController {
             // Clear position overrides
             this.graphState.currentPositionOverrides.clear();
             this.stateManager.state.graphState.currentPositionOverrides = new Map();
-            this.graph
             
             // Reset visualizer to default positions
             this.visualizer.applyPositions(this.graphState.defaultPositions);
@@ -233,27 +232,29 @@ class GraphController {
     }
 
     /**
-     * Randomize node positions
+     * Randomize node positions using algorithmic layout (ignores stored positions)
      */
     randomizePositions() {
         if (this.visualizer) {
-            // Generate random positions
-            const randomPositions = new Map();
-            const containerRect = this.elements.graphContainer.getBoundingClientRect();
-            
-            this.graphState.nodes.forEach(node => {
-                randomPositions.set(node.id, {
-                    x: Math.random() * (containerRect.width - 100) + 50,
-                    y: Math.random() * (containerRect.height - 100) + 50
-                });
+            // Use the same algorithmic generation as default positions
+            const fullNodes = this.stateManager.state.nodes.map(node => ({
+                id: node.id,
+                title: node.title,
+                domainId: node.domainId,
+                prerequisites: node.prerequisites
+            }));
+
+            const newPositions = ExpressionUtils.generateDefaultPositions(fullNodes, {
+                width: 800,
+                height: 600,
+                layout: 'hierarchical'
             });
 
-            this.graphState.currentPositionOverrides = randomPositions;
-            
-            // Apply random positions
-            this.visualizer.applyPositions(randomPositions);
-            
-            this.stateManager.showMessage('Positions randomized', 'info');
+            this.graphState.currentPositionOverrides = newPositions;
+            this.stateManager.state.graphState.currentPositionOverrides = newPositions;
+
+            this.visualizer.applyPositions(newPositions);
+            this.stateManager.showMessage('Positions randomized with algorithmic layout', 'info');
         }
     }
 
@@ -268,12 +269,30 @@ class GraphController {
     }
 
     /**
-     * Refresh graph visualization
+     * Refresh graph visualization without changing positions
      */
     refreshGraph() {
-        this.updateGraphData();
-        this.updateVisualization();
-        
+        // Merge positions: override for dragged nodes, default for others
+        const mergedPositions = new Map();
+
+        // Start with default positions for all nodes
+        if (this.graphState.defaultPositions) {
+            this.graphState.defaultPositions.forEach((pos, nodeId) => {
+                mergedPositions.set(nodeId, pos);
+            });
+        }
+
+        // Overlay current overrides (dragged nodes)
+        if (this.graphState.currentPositionOverrides) {
+            this.graphState.currentPositionOverrides.forEach((pos, nodeId) => {
+                mergedPositions.set(nodeId, pos);
+            });
+        }
+
+        if (this.visualizer && mergedPositions.size > 0) {
+            this.visualizer.applyPositions(mergedPositions);
+        }
+
         this.stateManager.showMessage('Graph refreshed', 'success');
     }
 

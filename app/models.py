@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, UniqueConstraint, Boolean, text
+from sqlalchemy import Column, Float, Integer, String, Date, DateTime, ForeignKey, UniqueConstraint, Boolean, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
@@ -77,8 +77,8 @@ class Node(Base):
     prerequisite = Column(JSONB, nullable=True)  # Boolean expression converted into JSONB
     mentions = Column(JSONB, nullable=True) # Comma-separated list of local_ids converted into JSONB
     assessable = Column(Boolean, default=False, server_default=text('false'), nullable=False)
-    x = Column(Integer, nullable=True)
-    y = Column(Integer, nullable=True)
+    x = Column(Float, nullable=True)
+    y = Column(Float, nullable=True)
 
     snapshot = relationship("GraphSnapshot", back_populates="nodes")
     domain = relationship("Domain", back_populates="node_objects")

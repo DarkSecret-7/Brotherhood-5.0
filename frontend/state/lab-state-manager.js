@@ -282,6 +282,9 @@ class LabStateManager {
             this.state.isPublic = frontendSnapshot.isPublic || false;
             this.state.authors = frontendSnapshot.authors || [];
 
+            // Clear position overrides when loading a snapshot - use stored positions
+            this.state.graphState.currentPositionOverrides = new Map();
+
             // Update graph visualization
             this.updateGraphVisualization();
 
@@ -1036,9 +1039,10 @@ class LabStateManager {
      * Update graph visualization data
      */
     updateGraphVisualization() {
-        const { nodes, edges } = this.buildGraphData();
+        const { nodes, edges, defaultPositions } = this.buildGraphData();
         this.state.graphState.nodes = nodes;
         this.state.graphState.edges = edges;
+        this.state.graphState.defaultPositions = defaultPositions;
     }
 
     /**
@@ -1057,6 +1061,7 @@ class LabStateManager {
             // Create graph node with minimal data
             const graphNode = {
                 id: node.id,
+                title: node.title,
                 domainId: node.domainId
             };
             
@@ -1105,7 +1110,8 @@ class LabStateManager {
             assessable: node.assessable || false,
             domainId: node.domainId,
             description: node.description,
-            prerequisites: node.prerequisites
+            prerequisites: node.prerequisites,
+            position: node.position
         }));
         const detectedCycles = ExpressionUtils.detectCycles(fullNodes, uniqueEdges);
         cycles.push(...detectedCycles);
@@ -1114,14 +1120,29 @@ class LabStateManager {
         const reducedEdges = ExpressionUtils.transitiveReduction(fullNodes, uniqueEdges);
         
         // Generate default positions
-        const positions = ExpressionUtils.generateDefaultPositions(fullNodes, {
+        // Priority: currentPositionOverrides > stored positions > algorithmic positions
+        const algorithmicPositions = ExpressionUtils.generateDefaultPositions(fullNodes, {
             width: 800,
             height: 600,
             layout: 'hierarchical'
         });
-        
-        positions.forEach((position, nodeId) => {
-            defaultPositions.set(nodeId, position);
+
+        const currentOverrides = this.state.graphState.currentPositionOverrides;
+
+        // Merge positions with priority order
+        fullNodes.forEach(node => {
+            const overridePosition = currentOverrides?.get(node.id);
+            const storedPosition = node.position;
+            const algoPosition = algorithmicPositions.get(node.id);
+
+            // Use override (unsaved drag) first, then stored, then algorithmic
+            if (overridePosition) {
+                defaultPositions.set(node.id, { x: overridePosition.x, y: overridePosition.y });
+            } else if (storedPosition && storedPosition.x !== null && storedPosition.y !== null) {
+                defaultPositions.set(node.id, { x: storedPosition.x, y: storedPosition.y });
+            } else if (algoPosition) {
+                defaultPositions.set(node.id, algoPosition);
+            }
         });
         
         // Update graph state (minimal data structure)
@@ -1380,10 +1401,28 @@ class LabStateManager {
     }
 
     freezePositions() {
-        // Freeze graph positions 
-        console.log(this.state.graphState);
-        
-        this.state.graphState.defaultPositions = this.state.graphState.currentPositionOverrides;
+        // Freeze graph positions - update both graphState and node states
+        console.log('Freezing positions:', this.state.graphState);
+
+        const currentOverrides = this.state.graphState.currentPositionOverrides;
+        if (currentOverrides) {
+            // Update graphState default positions
+            this.state.graphState.defaultPositions = new Map(currentOverrides);
+
+            // Update each node's position in the nodes array
+            this.state.nodes.forEach(node => {
+                const position = currentOverrides.get(node.id);
+                if (position) {
+                    node.position = {
+                        x: position.x,
+                        y: position.y
+                    };
+                    node._isDirty = true; // Mark node as dirty for save
+                }
+            });
+
+            this.showMessage('Positions fixed and saved to nodes', 'success');
+        }
     }
 
     /**
