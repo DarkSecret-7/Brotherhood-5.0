@@ -1,249 +1,288 @@
 /**
- * Gallery State Manager - State management for public gallery page
- * Handles read-only gallery state, snapshot selection, and UI interactions
+ * Gallery State Manager - State management for the public gallery page
+ * Handles snapshot loading, graph visualization state, and UI interactions (read-only)
  */
 class GalleryStateManager {
     constructor() {
         this.state = {
-            // Gallery state
-            publicSnapshots: [],
+            // Gallery list state
+            snapshotList: [],
             currentSnapshot: null,
-            isLoading: false,
-            error: null,
+            
+            // Current snapshot data
+            nodes: [],
+            domains: [],
+            redirects: [],
+            
+            // Snapshot metadata
+            currentSnapshotUuid: null,
+            currentVersionLabel: '',
+            baseGraphUuid: null,
+            baseGraphLabel: null,
+            createdAt: null,
+            lastUpdated: null,
+            isPublic: false,
+            authors: [],
             
             // UI state
-            sidebarCollapsed: false,
-            selectedSnapshotLabel: null,
+            isLoading: false,
+            isLoadingList: false,
+            error: null,
             
-            // Modal states
-            modals: {
-                nodeDetails: false,
-                domainDetails: false
-            },
-            
-            // Details panel state
-            detailsPanel: {
-                type: null, // 'node' or 'domain'
-                data: null
-            },
+            // Node details panel state
+            selectedNode: null,
+            showNodeDetails: false,
             
             // Graph visualization state
             graphState: {
                 nodes: [],
+                edges: [],
                 domains: [],
-                network: null
+                defaultPositions: new Map(),
+                currentPositionOverrides: new Map(),
+                lastUpdated: null
             }
         };
-        
-        // Visualizer instance for direct access
-        this.visualizer = null;
 
         // Initialize subscribers array
         this.subscribers = [];
-        
-        // Bind event listeners
-        this.bindEventListeners();
     }
 
     /**
      * Subscribe to state changes
+     * @param {Function} callback - Callback function
      */
     subscribe(callback) {
         this.subscribers.push(callback);
-        return () => {
-            this.subscribers = this.subscribers.filter(sub => sub !== callback);
-        };
     }
 
     /**
-     * Notify subscribers of state changes
+     * Notify all subscribers of state change
      */
-    notify() {
-        this.subscribers.forEach(callback => callback(this.state));
-    }
-
-    /**
-     * Update loading state
-     */
-    setLoading(isLoading) {
-        this.state.isLoading = isLoading;
-        this.notify();
-    }
-
-    /**
-     * Set error state
-     */
-    setError(error) {
-        this.state.error = error;
-        this.notify();
-    }
-
-    /**
-     * Clear error state
-     */
-    clearError() {
-        this.state.error = null;
-        this.notify();
-    }
-
-    /**
-     * Load public snapshots list
-     */
-    loadPublicSnapshots(snapshots) {
-        this.state.publicSnapshots = snapshots;
-        this.notify();
-    }
-
-    /**
-     * Load current snapshot for viewing
-     */
-    loadCurrentSnapshot(snapshot) {
-        this.state.currentSnapshot = snapshot;
-        this.state.graphState.nodes = snapshot.nodes || [];
-        this.state.graphState.domains = snapshot.domains || [];
-        this.notify();
-    }
-
-    /**
-     * Select a snapshot by label
-     */
-    selectSnapshot(public_uuid) {
-        this.state.selectedSnapshotLabel = public_uuid;
-        this.notify();
-    }
-
-    /**
-     * Toggle sidebar state
-     */
-    toggleSidebar() {
-        this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
-        this.notify();
-    }
-
-    /**
-     * Set sidebar state
-     */
-    setSidebarCollapsed(collapsed) {
-        this.state.sidebarCollapsed = collapsed;
-        this.notify();
-    }
-
-    /**
-     * Show node details modal
-     */
-    showNodeDetails(nodeData) {
-        this.state.detailsPanel.type = 'node';
-        this.state.detailsPanel.data = nodeData;
-        this.state.modals.nodeDetails = true;
-        this.notify();
-    }
-
-    /**
-     * Show domain details modal
-     */
-    showDomainDetails(domainData) {
-        this.state.detailsPanel.type = 'domain';
-        this.state.detailsPanel.data = domainData;
-        this.state.modals.domainDetails = true;
-        this.notify();
-    }
-
-    /**
-     * Close details modal
-     */
-    closeDetails() {
-        this.state.modals.nodeDetails = false;
-        this.state.modals.domainDetails = false;
-        this.state.detailsPanel.type = null;
-        this.state.detailsPanel.data = null;
-        this.notify();
-    }
-
-    /**
-     * Update graph network instance
-     */
-    setGraphNetwork(network) {
-        this.state.graphState.network = network;
-        this.notify();
-    }
-
-    /**
-     * Destroy current graph network
-     */
-    destroyGraphNetwork() {
-        if (this.state.graphState.network) {
+    notifyStateChange() {
+        this.subscribers.forEach(callback => {
             try {
-                this.state.graphState.network.destroy();
-            } catch (e) {
-                console.warn("Error destroying network:", e);
-            }
-            this.state.graphState.network = null;
-            this.notify();
-        }
-    }
-
-    /**
-     * Toggle domain collapse state (for display)
-     */
-    toggleDomainCollapse(domainId) {
-        const domain = this.state.graphState.domains.find(d => String(d.local_id) === String(domainId));
-        if (domain) {
-            domain.collapsed = !domain.collapsed;
-            this.notify();
-        }
-    }
-
-    /**
-     * Bind event listeners for window events
-     */
-    bindEventListeners() {
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (this.state.graphState.network) {
-                setTimeout(() => {
-                    this.state.graphState.network.fit();
-                }, 100);
+                callback(this.state);
+            } catch (error) {
+                console.error('Error in state change callback:', error);
             }
         });
     }
 
     /**
-     * Get current state (for debugging)
+     * Set loading state
+     * @param {boolean} isLoading - Loading state
      */
-    getState() {
-        return { ...this.state };
+    setLoading(isLoading) {
+        this.state.isLoading = isLoading;
+        this.notifyStateChange();
     }
 
     /**
-     * Reset state to initial
+     * Set loading list state
+     * @param {boolean} isLoadingList - Loading list state
      */
-    reset() {
-        this.state = {
-            publicSnapshots: [],
-            currentSnapshot: null,
-            isLoading: false,
-            error: null,
-            sidebarCollapsed: false,
-            selectedSnapshotLabel: null,
-            modals: {
-                nodeDetails: false,
-                domainDetails: false
-            },
-            detailsPanel: {
-                type: null,
-                data: null
-            },
-            graphState: {
-                nodes: [],
-                domains: [],
-                network: null
-            }
+    setLoadingList(isLoadingList) {
+        this.state.isLoadingList = isLoadingList;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Set error state
+     * @param {string|null} error - Error message
+     */
+    setError(error) {
+        this.state.error = error;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Load snapshot list from backend
+     * @param {Array} frontendList - Frontend snapshot list from transformer
+     */
+    loadSnapshotList(frontendList) {
+        this.state.snapshotList = frontendList || [];
+        this.state.isLoadingList = false;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Load snapshot by UUID - receives already transformed data from transformer
+     * @param {Object} frontendSnapshot - Frontend snapshot object from transformer
+     */
+    loadSnapshot(frontendSnapshot) {
+        this.setLoading(true);
+        this.setError(null);
+
+        try {
+            console.log('Loading gallery snapshot:', frontendSnapshot);
+
+            // Update state with transformed data
+            this.state.nodes = frontendSnapshot.nodes || [];
+            this.state.domains = frontendSnapshot.domains || [];
+            this.state.redirects = frontendSnapshot.redirects || [];
+            this.state.currentSnapshotUuid = frontendSnapshot.currentSnapshotUuid || null;
+            this.state.currentVersionLabel = frontendSnapshot.currentVersionLabel || '';
+            this.state.baseGraphUuid = frontendSnapshot.baseGraphUuid || null;
+            this.state.baseGraphLabel = frontendSnapshot.baseGraphLabel || null;
+            this.state.createdAt = frontendSnapshot.createdAt || null;
+            this.state.lastUpdated = frontendSnapshot.lastUpdated || null;
+            this.state.isPublic = frontendSnapshot.isPublic || false;
+            this.state.authors = frontendSnapshot.authors || [];
+
+            // Clear position overrides when loading a snapshot
+            this.state.graphState.currentPositionOverrides = new Map();
+
+            // Update graph visualization
+            this.updateGraphVisualization();
+
+            // Mark as clean
+            this.state.isDirty = false;
+
+            // Notify listeners
+            this.notifyStateChange();
+
+            return frontendSnapshot;
+
+        } catch (error) {
+            this.setError(error);
+            this.setLoading(false);
+            throw error;
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Update graph visualization state
+     */
+    updateGraphVisualization() {
+        if (!window.galleryTransformer) {
+            console.warn('Gallery transformer not available');
+            return;
+        }
+
+        const frontendSnapshot = {
+            nodes: this.state.nodes,
+            domains: this.state.domains
+        };
+
+        const graphData = window.galleryTransformer.transformToGraphVisualization(frontendSnapshot);
+        
+        this.state.graphState.nodes = graphData.nodes;
+        this.state.graphState.edges = graphData.edges;
+        this.state.graphState.domains = graphData.domains;
+        this.state.graphState.defaultPositions = graphData.defaultPositions;
+        this.state.graphState.lastUpdated = new Date();
+    }
+
+    /**
+     * Select node and show details
+     * @param {number} nodeId - Node ID
+     */
+    selectNode(nodeId) {
+        const node = this.state.nodes.find(n => n.id === nodeId);
+        if (node) {
+            this.state.selectedNode = node;
+            this.state.showNodeDetails = true;
+            this.notifyStateChange();
+        }
+    }
+
+    /**
+     * Close node details panel
+     */
+    closeNodeDetails() {
+        this.state.selectedNode = null;
+        this.state.showNodeDetails = false;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Get node by ID
+     * @param {number} nodeId - Node ID
+     * @returns {Object|null} Node object
+     */
+    getNodeById(nodeId) {
+        return this.state.nodes.find(n => n.id === nodeId) || null;
+    }
+
+    /**
+     * Get domain by ID
+     * @param {number} domainId - Domain ID
+     * @returns {Object|null} Domain object
+     */
+    getDomainById(domainId) {
+        return this.state.domains.find(d => d.id === domainId) || null;
+    }
+
+    /**
+     * Get nodes in domain
+     * @param {number} domainId - Domain ID
+     * @returns {Array} Nodes in domain
+     */
+    getNodesInDomain(domainId) {
+        return this.state.nodes.filter(n => n.domainId === domainId);
+    }
+
+    /**
+     * Get current graph state for visualization
+     * @returns {Object} Graph state
+     */
+    getGraphState() {
+        return this.state.graphState;
+    }
+
+    /**
+     * Update graph position override (for drag operations)
+     * @param {number} nodeId - Node ID
+     * @param {Object} position - Position {x, y}
+     */
+    updateGraphPosition(nodeId, position) {
+        this.state.graphState.currentPositionOverrides.set(nodeId, position);
+        this.state.graphState.lastUpdated = new Date();
+    }
+
+    /**
+     * Clear current snapshot
+     */
+    clearSnapshot() {
+        this.state.currentSnapshot = null;
+        this.state.nodes = [];
+        this.state.domains = [];
+        this.state.redirects = [];
+        this.state.currentSnapshotUuid = null;
+        this.state.currentVersionLabel = '';
+        this.state.baseGraphUuid = null;
+        this.state.baseGraphLabel = null;
+        this.state.createdAt = null;
+        this.state.lastUpdated = null;
+        this.state.isPublic = false;
+        this.state.authors = [];
+        this.state.selectedNode = null;
+        this.state.showNodeDetails = false;
+        
+        // Clear graph state
+        this.state.graphState = {
+            nodes: [],
+            edges: [],
+            domains: [],
+            defaultPositions: new Map(),
+            currentPositionOverrides: new Map(),
+            lastUpdated: null
         };
         
-        // Clear visualizer reference
-        this.visualizer = null;
-        
-        this.notify();
+        this.notifyStateChange();
+    }
+
+    /**
+     * Show message (for user feedback)
+     * @param {string} message - Message to show
+     * @param {string} type - Message type (success, error, info)
+     */
+    showMessage(message, type = 'info') {
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        // Could be extended to show toast notifications
     }
 }
 

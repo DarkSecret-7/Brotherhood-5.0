@@ -35,6 +35,12 @@ class SnapshotsTransformer {
             selectedDomains: new Set()
         };
 
+        // Build graph data for visualization immediately
+        frontendSnapshot.graphData = this.buildGraphData(
+            backendSnapshot.nodes || [],
+            backendSnapshot.domains || []
+        );
+
         return frontendSnapshot;
     }
 
@@ -100,6 +106,128 @@ class SnapshotsTransformer {
             isValid: true,
             validationErrors: []
         }));
+    }
+
+    /**
+     * Build graph data from backend nodes for visualization
+     * Creates nodes with defaultPosition, position, and pathway attributes
+     * @param {Array} backendNodes - Backend nodes array
+     * @param {Array} backendDomains - Backend domains array (for hull rendering)
+     * @returns {Object} Graph data {nodes, edges, cycles, domains}
+     */
+    buildGraphData(backendNodes, backendDomains) {
+        if (!Array.isArray(backendNodes)) {
+            return { nodes: [], edges: [], cycles: [], domains: [] };
+        }
+
+        const nodes = [];
+        const edges = [];
+        const cycles = [];
+        const nodePathways = new Map(); // nodeId -> array of edge IDs for each pathway
+
+        // First pass: create graph nodes and collect prerequisite data
+        backendNodes.forEach(node => {
+            const graphNode = {
+                id: node.local_id,
+                title: node.title,
+                domainId: node.domain_id || null,
+                defaultPosition: { x: node.x ?? null, y: node.y ?? null },
+                position: { x: node.x ?? null, y: node.y ?? null },
+                pathway: [] // Will be populated with edge IDs
+            };
+            nodes.push(graphNode);
+            nodePathways.set(node.local_id, []);
+        });
+
+        // Second pass: process prerequisites to create pathways and edges
+        // Use tree structure directly from backend - no string conversion needed
+        const allEdges = [];
+        backendNodes.forEach(node => {
+            if (node.prerequisite && window.ExpressionUtils) {
+                // Extract DNF pathways directly from tree structure
+                const dnfPathways = window.ExpressionUtils.extractPathwaysFromTree(node.prerequisite);
+                const nodeEdgeIds = [];
+
+                dnfPathways.forEach(pathway => {
+                    // Create edges for this pathway: each prereq -> dependent node
+                    pathway.forEach(prereqId => {
+                        const edgeId = `${prereqId}-${node.local_id}`;
+                        allEdges.push({
+                            id: edgeId,
+                            from: prereqId,
+                            to: node.local_id
+                        });
+                        nodeEdgeIds.push(edgeId);
+                    });
+                });
+
+                nodePathways.set(node.local_id, nodeEdgeIds);
+            }
+        });
+
+        // Remove duplicate edges
+        const edgeMap = new Map();
+        allEdges.forEach(edge => {
+            if (!edgeMap.has(edge.id)) {
+                edgeMap.set(edge.id, edge);
+            }
+        });
+        const uniqueEdges = Array.from(edgeMap.values());
+        
+        if (window.ExpressionUtils) {
+            // Use nodes array (with .id) not backendNodes (with .local_id)
+            const nodeCycles = window.ExpressionUtils.detectCycles(nodes, uniqueEdges);
+            // Convert node cycles to edge references
+            nodeCycles.forEach(nodeCycle => {
+                const edgeCycle = [];
+                for (let i = 0; i < nodeCycle.length - 1; i++) {
+                    const edgeId = `${nodeCycle[i]}-${nodeCycle[i + 1]}`;
+                    edgeCycle.push(edgeId);
+                }
+                // Close the cycle
+                const lastEdgeId = `${nodeCycle[nodeCycle.length - 1]}-${nodeCycle[0]}`;
+                edgeCycle.push(lastEdgeId);
+                cycles.push(edgeCycle);
+            });
+
+            // Perform transitive reduction - use nodes array (with .id) not backendNodes (with .local_id)
+            const reducedEdges = window.ExpressionUtils.transitiveReduction(nodes, uniqueEdges);
+            edges.push(...reducedEdges);
+        } else {
+            edges.push(...uniqueEdges);
+        }
+
+        // Generate default positions for nodes without stored positions
+        if (window.ExpressionUtils) {
+            const algorithmicPositions = window.ExpressionUtils.generateDefaultPositions(backendNodes, {
+                width: 800,
+                height: 600,
+                layout: 'hierarchical'
+            });
+
+            // Merge positions: stored positions take priority, then algorithmic
+            nodes.forEach(node => {
+                const hasStoredPosition = node.defaultPosition.x !== null && node.defaultPosition.y !== null;
+                if (!hasStoredPosition) {
+                    const algoPos = algorithmicPositions.get(node.id);
+                    if (algoPos) {
+                        node.defaultPosition = { x: algoPos.x, y: algoPos.y };
+                        node.position = { x: algoPos.x, y: algoPos.y };
+                    }
+                }
+                // Assign pathway edge IDs
+                node.pathway = nodePathways.get(node.id) || [];
+            });
+        }
+
+        // Create minimal domain data for hull rendering
+        const domains = (backendDomains || []).map(domain => ({
+            id: domain.local_id,
+            title: domain.title,
+            parentId: domain.parent_id || null
+        }));
+
+        return { nodes, edges, cycles, domains };
     }
 
     /**
@@ -319,9 +447,6 @@ class SnapshotsTransformer {
         if (window.ExpressionUtils) {
             return window.ExpressionUtils.parsePrerequisiteToTree(frontendPrereq);
         }
-        
-        // Fallback: wrap simple string in object format
-        return '';
     }
 
     /**

@@ -402,56 +402,58 @@ class GraphVisualizer {
 
     /**
      * Update visualization with new graph data
-     * @param {Object} graphState - Graph state with nodes, edges, pathways, positions
+     * @param {Object} graphState - Graph state with nodes, edges, cycles, domains
      */
     updateVisualization(graphState) {
         // Store graph state for domain hull rendering
         this.graphState = graphState;
-        
+
         if (!this.network) {
             this.initializeNetwork();
             // After network is created, update with data
             setTimeout(() => this.updateVisualization(graphState), 100);
             return;
         }
-        
+
         // Update data sets
-        const visNodes = this.createVisNodes(graphState.nodes, graphState.defaultPositions);
+        const visNodes = this.createVisNodes(graphState.nodes);
         const visEdges = this.createVisEdges(graphState.edges);
-                
+
         this.nodes.clear();
         this.nodes.add(visNodes);
         this.edges.clear();
         this.edges.add(visEdges);
-        
+
         // Fit network to view
         setTimeout(() => {
-            this.network.fit({
-                animation: {
-                    duration: 1000,
-                    easingFunction: 'easeInOutQuad'
-                }
-            });
+            if (this.network) {
+                this.network.fit({
+                    animation: {
+                        duration: 1000,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+            }
         }, 100);
     }
 
     /**
      * Create vis.js nodes from graph nodes
-     * @param {Array} graphNodes - Graph nodes (minimal data)
-     * @param {Map} defaultPositions - Default positions
+     * @param {Array} graphNodes - Graph nodes with position data
      * @returns {Array} vis.js node objects
      */
-    createVisNodes(graphNodes, defaultPositions) {
+    createVisNodes(graphNodes) {
         return graphNodes.map(node => {
-            const position = defaultPositions ? defaultPositions.get(node.id) : null;
-            
+            // Use position override if available, otherwise use defaultPosition
+            const position = node.position || node.defaultPosition;
+
             const visNode = {
                 id: node.id,
                 label: `${node.id}: ${node.title || 'Untitled'}`
             };
 
             // Set position if available
-            if (position) {
+            if (position && position.x !== null && position.y !== null) {
                 visNode.x = position.x;
                 visNode.y = position.y;
             }

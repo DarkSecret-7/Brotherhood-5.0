@@ -15,8 +15,11 @@ brotherhood.db
 # IDEs
 .vscode/
 .idea/
-AGENTS.md
 .windsurf/
+AGENTS.md
+
+# Temporary docs
+*.md
 
 # OS
 .DS_Store

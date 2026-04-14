@@ -226,6 +226,82 @@ class ExpressionUtils {
     }
 
     /**
+     * Extract DNF pathways directly from a tree structure (backend format)
+     * Works with tree structures like: {node: 1}, {and: [{node: 1}, {node: 2}]}, {or: [...]}
+     * @param {Object} tree - Tree structure from backend (JSONB)
+     * @returns {Array} Array of pathways (each pathway is array of node IDs)
+     */
+    static extractPathwaysFromTree(tree) {
+        if (!tree) return [];
+
+        // Leaf node: {node: id}
+        if (tree.node !== undefined) {
+            return [[tree.node]];
+        }
+
+        // AND operation: {and: [left, right]}
+        if (tree.and && Array.isArray(tree.and)) {
+            // Start with single empty pathway
+            let combinedPathways = [[]];
+            
+            for (const part of tree.and) {
+                const partPathways = this.extractPathwaysFromTree(part);
+                // Cartesian product: combine each existing pathway with each part pathway
+                const newPathways = [];
+                for (const existingPath of combinedPathways) {
+                    for (const partPath of partPathways) {
+                        newPathways.push([...existingPath, ...partPath]);
+                    }
+                }
+                combinedPathways = newPathways;
+            }
+            return combinedPathways;
+        }
+
+        // OR operation: {or: [left, right]}
+        if (tree.or && Array.isArray(tree.or)) {
+            const allPathways = [];
+            for (const part of tree.or) {
+                const partPathways = this.extractPathwaysFromTree(part);
+                allPathways.push(...partPathways);
+            }
+            return allPathways;
+        }
+
+        return [];
+    }
+
+    /**
+     * Extract node IDs from a tree structure
+     * @param {Object} tree - Tree structure from backend
+     * @returns {Set} Set of node IDs
+     */
+    static extractNodeIdsFromTree(tree) {
+        const ids = new Set();
+        if (!tree) return ids;
+
+        if (tree.node !== undefined) {
+            ids.add(tree.node);
+        }
+
+        if (tree.and && Array.isArray(tree.and)) {
+            for (const part of tree.and) {
+                const partIds = this.extractNodeIdsFromTree(part);
+                partIds.forEach(id => ids.add(id));
+            }
+        }
+
+        if (tree.or && Array.isArray(tree.or)) {
+            for (const part of tree.or) {
+                const partIds = this.extractNodeIdsFromTree(part);
+                partIds.forEach(id => ids.add(id));
+            }
+        }
+
+        return ids;
+    }
+
+    /**
      * Split expression by operator while respecting parentheses
      * @param {string} expression - Expression to split
      * @param {string} operator - Operator to split by ('AND' or 'OR')

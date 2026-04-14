@@ -53,10 +53,10 @@
     <script src="/frontend/api/base-api-service.js"></script>
     <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
     <script src="/frontend/api/snapshots/gallery-api-service.js"></script>
+    <script src="/frontend/utils/expression-utils.js"></script>
     <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
     <script src="/frontend/state/gallery-state-manager.js"></script>
-    <script src="/frontend/ui/gallery/gallery-ui-controller.js"></script>
-    <script src="/frontend/ui/gallery/gallery-ops-controller.js"></script>
+    <script src="/frontend/ui/gallery/gallery-controller.js"></script>
     <script src="/frontend/components/graph-visualizer.js"></script>
     
     <!-- Gallery Initialization -->
@@ -68,13 +68,8 @@
             const apiService = galleryApiService;
             const transformer = galleryTransformer;
             
-            // Create UI and operations controllers
-            const uiController = new GalleryUIController(stateManager);
-            const opsController = new GalleryOpsController(stateManager, apiService, transformer);
-            
-            // Initialize controllers
-            uiController.initialize();
-            opsController.initialize();
+            // Create unified gallery controller
+            const galleryController = new GalleryController(stateManager, apiService, transformer);
         });
     </script>
 </body>

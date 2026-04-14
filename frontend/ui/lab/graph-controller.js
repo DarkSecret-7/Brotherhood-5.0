@@ -22,11 +22,8 @@ class GraphController {
         this.graphState = {
             nodes: [],
             edges: [],
-            pathways: [],
-            defaultPositions: new Map(),
-            currentPositionOverrides: new Map(),
             cycles: [],
-            lastUpdated: null
+            domains: []
         };
         
         this.initializeElements();
@@ -83,12 +80,8 @@ class GraphController {
      * @param {Object} state - Current state
      */
     handleStateChange(state) {
-        console.log('GraphController: handleStateChange called, activeTab:', state.activeTab);
-        
         // Only update if we're on the graph tab
         if (state.activeTab === 'graph') {
-            console.log('GraphController: Graph tab activated, updating graph data first');
-            
             // Always update graph data first
             this.updateGraphData();
             
@@ -133,25 +126,14 @@ class GraphController {
      * Update graph data from state manager
      */
     updateGraphData() {
-        console.log('GraphController: updateGraphData called');
+        // Get graph data from state manager (already built by transformer)
+        const graphState = this.stateManager.state.graphState;
         
-        // Get graph data from state manager - state manager handles all data building
-        const graphData = this.stateManager.buildGraphData();
-        console.log('GraphController: Got graph data from state manager:', graphData);
-        
-        // Update graph state with data from state manager
-        this.graphState.nodes = graphData.nodes;
-        this.graphState.edges = graphData.edges;
-        this.graphState.pathways = graphData.pathways;
-        this.graphState.defaultPositions = graphData.defaultPositions;
-        this.graphState.cycles = graphData.cycles;
-        this.graphState.domains = graphData.domains || []; // Add domains for hull rendering
-        this.graphState.lastUpdated = new Date();
-        
-        // Store in state manager for persistence
-        this.stateManager.state.graphState = { ...this.graphState };
-        
-        console.log('GraphController: Graph data updated, nodes:', this.graphState.nodes.length, 'edges:', this.graphState.edges.length);
+        // Update local graph state
+        this.graphState.nodes = graphState.nodes || [];
+        this.graphState.edges = graphState.edges || [];
+        this.graphState.cycles = graphState.cycles || [];
+        this.graphState.domains = graphState.domains || [];
     }
 
     
@@ -159,10 +141,6 @@ class GraphController {
      * Initialize graph visualizer
      */
     initializeVisualizer() {
-        console.log('GraphController: initializeVisualizer called');
-        console.log('GraphController: container exists:', !!this.elements.graphContainer);
-        console.log('GraphController: visualizer exists:', !!this.visualizer);
-        
         if (this.elements.graphContainer && !this.visualizer) {
             console.log('GraphController: Creating new GraphVisualizer');
             // Import and create visualizer (will be created separately)
@@ -186,16 +164,9 @@ class GraphController {
      * Update visualization with current graph data
      */
     updateVisualization() {
-        console.log('GraphController: updateVisualization called');
-        console.log('GraphController: visualizer exists:', !!this.visualizer);
-        console.log('GraphController: graphState:', this.graphState);
-        console.log('GraphController: nodes:', this.graphState.nodes.length, 'edges:', this.graphState.edges.length);
-        
         if (this.visualizer) {
-            console.log('GraphController: Calling visualizer.updateVisualization');
             this.visualizer.updateVisualization(this.graphState);
         } else {
-            console.log('GraphController: No visualizer to update');
         }
     }
 
@@ -205,13 +176,17 @@ class GraphController {
      * @param {Object} position - New position {x, y}
      */
     handleNodePositionChange(nodeId, position) {
-        // Store position override
-        this.graphState.currentPositionOverrides.set(nodeId, position);
-        
-        // Update state manager
-        this.stateManager.state.graphState.currentPositionOverrides = 
-            new Map(this.graphState.currentPositionOverrides);
-        
+        // Update position in graphState.nodes (real-time update)
+        const node = this.graphState.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.position = { x: position.x, y: position.y };
+        }
+
+        // Also update in state manager's graphState
+        const stateNode = this.stateManager.state.graphState.nodes.find(n => n.id === nodeId);
+        if (stateNode) {
+            stateNode.position = { x: position.x, y: position.y };
+        }
     }
 
     
@@ -220,13 +195,24 @@ class GraphController {
      */
     resetLayout() {
         if (this.visualizer) {
-            // Clear position overrides
-            this.graphState.currentPositionOverrides.clear();
-            this.stateManager.state.graphState.currentPositionOverrides = new Map();
-            
-            // Reset visualizer to default positions
-            this.visualizer.applyPositions(this.graphState.defaultPositions);
-            
+            // Clear position overrides by resetting all node positions to default
+            const positions = new Map();
+            this.graphState.nodes.forEach(node => {
+                node.position = { ...node.defaultPosition };
+                positions.set(node.id, node.position);
+            });
+
+            // Sync to state manager
+            this.stateManager.state.graphState.nodes.forEach(node => {
+                const localNode = this.graphState.nodes.find(n => n.id === node.id);
+                if (localNode) {
+                    node.position = { ...localNode.position };
+                }
+            });
+
+            // Apply positions to visualizer
+            this.visualizer.applyPositions(positions);
+
             this.stateManager.showMessage('Layout reset to default positions', 'info');
         }
     }
@@ -250,47 +236,74 @@ class GraphController {
                 layout: 'hierarchical'
             });
 
-            this.graphState.currentPositionOverrides = newPositions;
-            this.stateManager.state.graphState.currentPositionOverrides = newPositions;
+            // Update positions in graphState.nodes
+            const positions = new Map();
+            this.graphState.nodes.forEach(node => {
+                const newPos = newPositions.get(node.id);
+                if (newPos) {
+                    node.position = { x: newPos.x, y: newPos.y };
+                    positions.set(node.id, node.position);
+                }
+            });
 
-            this.visualizer.applyPositions(newPositions);
+            // Sync to state manager
+            this.stateManager.state.graphState.nodes.forEach(node => {
+                const localNode = this.graphState.nodes.find(n => n.id === node.id);
+                if (localNode) {
+                    node.position = { ...localNode.position };
+                }
+            });
+
+            this.visualizer.applyPositions(positions);
             this.stateManager.showMessage('Positions randomized with algorithmic layout', 'info');
         }
     }
 
     /**
-     * Toggle fixed positions
+     * Toggle fixed positions - save current positions as default
      */
     fixPositions() {
-        // Turn all temporary graphnode positions into permanent node positions
-        this.graphState.defaultPositions = this.graphState.currentPositionOverrides;
+        // Copy current position to defaultPosition for all nodes
+        this.graphState.nodes.forEach(node => {
+            if (node.position && (node.position.x !== null || node.position.y !== null)) {
+                node.defaultPosition = { ...node.position };
+            }
+        });
 
-        this.stateManager.freezePositions();
+        // Sync to workspace nodes for persistence
+        this.stateManager.state.nodes.forEach(node => {
+            const graphNode = this.graphState.nodes.find(n => n.id === node.id);
+            if (graphNode && graphNode.position) {
+                node.position = { ...graphNode.position };
+            }
+        });
+
+        // Sync to state manager's graphState
+        this.stateManager.state.graphState.nodes.forEach(node => {
+            const localNode = this.graphState.nodes.find(n => n.id === node.id);
+            if (localNode) {
+                node.defaultPosition = { ...localNode.defaultPosition };
+            }
+        });
+
+        this.stateManager.showMessage('Positions fixed', 'success');
     }
 
     /**
      * Refresh graph visualization without changing positions
      */
     refreshGraph() {
-        // Merge positions: override for dragged nodes, default for others
-        const mergedPositions = new Map();
+        // Apply current positions from graphState.nodes
+        const positions = new Map();
+        this.graphState.nodes.forEach(node => {
+            const pos = node.position || node.defaultPosition;
+            if (pos && pos.x !== null && pos.y !== null) {
+                positions.set(node.id, pos);
+            }
+        });
 
-        // Start with default positions for all nodes
-        if (this.graphState.defaultPositions) {
-            this.graphState.defaultPositions.forEach((pos, nodeId) => {
-                mergedPositions.set(nodeId, pos);
-            });
-        }
-
-        // Overlay current overrides (dragged nodes)
-        if (this.graphState.currentPositionOverrides) {
-            this.graphState.currentPositionOverrides.forEach((pos, nodeId) => {
-                mergedPositions.set(nodeId, pos);
-            });
-        }
-
-        if (this.visualizer && mergedPositions.size > 0) {
-            this.visualizer.applyPositions(mergedPositions);
+        if (this.visualizer && positions.size > 0) {
+            this.visualizer.applyPositions(positions);
         }
 
         this.stateManager.showMessage('Graph refreshed', 'success');
@@ -304,10 +317,9 @@ class GraphController {
         return {
             nodeCount: this.graphState.nodes.length,
             edgeCount: this.graphState.edges.length,
-            pathwayCount: this.graphState.pathways.length,
             cycleCount: this.graphState.cycles.length,
-            assessableNodeCount: this.graphState.nodes.filter(n => n.assessable).length,
-            lastUpdated: this.graphState.lastUpdated
+            domainCount: this.graphState.domains.length,
+            assessableNodeCount: this.stateManager.state.nodes.filter(n => n.assessable).length
         };
     }
 
