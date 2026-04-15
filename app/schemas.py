@@ -42,7 +42,10 @@ class BibliographyRead(BibliographyBase):
         from_attributes = True
 
 class BibliographySafeRead(BibliographyBase):   # Safe reading of bibliography, public_hash is optional
-    public_hash: Optional[str]
+    bib_hash: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 class SourceBase(BibliographySafeRead):             # Now Bibliography must be created/referenced before Source
     snapshot_uuid: Optional[UUID] = None
@@ -63,6 +66,7 @@ class SourceRead(SourceBase):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 # --- Assessment & Capability ---
     

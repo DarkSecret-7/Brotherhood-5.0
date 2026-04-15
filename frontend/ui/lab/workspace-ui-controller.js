@@ -1363,7 +1363,7 @@ class LabUIController {
         document.getElementById('source-url').value = source.url || '';
         document.getElementById('source-start').value = source.fragmentStart || '';
         document.getElementById('source-end').value = source.fragmentEnd || '';
-        document.getElementById('source-bib-hash').value = source.hash || '';
+        document.getElementById('source-bib-hash').value = source.hash;
         document.getElementById('source-uuid').value = source.sourceUuid || '';
         
         // Store the index being edited

@@ -1,3 +1,5 @@
+//const GraphUtils = require("../utils/graph-utils");
+
 /**
  * Graph Visualizer - Simple vis.js visualization component
  * Handles basic graph rendering with minimal data
@@ -12,6 +14,27 @@ class GraphVisualizer {
             onPositionChange: options.onPositionChange || (() => {}),
             onDomainClick: options.onDomainClick || (() => {}),
             ...options
+        };
+
+        this.assignable = {
+            highlightedNodes: new Set(),        // Set of node IDs to highlight
+            highlightedEdges: new Set(),        // Set of edge IDs to highlight
+            highlightedDomains: new Set()       // Set of domain IDs to highlight
+        };
+
+        // Highlight configuration
+        this.highlightConfig = {
+            node: {
+                border: '#541a96',
+                background: '#ba92ee'
+            },
+            edge: {
+                border: '#99e0c9',
+                background: '#7cdabb'
+            },
+            domain: {
+                border: '#eb7474'  // Highlight border color for domains
+            }
         };
         
         this.network = null;
@@ -54,7 +77,7 @@ class GraphVisualizer {
                     background: '#97C2FC',
                     highlight: {
                         border: '#2B7CE9',
-                        background: '#D2E5FF'
+                        background: '#7ba2d4'
                     }
                 }
             },
@@ -66,7 +89,7 @@ class GraphVisualizer {
                 },
                 color: {
                     color: '#848484',
-                    highlight: '#2B7CE9'
+                    highlight: '#848484'
                 },
                 width: 2
             },
@@ -74,7 +97,7 @@ class GraphVisualizer {
                 enabled: false
             },
             interaction: {
-                hover: true,
+                hover: false,
                 tooltipDelay: 200,
                 zoomView: true,
                 dragView: true,
@@ -115,103 +138,6 @@ class GraphVisualizer {
     }
 
     /**
-     * Check if point is in polygon
-     * @param {Object} point - Point with x, y
-     * @param {Array} vs - Array of vertices
-     * @returns {boolean} Whether point is inside polygon
-     */
-    isPointInPolygon(point, vs) {
-        const x = point.x, y = point.y;
-        let inside = false;
-        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-            const xi = vs[i].x, yi = vs[i].y;
-            const xj = vs[j].x, yj = vs[j].y;
-            const intersect = ((yi > y) != (yj > y))
-                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
-    }
-
-    /**
-     * Calculate convex hull using monotone chain algorithm
-     * @param {Array} points - Array of points with x, y
-     * @returns {Array} Convex hull points
-     */
-    getConvexHull(points) {
-        if (points.length < 3) return points;
-        
-        // Sort by x, then y
-        const sorted = points.slice().sort((a, b) => a.x - b.x || a.y - b.y);
-
-        const cross = (o, a, b) => {
-            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-        };
-
-        const lower = [];
-        for (let i = 0; i < sorted.length; i++) {
-            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], sorted[i]) <= 0) {
-                lower.pop();
-            }
-            lower.push(sorted[i]);
-        }
-
-        const upper = [];
-        for (let i = sorted.length - 1; i >= 0; i--) {
-            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], sorted[i]) <= 0) {
-                upper.pop();
-            }
-            upper.push(sorted[i]);
-        }
-
-        upper.pop();
-        lower.pop();
-        return lower.concat(upper);
-    }
-
-    /**
-     * Draw smooth hull with quadratic bezier curves
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     * @param {Array} points - Hull points
-     */
-    drawSmoothHull(ctx, points) {
-        if (points.length < 1) return;
-        
-        // 1 point: Circle
-        if (points.length === 1) {
-            ctx.moveTo(points[0].x, points[0].y);
-            ctx.lineTo(points[0].x, points[0].y);
-            return;
-        }
-        
-        // 2 points: Line
-        if (points.length === 2) {
-            ctx.moveTo(points[0].x, points[0].y);
-            ctx.lineTo(points[1].x, points[1].y);
-            return;
-        }
-
-        // 3+ points: Quadratic Bezier Curve loop
-        const len = points.length;
-        const pLast = points[len - 1];
-        const pFirst = points[0];
-        const midX = (pLast.x + pFirst.x) / 2;
-        const midY = (pLast.y + pFirst.y) / 2;
-
-        ctx.moveTo(midX, midY);
-
-        for (let i = 0; i < len; i++) {
-            const p = points[i]; // Control point
-            const nextP = points[(i + 1) % len];
-            
-            const nextMidX = (p.x + nextP.x) / 2;
-            const nextMidY = (p.y + nextP.y) / 2;
-            
-            ctx.quadraticCurveTo(p.x, p.y, nextMidX, nextMidY);
-        }
-    }
-
-    /**
      * Render domain hulls
      * @param {CanvasRenderingContext2D} ctx - Canvas context
      */
@@ -233,29 +159,33 @@ class GraphVisualizer {
             
             // Process domains (assuming graphState.domains exists)
             this.graphState.domains.forEach(domain => {
-                const points = this.getDomainPoints(domain, positions);
-                
+                const points = GraphUtils.getDomainPoints(domain, positions, this.graphState);
+
                 if (points.length === 0) return;
 
-                const hullPoints = this.getConvexHull(points);
-                
+                const hullPoints = GraphUtils.getConvexHull(points);
+
                 if (hullPoints.length > 0) {
                     // Expand hull points
-                    const expandedHull = this.expandHullPoints(hullPoints);
+                    const expandedHull = GraphUtils.expandHullPoints(hullPoints);
                     this.currentDomainHulls[domain.id] = expandedHull;
-                    
-                    // Draw hull
-                    const hue = (parseInt(domain.id) * 137.508) % 360;
+
+                    // Calculate deterministic hue based on title + id
+                    const hue = GraphUtils.getDeterministicHue(domain.title, domain.id);
                     const alpha = 0.15;
-                    
+                    const isHighlighted = this.assignable.highlightedDomains.has(domain.id);
+
+                    // Domain keeps its own color, but border changes when highlighted
                     ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${alpha})`;
-                    ctx.strokeStyle = `hsl(${hue}, 70%, 60%)`;
-                    ctx.lineWidth = 20;
+                    ctx.strokeStyle = isHighlighted
+                        ? this.highlightConfig.domain.border
+                        : `hsl(${hue}, 70%, 60%)`;
+                    ctx.lineWidth = isHighlighted ? 30 : 20;
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
-                    
+
                     ctx.beginPath();
-                    this.drawSmoothHull(ctx, expandedHull);
+                    GraphUtils.drawSmoothHull(ctx, expandedHull);
                     ctx.closePath();
                     ctx.stroke();
                     ctx.fill();
@@ -266,83 +196,6 @@ class GraphVisualizer {
         } catch (e) {
             console.warn("Error in renderDomainHulls:", e);
         }
-    }
-
-    /**
-     * Get points for domain hull calculation
-     * @param {Object} domain - Domain object
-     * @param {Object} positions - Node positions
-     * @returns {Array} Array of points
-     */
-    getDomainPoints(domain, positions) {
-        const points = [];
-        const baseMargin = 15;  // Base margin around the node
-        const maxWidth = 150;   // Same as widthConstraint.maximum
-        const charWidth = 7;    // Approximate width per character
-        const lineHeight = 20;  // Height per line of text
-
-        // Add points for nodes in this domain
-        if (this.graphState && this.graphState.nodes) {
-            this.graphState.nodes.forEach(node => {
-                // Handle both string and number domain IDs
-                const nodeDomainId = String(node.domainId || '');
-                const domainId = String(domain.id || '');
-
-                if (nodeDomainId === domainId) {
-                    const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
-                    if (pos) {
-                        // Calculate node box dimensions based on label text
-                        const label = `${node.id}: ${node.title || 'Untitled'}`;
-
-                        // Calculate how many lines the text will wrap to
-                        const textWidth = label.length * charWidth;
-                        const numLines = Math.ceil(textWidth / maxWidth);
-                        const actualLines = Math.max(1, numLines);
-
-                        // Calculate dimensions
-                        const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
-                        const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
-
-                        // Add bounding box corners (full extent of the node box)
-                        points.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
-                        points.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
-                        points.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
-                        points.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
-                    }
-                }
-            });
-        }
-
-        return points;
-    }
-
-    /**
-     * Expand hull points outward
-     * @param {Array} hullPoints - Original hull points
-     * @returns {Array} Expanded hull points
-     */
-    expandHullPoints(hullPoints) {
-        const centroid = {x: 0, y: 0};
-        hullPoints.forEach(p => {
-            centroid.x += p.x;
-            centroid.y += p.y;
-        });
-        centroid.x /= hullPoints.length;
-        centroid.y /= hullPoints.length;
-
-        const expansionDistance = 30;
-        
-        return hullPoints.map(p => {
-            const dx = p.x - centroid.x;
-            const dy = p.y - centroid.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 0.1) return p;
-            const scale = (dist + expansionDistance) / dist;
-            return {
-                x: centroid.x + dx * scale,
-                y: centroid.y + dy * scale
-            };
-        });
     }
 
     /**
@@ -361,6 +214,16 @@ class GraphVisualizer {
             return;
         }
 
+        // Click on empty space - clear node and domain highlighting only (keep edge highlighting)
+        if (this.assignable.highlightedNodes.size > 0 || this.assignable.highlightedDomains.size > 0) {
+            this.assignable.highlightedNodes.clear();
+            this.assignable.highlightedDomains.clear()
+            // Trigger re-render to remove node highlights
+            if (this.graphState) {
+                this.updateVisualization(this.graphState);
+            }
+        }
+
         // Check for domain hull clicks
         const clickX = params.pointer.canvas.x;
         const clickY = params.pointer.canvas.y;
@@ -369,8 +232,9 @@ class GraphVisualizer {
         // Check each domain hull (sorted by some criteria if needed)
         Object.keys(this.currentDomainHulls).forEach(domainId => {
             const hull = this.currentDomainHulls[domainId];
-            if (hull && this.isPointInPolygon(clickPoint, hull)) {
-                this.options.onDomainClick(domainId);
+            if (hull && GraphUtils.isPointInPolygon(clickPoint, hull)) {
+                // Convert back to number since Object.keys() returns strings
+                this.options.onDomainClick(parseInt(domainId, 10));
                 return; // Handle only the first matching domain
             }
         });
@@ -394,10 +258,10 @@ class GraphVisualizer {
             }
         });
 
-        // Stabilization done - disabled since physics is always off
-        // this.network.on('stabilizationIterationsDone', () => {
-        //     this.network.setOptions({ physics: { enabled: false } });
-        // });
+        /* Stabilization done - disabled since physics is always off
+        this.network.on('stabilizationIterationsDone', () => {
+            this.network.setOptions({ physics: { enabled: false } });
+        }); */
     }
 
     /**
@@ -424,8 +288,8 @@ class GraphVisualizer {
         this.edges.clear();
         this.edges.add(visEdges);
 
-        // Fit network to view
-        setTimeout(() => {
+        // Fit network to view [NO, only do it upon creation, or when refreshed]
+        /*setTimeout(() => {
             if (this.network) {
                 this.network.fit({
                     animation: {
@@ -434,7 +298,7 @@ class GraphVisualizer {
                     }
                 });
             }
-        }, 100);
+        }, 100);*/
     }
 
     /**
@@ -458,6 +322,15 @@ class GraphVisualizer {
                 visNode.y = position.y;
             }
 
+            // Apply highlight if this node is in the highlighted set
+            if (this.assignable.highlightedNodes.has(node.id)) {
+                visNode.color = {
+                    border: this.highlightConfig.node.border,
+                    background: this.highlightConfig.node.background
+                };
+                visNode.borderWidth = 3;
+            }
+
             return visNode;
         });
     }
@@ -468,12 +341,25 @@ class GraphVisualizer {
      * @returns {Array} vis.js edge objects
      */
     createVisEdges(graphEdges) {
-        return graphEdges.map((edge, index) => ({
-            id: index,
-            from: edge.from,
-            to: edge.to,
-            arrows: edge.arrows || 'to'
-        }));
+        return graphEdges.map((edge, index) => {
+            const visEdge = {
+                id: index,
+                from: edge.from,
+                to: edge.to,
+                arrows: edge.arrows || 'to'
+            };
+
+            // Apply highlight if this edge is in the highlighted set
+            if (this.assignable.highlightedEdges.has(index)) {
+                visEdge.color = {
+                    color: this.highlightConfig.edge.border,
+                    highlight: this.highlightConfig.edge.border
+                };
+                visEdge.width = 3;
+            }
+
+            return visEdge;
+        });
     }
 
     /**
@@ -497,37 +383,6 @@ class GraphVisualizer {
                 this.network.fit();
             }, 100);
         }
-    }
-
-    /**
-     * Get current node positions
-     * @returns {Map} Map of node ID to current position
-     */
-    getCurrentPositions() {
-        if (!this.network) return new Map();
-
-        const positions = new Map();
-        const nodeIds = this.nodes.getIds();
-        
-        nodeIds.forEach(nodeId => {
-            const position = this.network.getPosition(nodeId);
-            positions.set(nodeId, position);
-        });
-
-        return positions;
-    }
-
-    /**
-     * Fix positions - update local node positions to current x,y coordinates
-     * @returns {Map} Map of node ID to current position
-     */
-    fixPositions() {
-        if (!this.network) return new Map();
-
-        const positions = this.getCurrentPositions();
-        
-        // Return positions so they can be sent to backend
-        return positions;
     }
 
     /**

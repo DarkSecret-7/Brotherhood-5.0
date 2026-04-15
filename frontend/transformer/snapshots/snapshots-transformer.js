@@ -133,7 +133,7 @@ class SnapshotsTransformer {
                 domainId: node.domain_id || null,
                 defaultPosition: { x: node.x ?? null, y: node.y ?? null },
                 position: { x: node.x ?? null, y: node.y ?? null },
-                pathway: [] // Will be populated with edge IDs
+                pathways: [] // Will be populated with arrays of edge IDs (one array per pathway)
             };
             nodes.push(graphNode);
             nodePathways.set(node.local_id, []);
@@ -146,9 +146,10 @@ class SnapshotsTransformer {
             if (node.prerequisite && window.ExpressionUtils) {
                 // Extract DNF pathways directly from tree structure
                 const dnfPathways = window.ExpressionUtils.extractPathwaysFromTree(node.prerequisite);
-                const nodeEdgeIds = [];
+                const pathways = []; // Array of pathways, each containing edge IDs
 
                 dnfPathways.forEach(pathway => {
+                    const pathwayEdgeIds = [];
                     // Create edges for this pathway: each prereq -> dependent node
                     pathway.forEach(prereqId => {
                         const edgeId = `${prereqId}-${node.local_id}`;
@@ -157,11 +158,12 @@ class SnapshotsTransformer {
                             from: prereqId,
                             to: node.local_id
                         });
-                        nodeEdgeIds.push(edgeId);
+                        pathwayEdgeIds.push(edgeId);
                     });
+                    pathways.push(pathwayEdgeIds);
                 });
 
-                nodePathways.set(node.local_id, nodeEdgeIds);
+                nodePathways.set(node.local_id, pathways);
             }
         });
 
@@ -215,8 +217,8 @@ class SnapshotsTransformer {
                         node.position = { x: algoPos.x, y: algoPos.y };
                     }
                 }
-                // Assign pathway edge IDs
-                node.pathway = nodePathways.get(node.id) || [];
+                // Assign pathways (array of edge ID arrays)
+                node.pathways = nodePathways.get(node.id) || [];
             });
         }
 
@@ -411,7 +413,7 @@ class SnapshotsTransformer {
             url: source.url || null,
             fragment_start: source.fragmentStart || null,
             fragment_end: source.fragmentEnd || null,
-            public_hash: source.hash || null,
+            bib_hash: source.hash || null,
             source_uuid: source.sourceUuid || null,
             updated: source._isDirty || false,
             deleted: source._isDeleted || false

@@ -32,15 +32,17 @@ class GalleryStateManager {
             // Node details panel state
             selectedNode: null,
             showNodeDetails: false,
-            
-            // Graph visualization state
+
+            // Domain details panel state
+            selectedDomain: null,
+            showDomainDetails: false,
+
+            // Graph visualization state (minimal structure)
             graphState: {
-                nodes: [],
-                edges: [],
-                domains: [],
-                defaultPositions: new Map(),
-                currentPositionOverrides: new Map(),
-                lastUpdated: null
+                nodes: [],  // {id, title, domainId, defaultPosition, position, pathways}
+                edges: [],  // {id, from, to}
+                cycles: [], // ["1-2", "2-3", "3-1"]
+                domains: [] // {id, title, parentId}
             }
         };
 
@@ -130,11 +132,13 @@ class GalleryStateManager {
             this.state.isPublic = frontendSnapshot.isPublic || false;
             this.state.authors = frontendSnapshot.authors || [];
 
-            // Clear position overrides when loading a snapshot
-            this.state.graphState.currentPositionOverrides = new Map();
-
-            // Update graph visualization
-            this.updateGraphVisualization();
+            // Use graph data from transformer (already built with nodes, edges, cycles, domains)
+            if (frontendSnapshot.graphData) {
+                this.state.graphState.nodes = frontendSnapshot.graphData.nodes || [];
+                this.state.graphState.edges = frontendSnapshot.graphData.edges || [];
+                this.state.graphState.cycles = frontendSnapshot.graphData.cycles || [];
+                this.state.graphState.domains = frontendSnapshot.graphData.domains || [];
+            }
 
             // Mark as clean
             this.state.isDirty = false;
@@ -151,29 +155,6 @@ class GalleryStateManager {
         } finally {
             this.setLoading(false);
         }
-    }
-
-    /**
-     * Update graph visualization state
-     */
-    updateGraphVisualization() {
-        if (!window.galleryTransformer) {
-            console.warn('Gallery transformer not available');
-            return;
-        }
-
-        const frontendSnapshot = {
-            nodes: this.state.nodes,
-            domains: this.state.domains
-        };
-
-        const graphData = window.galleryTransformer.transformToGraphVisualization(frontendSnapshot);
-        
-        this.state.graphState.nodes = graphData.nodes;
-        this.state.graphState.edges = graphData.edges;
-        this.state.graphState.domains = graphData.domains;
-        this.state.graphState.defaultPositions = graphData.defaultPositions;
-        this.state.graphState.lastUpdated = new Date();
     }
 
     /**
@@ -199,21 +180,30 @@ class GalleryStateManager {
     }
 
     /**
-     * Get node by ID
-     * @param {number} nodeId - Node ID
-     * @returns {Object|null} Node object
+     * Select domain and show details
+     * @param {number} domainId - Domain ID
      */
-    getNodeById(nodeId) {
-        return this.state.nodes.find(n => n.id === nodeId) || null;
+    selectDomain(domainId) {
+        console.log(domainId, typeof domainId);
+        
+        const domain = this.state.domains.find(d => d.id === domainId);
+        
+        if (domain) {
+            console.log("Domain exists", domain);
+            
+            this.state.selectedDomain = domain;
+            this.state.showDomainDetails = true;
+            this.notifyStateChange();
+        }
     }
 
     /**
-     * Get domain by ID
-     * @param {number} domainId - Domain ID
-     * @returns {Object|null} Domain object
+     * Close domain details panel
      */
-    getDomainById(domainId) {
-        return this.state.domains.find(d => d.id === domainId) || null;
+    closeDomainDetails() {
+        this.state.selectedDomain = null;
+        this.state.showDomainDetails = false;
+        this.notifyStateChange();
     }
 
     /**
@@ -234,13 +224,15 @@ class GalleryStateManager {
     }
 
     /**
-     * Update graph position override (for drag operations)
+     * Update graph position (for drag operations)
      * @param {number} nodeId - Node ID
      * @param {Object} position - Position {x, y}
      */
     updateGraphPosition(nodeId, position) {
-        this.state.graphState.currentPositionOverrides.set(nodeId, position);
-        this.state.graphState.lastUpdated = new Date();
+        const node = this.state.graphState.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.position = { x: position.x, y: position.y };
+        }
     }
 
     /**
@@ -262,14 +254,16 @@ class GalleryStateManager {
         this.state.selectedNode = null;
         this.state.showNodeDetails = false;
         
-        // Clear graph state
+        // Clear domain selection
+        this.state.selectedDomain = null;
+        this.state.showDomainDetails = false;
+
+        // Clear graph state (minimal structure)
         this.state.graphState = {
             nodes: [],
             edges: [],
-            domains: [],
-            defaultPositions: new Map(),
-            currentPositionOverrides: new Map(),
-            lastUpdated: null
+            cycles: [],
+            domains: []
         };
         
         this.notifyStateChange();

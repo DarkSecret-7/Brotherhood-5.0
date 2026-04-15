@@ -25,6 +25,9 @@ class GraphController {
             cycles: [],
             domains: []
         };
+
+        // Track active pathway index for each node (local to graph controller)
+        this.nodePathwayIndex = new Map();
         
         this.initializeElements();
         this.bindEventListeners();
@@ -99,17 +102,71 @@ class GraphController {
      * @param {number} nodeId - Node ID
      */
     handleNodeClick(nodeId) {
-        // For now, do nothing - keep it simple as requested
-        console.log('Node clicked:', nodeId);
+        // Clear only node highlights (edge highlights are independent)
+        this.visualizer.assignable.highlightedNodes.clear();
+        
+        // Highlight clicked node
+        this.visualizer.assignable.highlightedNodes.add(nodeId);
+        
+        // Re-render to apply highlight
+        this.updateVisualization();
+        
+        console.log('Node clicked and highlighted:', nodeId);
+    }
+
+    /**
+     * Get the edge index from an edge ID
+     * @param {string} edgeId - Edge ID (e.g., "1-5")
+     * @returns {number} Edge index or -1 if not found
+     */
+    getEdgeIndex(edgeId) {
+        return this.graphState.edges.findIndex(e => e.id === edgeId);
     }
 
     /**
      * Handle edge click
-     * @param {number} edgeId - Edge ID
+     * @param {number} edgeIndex - Edge index (from vis.js)
      */
-    handleEdgeClick(edgeId) {
-        // For now, do nothing - keep it simple as requested
-        console.log('Edge clicked:', edgeId);
+    handleEdgeClick(edgeIndex) {
+        console.log('Edge clicked:', edgeIndex);
+        
+        // Get the edge from the graph state
+        const edge = this.graphState.edges[edgeIndex];
+        if (!edge) return;
+        
+        // Find the target node of this edge
+        const targetNodeId = edge.to;
+        const targetNode = this.graphState.nodes.find(n => n.id === targetNodeId);
+        if (!targetNode || !targetNode.pathways || targetNode.pathways.length === 0) return;
+        
+        // Find which pathway this edge belongs to
+        const edgeId = edge.id;
+        let pathwayIndex = -1;
+        for (let i = 0; i < targetNode.pathways.length; i++) {
+            if (targetNode.pathways[i].includes(edgeId)) {
+                pathwayIndex = i;
+                break;
+            }
+        }
+        if (pathwayIndex === -1) return; // Edge not in any pathway
+        
+        // Get current pathway index for this node (always initialized to 0)
+        let currentIndex = this.nodePathwayIndex.get(targetNodeId) || 0;
+        
+        // If clicking a different pathway edge, switch to it; otherwise cycle
+        if (currentIndex !== pathwayIndex) {
+            currentIndex = pathwayIndex;
+        } else {
+            // Cycle to the next pathway index
+            currentIndex = (currentIndex + 1) % targetNode.pathways.length;
+        }
+        
+        this.nodePathwayIndex.set(targetNodeId, currentIndex);
+        
+        // Re-render to apply highlights (updateVisualization handles edge highlighting)
+        this.updateVisualization();
+        
+        console.log(`Showing pathway ${currentIndex + 1}/${targetNode.pathways.length} for node ${targetNodeId}`);
     }
 
     /**
@@ -117,8 +174,16 @@ class GraphController {
      * @param {number} domainId - Domain ID
      */
     handleDomainClick(domainId) {
-        // For now, do nothing - keep it simple as requested
-        console.log('Domain hull clicked:', domainId);
+        // Clear any existing domain highlights
+        this.visualizer.assignable.highlightedDomains.clear();
+
+        // Highlight clicked domain
+        this.visualizer.assignable.highlightedDomains.add(domainId);
+
+        // Re-render to apply highlight
+        this.updateVisualization();
+
+        console.log('Domain clicked and highlighted:', domainId);
     }
 
     
@@ -134,6 +199,13 @@ class GraphController {
         this.graphState.edges = graphState.edges || [];
         this.graphState.cycles = graphState.cycles || [];
         this.graphState.domains = graphState.domains || [];
+
+        // Initialize pathway indices for all nodes with pathways to 0
+        this.graphState.nodes.forEach(node => {
+            if (node.pathways && node.pathways.length > 0 && !this.nodePathwayIndex.has(node.id)) {
+                this.nodePathwayIndex.set(node.id, 0);
+            }
+        });
     }
 
     
@@ -165,9 +237,33 @@ class GraphController {
      */
     updateVisualization() {
         if (this.visualizer) {
+            // GraphController assigns edge highlights (not the visualizer)
+            this.applyPathwayHighlights();
             this.visualizer.updateVisualization(this.graphState);
-        } else {
         }
+    }
+
+    /**
+     * Apply pathway edge highlights based on nodePathwayIndex
+     * Called by updateVisualization to set highlighted edges
+     */
+    applyPathwayHighlights() {
+        this.visualizer.assignable.highlightedEdges.clear();
+        
+        // For each node with an active pathway, highlight ALL edges in that pathway
+        this.nodePathwayIndex.forEach((pathwayIndex, nodeId) => {
+            const node = this.graphState.nodes.find(n => n.id === nodeId);
+            if (node && node.pathways && node.pathways.length > pathwayIndex) {
+                const activePathway = node.pathways[pathwayIndex]; // Array of edge IDs
+                // Highlight all edges in this pathway
+                activePathway.forEach(edgeId => {
+                    const edgeIndex = this.getEdgeIndex(edgeId);
+                    if (edgeIndex !== -1) {
+                        this.visualizer.assignable.highlightedEdges.add(edgeIndex);
+                    }
+                });
+            }
+        });
     }
 
     /**

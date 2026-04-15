@@ -11,16 +11,16 @@
 </head>
 <body>
     <div class="header">
-        <div style="display: flex; align-items: center;">
-            <a href="/landing" style="text-decoration: none; font-weight: bold; color: #1a73e8;">&larr; Back to Home</a>
-            <div style="margin-left: 30px;">
-                <h1 style="color: #202124; margin: 0;">Public Graph Gallery</h1>
+        <div class="header-inner">
+            <a href="/landing" class="header-back-link">&larr; Back to Home</a>
+            <div class="header-title-section">
+                <h1>Public Graph Gallery</h1>
                 <div class="version-indicator">Read-Only Mode</div>
             </div>
         </div>
     </div>
 
-    <div class="gallery-container" style="height: 100vh; overflow: hidden; display: flex; flex-direction: row;">
+    <div class="gallery-container">
         <div id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <span>Public Graphs</span>
@@ -28,23 +28,33 @@
             </div>
             <button class="toggle-sidebar-btn" title="Toggle Sidebar">☰</button>
             <div id="graph-list" class="sidebar-content">
-                <p style="text-align: center; color: #5f6368; margin-top: 20px;">Loading...</p>
+                <p class="sidebar-loading">Loading...</p>
             </div>
         </div>
 
-        <div class="main-area" style="flex: 1; position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-            <!-- Explicitly force block display and size -->
-            <div id="graph-container" style="display: block !important; width: 100% !important; height: 100% !important; min-height: 600px; background-color: #f9f9f9; flex: 1;"></div>
+        <div class="main-area">
+            <div id="graph-container"></div>
             
             <!-- Node Details Panel (Floating) -->
             <div id="node-details" class="node-details-panel">
                 <span class="close-details">&times;</span>
-                <h3 id="detail-title" style="margin-top: 0; color: #1a73e8;">Node Title</h3>
-                <div id="detail-meta" style="font-size: 0.85em; color: #5f6368; margin-bottom: 10px;"></div>
-                <div id="detail-desc" style="line-height: 1.5; margin-bottom: 15px;"></div>
-                
-                <h4 style="font-size: 0.9em; margin-bottom: 8px;">Sources</h4>
+                <h3 id="detail-title">Node Title</h3>
+                <div id="detail-meta"></div>
+                <div id="detail-desc"></div>
+
+                <h4>Sources</h4>
                 <div id="detail-sources" class="sources-container"></div>
+            </div>
+
+            <!-- Domain Details Panel (Floating) -->
+            <div id="domain-details" class="node-details-panel">
+                <span class="close-details" id="close-domain-details">&times;</span>
+                <h3 id="domain-detail-title">Domain Title</h3>
+                <div id="domain-detail-meta"></div>
+                <div id="domain-detail-desc"></div>
+
+                <h4>Nodes in Domain</h4>
+                <div id="domain-detail-nodes" class="sources-container"></div>
             </div>
         </div>
     </div>
@@ -54,6 +64,7 @@
     <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
     <script src="/frontend/api/snapshots/gallery-api-service.js"></script>
     <script src="/frontend/utils/expression-utils.js"></script>
+    <script src="/frontend/utils/graph-utils.js"></script>
     <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
     <script src="/frontend/state/gallery-state-manager.js"></script>
     <script src="/frontend/ui/gallery/gallery-controller.js"></script>

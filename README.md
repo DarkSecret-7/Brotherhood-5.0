@@ -180,7 +180,9 @@ The system runs as a single web service:
    - View and manage user profiles
 
 ### 5. Import & Export (.knw)
-The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs.
+The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs. The .knw format is **JSON-based** with a `.knw` extension.
+
+**⚠️ CRITICAL: There is only one .knw format.** Both the backend API and frontend workspace use identical field naming and structure. Any inconsistency will cause data loss or import failures.
 
 **Export:**
 - Open any graph snapshot.
@@ -191,6 +193,54 @@ The system supports a custom `.knw` (Knowledge Graph) file format for sharing gr
 - **Global Import**: Use the "Import Graph (.knw)" button on the Database Management dashboard to add a new graph.
 - **Overwrite**: Inside an existing graph's settings, you can import a `.knw` file to completely replace the current graph content (requires confirmation).
 - **Smart Resolution**: The importer automatically resolves user references (creators) and base graph links. If a referenced user or graph is missing, it defaults to safe values ("Unknown" or null) to prevent errors.
+
+#### .knw File Format Specification
+
+```json
+{
+  "public_uuid": "uuid-string-or-null",
+  "base_uuid": "uuid-string-or-null",
+  "version_label": "Graph Name",
+  "base_graph_label": "Parent Graph Name or null",
+  "created_at": "ISO-8601-timestamp",
+  "last_updated": "ISO-8601-timestamp",
+  "authors": [{"user_uuid": "...", "username": "..."}],
+  "nodes": [{
+    "local_id": 1,
+    "title": "Node Title",
+    "description": "...",
+    "prerequisite": "(1 AND 2) OR 3",
+    "mentions": {"5": true},
+    "domain_id": 1,
+    "x": 100.5,
+    "y": 200.3,
+    "assessable": true,
+    "source_items": [{
+      "title": "Source Title",
+      "bib_type": "PDF",
+      "author": "Author Name",
+      "year": 2024,
+      "url": "https://example.com",
+      "fragment_start": "Chapter 1",
+      "fragment_end": "Page 10",
+      "bib_hash": "64-char-sha256-hex",
+      "source_uuid": "uuid-string"
+    }]
+  }],
+  "domains": [{"local_id": 1, "title": "Domain", "description": "...", "parent_id": null}],
+  "redirects": [{"old_local_id": 5, "new_local_id": 10}]
+}
+```
+
+**Critical Field Names (snake_case required in .knw files):**
+| Field | Description |
+|-------|-------------|
+| `bib_hash` | Bibliography SHA-256 hash (64-char hex). **Must be `bib_hash`, not `public_hash`.** |
+| `bib_type` | Source type: "PDF", "Video", "Other" |
+| `source_uuid` | Unique identifier for source fragment |
+| `fragment_start` / `fragment_end` | Optional positioning info |
+| `local_id` | Node/domain ID within the snapshot |
+| `domain_id` | Parent domain for a node |
 
 ### 6. Graph Visualization (Under Development)
 The graph visualization system is currently under active development. The architecture consists of:

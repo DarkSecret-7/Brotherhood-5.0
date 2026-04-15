@@ -1112,7 +1112,7 @@ class LabStateManager {
                 domainId: newNode.domainId,
                 defaultPosition: newNode.position ? { ...newNode.position } : { x: null, y: null },
                 position: newNode.position ? { ...newNode.position } : { x: null, y: null },
-                pathway: []
+                pathways: []
             });
         } else if (oldNode && newNode) {
             // UPDATE: Modify existing node properties
@@ -1133,9 +1133,13 @@ class LabStateManager {
             this.state.graphState.edges = this.state.graphState.edges.filter(
                 edge => edge.to !== nodeId
             );
-            // Remove edge IDs from other nodes' pathways
+            // Remove edge IDs from other nodes' pathways (filter from all pathway arrays)
             this.state.graphState.nodes.forEach(node => {
-                node.pathway = node.pathway.filter(edgeId => !edgeId.endsWith(`-${nodeId}`));
+                if (node.pathways) {
+                    node.pathways = node.pathways.map(pathway => 
+                        pathway.filter(edgeId => !edgeId.endsWith(`-${nodeId}`))
+                    ).filter(pathway => pathway.length > 0); // Remove empty pathways
+                }
             });
         }
 
@@ -1144,9 +1148,10 @@ class LabStateManager {
             const parsed = window.ExpressionUtils.parsePrerequisites(newNode.prerequisites);
             if (parsed.isValid) {
                 const dnfPathways = window.ExpressionUtils.convertToDNF(parsed.structure);
-                const newEdgeIds = [];
+                const newPathways = [];
 
                 dnfPathways.forEach(pathway => {
+                    const pathwayEdgeIds = [];
                     pathway.forEach(prereqId => {
                         const edgeId = `${prereqId}-${nodeId}`;
                         // Only add if edge doesn't already exist
@@ -1157,14 +1162,17 @@ class LabStateManager {
                                 to: nodeId
                             });
                         }
-                        newEdgeIds.push(edgeId);
+                        pathwayEdgeIds.push(edgeId);
                     });
+                    if (pathwayEdgeIds.length > 0) {
+                        newPathways.push(pathwayEdgeIds);
+                    }
                 });
 
-                // Update node's pathway
+                // Update node's pathways
                 const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
                 if (graphNode) {
-                    graphNode.pathway = newEdgeIds;
+                    graphNode.pathways = newPathways;
                 }
             }
         }

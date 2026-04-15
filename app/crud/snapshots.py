@@ -10,7 +10,7 @@ from .. import models
 def get_snapshot_by_uuid(db: Session, snapshot_uuid: UUID):
     """Get snapshot by public_uuid with relationships loaded"""
     return db.query(models.GraphSnapshot).options(
-        joinedload(models.GraphSnapshot.nodes),
+        joinedload(models.GraphSnapshot.nodes).joinedload(models.Node.source_frags).joinedload(models.SourceFragment.bibliography),
         joinedload(models.GraphSnapshot.domains),
         joinedload(models.GraphSnapshot.redirects),
         joinedload(models.GraphSnapshot.authors_ref),
@@ -24,7 +24,7 @@ def get_snapshot_by_id(db: Session, snapshot_id: int):
 def get_snapshot_by_label(db: Session, version_label: str):
     """Get snapshot by version label"""
     return db.query(models.GraphSnapshot).options(
-        joinedload(models.GraphSnapshot.nodes),
+        joinedload(models.GraphSnapshot.nodes).joinedload(models.Node.source_frags).joinedload(models.SourceFragment.bibliography),
         joinedload(models.GraphSnapshot.domains),
         joinedload(models.GraphSnapshot.redirects),
         joinedload(models.GraphSnapshot.authors_ref),

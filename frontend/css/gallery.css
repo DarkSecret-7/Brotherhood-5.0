@@ -184,7 +184,28 @@ body {
     position: relative;
 }
 
-/* Node details panel */
+/* Header inner layout */
+.header-inner {
+    display: flex;
+    align-items: center;
+}
+
+.header-back-link {
+    text-decoration: none;
+    font-weight: bold;
+    color: #1a73e8;
+}
+
+.header-title-section {
+    margin-left: 30px;
+}
+
+.header-title-section h1 {
+    color: #202124;
+    margin: 0;
+}
+
+/* Node details panel - shared base styles */
 .node-details-panel {
     position: absolute;
     top: 50%;
@@ -200,6 +221,13 @@ body {
     display: none;
     overflow-y: auto;
     z-index: 1000;
+}
+
+/* Domain details panel - uses same positioning as node panel */
+#domain-details {
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
 }
 
 .node-details-panel h3 {
@@ -235,16 +263,43 @@ body {
     background: #f1f3f4;
 }
 
-#detail-meta {
+#detail-meta,
+#domain-detail-meta {
     font-size: 13px;
     color: #5f6368;
     margin-bottom: 10px;
 }
 
-#detail-desc {
+#detail-desc,
+#domain-detail-desc {
     line-height: 1.5;
     margin-bottom: 15px;
     color: #202124;
+}
+
+#detail-title,
+#domain-detail-title {
+    margin-top: 0;
+    color: #1a73e8;
+}
+
+/* Domain node items */
+.domain-node-item {
+    padding: 8px;
+    margin: 4px 0;
+    background: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.domain-node-item:hover {
+    background: #e8eaed;
+}
+
+.domain-node-item .assessable-badge {
+    color: #1a73e8;
+    font-size: 0.8em;
 }
 
 /* Sources container */
@@ -253,49 +308,91 @@ body {
     overflow-y: auto;
 }
 
-.source-item-row {
+/* Source item row - matches workspace styling, scoped to node-details */
+#node-details .source-item-row,
+#domain-details .source-item-row {
     display: flex;
-    align-items: flex-start;
-    margin-bottom: 12px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
     padding: 8px;
     background: #f8f9fa;
     border-radius: 4px;
 }
 
-.source-icon {
+#node-details .source-icon,
+#domain-details .source-icon {
     margin-right: 8px;
     font-size: 14px;
 }
 
-.source-main-info {
+#node-details .source-main-info,
+#domain-details .source-main-info {
     flex: 1;
 }
 
-.source-title {
+#node-details .source-title,
+#domain-details .source-title {
     font-weight: 500;
     color: #202124;
     margin-bottom: 4px;
     font-size: 14px;
 }
 
-.source-meta-info {
+#node-details .source-meta-info,
+#domain-details .source-meta-info {
     font-size: 12px;
     color: #5f6368;
     margin-bottom: 4px;
 }
 
-.source-meta-info span {
+#node-details .source-meta-info span,
+#domain-details .source-meta-info span {
     margin-right: 12px;
 }
 
-.source-main-info a {
+#node-details .source-main-info a,
+#domain-details .source-main-info a {
     color: #1a73e8;
     text-decoration: none;
     font-size: 12px;
 }
 
-.source-main-info a:hover {
+#node-details .source-main-info a:hover,
+#domain-details .source-main-info a:hover {
     text-decoration: underline;
+}
+
+/* No sources text - matches workspace styling */
+.no-sources-text {
+    color: #9aa0a6;
+    font-size: 0.9em;
+}
+
+/* Source link button - matches workspace styling */
+.source-link-btn {
+    text-decoration: none !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    font-size: 0.85em;
+    color: #1a73e8;
+    background: #e8f0fe;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.source-link-btn:hover {
+    text-decoration: none !important;
+    background: #d2e3fc;
+}
+
+/* Sidebar loading state */
+.sidebar-loading {
+    text-align: center;
+    color: #5f6368;
+    margin-top: 20px;
 }
 
 /* Loading and error states */
@@ -347,13 +444,14 @@ body {
         z-index: 999;
         height: 100%;
     }
-    
+
     .sidebar.collapsed {
         width: 0;
         margin-left: -100%;
     }
-    
-    .node-details-panel {
+
+    .node-details-panel,
+    #domain-details {
         width: calc(100% - 20px);
         right: 10px;
         left: 10px;

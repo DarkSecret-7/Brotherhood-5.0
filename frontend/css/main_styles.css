@@ -930,6 +930,7 @@ textarea {
 }
 
 .source-link-btn:hover {
+    text-decoration: none;
     background: #d2e3fc;
 }
 

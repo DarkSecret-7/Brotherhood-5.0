@@ -193,9 +193,15 @@ class ExpressionUtils {
         const orParts = this.splitByOperator(expression, 'OR');
         
         for (const orPart of orParts) {
-            const trimmedOrPart = orPart.trim();
+            let trimmedOrPart = orPart.trim();
             
             if (!trimmedOrPart) continue;
+            
+            // Strip outer parentheses for DNF processing
+            // (parentheses don't change meaning in DNF, they just group)
+            while (trimmedOrPart.startsWith('(') && trimmedOrPart.endsWith(')')) {
+                trimmedOrPart = trimmedOrPart.slice(1, -1).trim();
+            }
             
             // Handle AND within each OR part
             if (trimmedOrPart.includes('AND')) {
