@@ -157,8 +157,16 @@ class GraphVisualizer {
             ctx.save();
             ctx.globalCompositeOperation = 'destination-over';
             
-            // Process domains (assuming graphState.domains exists)
-            this.graphState.domains.forEach(domain => {
+            
+            // Sort domains by depth (deepest first) so nested domains render on top
+            const sortedDomains = [...this.graphState.domains].sort((a, b) => {
+                const depthA = GraphUtils.calculateDepth(a, this.graphState.domains);
+                const depthB = GraphUtils.calculateDepth(b, this.graphState.domains);
+                return depthB - depthA; // Descending order (deepest first)
+            });
+            
+            // Process domains in depth order (nested first)
+            sortedDomains.forEach(domain => {
                 const points = GraphUtils.getDomainPoints(domain, positions, this.graphState);
 
                 if (points.length === 0) return;
@@ -229,15 +237,28 @@ class GraphVisualizer {
         const clickY = params.pointer.canvas.y;
         const clickPoint = {x: clickX, y: clickY};
 
-        // Check each domain hull (sorted by some criteria if needed)
+        // Find the deepest domain containing the click point
+        let deepestDomainId = null;
+        let maxDepth = -1;
+        
         Object.keys(this.currentDomainHulls).forEach(domainId => {
             const hull = this.currentDomainHulls[domainId];
             if (hull && GraphUtils.isPointInPolygon(clickPoint, hull)) {
-                // Convert back to number since Object.keys() returns strings
-                this.options.onDomainClick(parseInt(domainId, 10));
-                return; // Handle only the first matching domain
+                // Calculate depth of this domain
+                const domain = this.graphState.domains.find(d => d.id === parseInt(domainId, 10));
+                const depth = GraphUtils.calculateDepth(domain, this.graphState.domains);
+                // Keep track of the deepest domain
+                if (depth > maxDepth) {
+                    maxDepth = depth;
+                    deepestDomainId = domainId;
+                }
             }
         });
+        
+        // Trigger click on the deepest domain
+        if (deepestDomainId !== null) {
+            this.options.onDomainClick(parseInt(deepestDomainId, 10));
+        }
     }
 
     /**

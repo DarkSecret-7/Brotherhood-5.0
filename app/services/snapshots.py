@@ -722,6 +722,43 @@ class SnapshotService:
             )
 
     @staticmethod
+    def _calculate_domain_node_counts(db_snapshot):
+        """Calculate node counts for each domain including nested child domains.
+        Returns dict: domain_id -> {'node_count': int, 'assessable_count': int}
+        """
+        # Build domain parent-child relationships
+        domain_children = {}  # domain_id -> list of child domain objects
+        for domain in db_snapshot.domains:
+            if domain.parent_id is not None:
+                if domain.parent_id not in domain_children:
+                    domain_children[domain.parent_id] = []
+                domain_children[domain.parent_id].append(domain)
+
+        def get_descendant_ids(domain_id):
+            """Recursively get all descendant domain database IDs"""
+            descendant_ids = set()
+            children = domain_children.get(domain_id, [])
+            for child in children:
+                descendant_ids.add(child.id)
+                descendant_ids.update(get_descendant_ids(child.id))
+            return descendant_ids
+
+        # Calculate counts for each domain
+        domain_counts = {}
+        for domain in db_snapshot.domains:
+            domain_ids_to_count = {domain.id} | get_descendant_ids(domain.id)
+            node_count = 0
+            assessable_count = 0
+            for node in db_snapshot.nodes:
+                if node.domain_id in domain_ids_to_count:
+                    node_count += 1
+                    if node.assessable:
+                        assessable_count += 1
+            domain_counts[domain.id] = {'node_count': node_count, 'assessable_count': assessable_count}
+
+        return domain_counts
+
+    @staticmethod
     def _convert_to_read_schema(db_snapshot) -> schemas.GraphSnapshotRead:
         """Convert database model to read schema - business logic"""
         # Build mapping of domain db_id -> local_id for node domain_id conversion
@@ -768,14 +805,25 @@ class SnapshotService:
                 source_items=source_items
             ))
         
+        # Calculate node counts for all domains (including nested children)
+        domain_counts = SnapshotService._calculate_domain_node_counts(db_snapshot)
+        
         # Convert domains to read schemas
         domains = []
         for domain in db_snapshot.domains:
+            # Convert database parent_id (internal id) to local_id for frontend
+            parent_local_id = None
+            if domain.parent_id is not None:
+                parent_local_id = domain_db_id_to_local.get(domain.parent_id)
+
+            counts = domain_counts.get(domain.id, {'node_count': 0, 'assessable_count': 0})
             domains.append(schemas.DomainRead(
                 local_id=domain.local_id,
                 title=domain.title,
                 description=domain.description,
-                parent_id=domain.parent_id
+                parent_id=parent_local_id,
+                node_count=counts['node_count'],
+                assessable_node_count=counts['assessable_count']
             ))
         
         # Convert redirects to read schemas

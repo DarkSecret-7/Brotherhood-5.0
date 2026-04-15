@@ -24,6 +24,18 @@ class GraphUtils {
     }
 
     /**
+     * Calculate domain nesting depth (how many levels deep from root)
+     * @param {Object} domain - Domain object with id and parentId
+     * @param {Array} allDomains - Array of all domains for parent lookup
+     * @returns {number} Nesting depth (0 for root domains)
+     */
+    static calculateDepth(domain, allDomains) {
+        if (!domain.parentId) return 0;
+        const parent = allDomains.find(d => d.id === domain.parentId);
+        return parent ? this.calculateDepth(parent, allDomains) + 1 : 0;
+    }
+
+    /**
      * Calculate convex hull using monotone chain algorithm
      * @param {Array} points - Array of points with x, y
      * @returns {Array} Convex hull points
@@ -115,38 +127,85 @@ class GraphUtils {
         const charWidth = 7;    // Approximate width per character
         const lineHeight = 20;  // Height per line of text
 
-        // Add points for nodes in this domain
-        if (graphState && graphState.nodes) {
-            graphState.nodes.forEach(node => {
-                // Handle both string and number domain IDs
-                const nodeDomainId = String(node.domainId || '');
-                const domainId = String(domain.id || '');
+        // Helper to collect points for a domain and its child domains
+        const collectPoints = (targetDomain, depth = 0) => {
+            // Add points for nodes directly in this domain
+            if (graphState && graphState.nodes) {
+                graphState.nodes.forEach(node => {
+                    const nodeDomainId = String(node.domainId || '');
+                    const domainId = String(targetDomain.id || '');
 
-                if (nodeDomainId === domainId) {
-                    const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
-                    if (pos) {
+                    if (nodeDomainId === domainId) {
+                        const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
+                        if (pos) {
                         // Calculate node box dimensions based on label text
-                        const label = `${node.id}: ${node.title || 'Untitled'}`;
+                            const label = `${node.id}: ${node.title || 'Untitled'}`;
 
                         // Calculate how many lines the text will wrap to
-                        const textWidth = label.length * charWidth;
-                        const numLines = Math.ceil(textWidth / maxWidth);
-                        const actualLines = Math.max(1, numLines);
+                            const textWidth = label.length * charWidth;
+                            const numLines = Math.ceil(textWidth / maxWidth);
+                            const actualLines = Math.max(1, numLines);
 
                         // Calculate dimensions
-                        const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
-                        const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
+                            const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
+                            const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
 
                         // Add bounding box corners (full extent of the node box)
-                        points.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
-                        points.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
-                        points.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
-                        points.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
+                            points.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
+                            points.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
+                            points.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
+                            points.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
+                        }
                     }
-                }
-            });
-        }
+                });
+            }
 
+            // Recursively collect from child domains and include their expanded hulls
+            if (graphState && graphState.domains) {
+                graphState.domains.forEach(childDomain => {
+                    const childParentId = childDomain.parentId != null ? Number(childDomain.parentId) : null;
+                    const targetId = targetDomain.id != null ? Number(targetDomain.id) : null;
+                    if (childParentId === targetId) {
+                        // First collect child points recursively
+                        collectPoints(childDomain, depth + 1);
+
+                        // Then add the child's expanded hull points so parent engulfs the child's padding too
+                        // We need to compute the child's hull at this point
+                        const childPoints = [];
+                        // Quick collection of child nodes for hull calculation
+                        if (graphState.nodes) {
+                            graphState.nodes.forEach(node => {
+                                if (String(node.domainId || '') === String(childDomain.id || '')) {
+                                    const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
+                                    if (pos) {
+                                        const label = `${node.id}: ${node.title || 'Untitled'}`;
+                                        const textWidth = label.length * charWidth;
+                                        const numLines = Math.ceil(textWidth / maxWidth);
+                                        const actualLines = Math.max(1, numLines);
+                                        const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
+                                        const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
+                                        childPoints.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
+                                        childPoints.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
+                                        childPoints.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
+                                        childPoints.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
+                                    }
+                                }
+                            });
+                        }
+                        // Add expanded hull points of child to parent
+                        if (childPoints.length > 0) {
+                            const childHull = this.getConvexHull(childPoints);
+                            if (childHull.length > 0) {
+                                const expandedChildHull = this.expandHullPoints(childHull, 30);
+                                points.push(...expandedChildHull);
+                            }
+                        }
+                    }
+                });
+            }
+        };
+
+        collectPoints(domain);
         return points;
     }
 

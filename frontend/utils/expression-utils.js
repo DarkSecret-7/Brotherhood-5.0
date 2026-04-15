@@ -158,77 +158,18 @@ class ExpressionUtils {
      * @returns {Array} Array of DNF pathways (each pathway is an array of node IDs)
      */
     static convertToDNF(expression) {
-        if (!expression) return [];
-        
+        if (!expression || expression.trim() === '') return [];
+
         try {
-            // This is a simplified DNF conversion
-            // In a full implementation, you'd use proper logical expression parsing
-            const pathways = this.extractDNFPathways(expression);
-            return pathways;
+            // Parse string to tree, then extract pathways from tree
+            // This ensures consistent handling between backend (tree) and frontend (string)
+            const tree = this.parsePrerequisiteToTree(expression);
+            if (!tree) return [];
+            return this.extractPathwaysFromTree(tree);
         } catch (error) {
             console.warn('Failed to convert to DNF:', error);
             return [];
         }
-    }
-
-    /**
-     * Extract DNF pathways from expression
-     * @param {string} expression - Expression to process
-     * @returns {Array} Array of pathways
-     */
-    static extractDNFPathways(expression) {
-        const pathways = [];
-        
-        // Handle simple cases first
-        if (!expression.includes('OR') && !expression.includes('AND')) {
-            // Single node
-            const nodeId = parseInt(expression.trim());
-            if (!isNaN(nodeId)) {
-                pathways.push([nodeId]);
-            }
-            return pathways;
-        }
-
-        // Split by OR to get main pathways
-        const orParts = this.splitByOperator(expression, 'OR');
-        
-        for (const orPart of orParts) {
-            let trimmedOrPart = orPart.trim();
-            
-            if (!trimmedOrPart) continue;
-            
-            // Strip outer parentheses for DNF processing
-            // (parentheses don't change meaning in DNF, they just group)
-            while (trimmedOrPart.startsWith('(') && trimmedOrPart.endsWith(')')) {
-                trimmedOrPart = trimmedOrPart.slice(1, -1).trim();
-            }
-            
-            // Handle AND within each OR part
-            if (trimmedOrPart.includes('AND')) {
-                const andParts = this.splitByOperator(trimmedOrPart, 'AND');
-                const pathway = [];
-                
-                for (const andPart of andParts) {
-                    const trimmedAndPart = andPart.trim().replace(/[()]/g, '');
-                    const nodeId = parseInt(trimmedAndPart);
-                    if (!isNaN(nodeId)) {
-                        pathway.push(nodeId);
-                    }
-                }
-                
-                if (pathway.length > 0) {
-                    pathways.push(pathway);
-                }
-            } else {
-                // Single node in this OR part
-                const nodeId = parseInt(trimmedOrPart.replace(/[()]/g, ''));
-                if (!isNaN(nodeId)) {
-                    pathways.push([nodeId]);
-                }
-            }
-        }
-        
-        return pathways;
     }
 
     /**
@@ -249,7 +190,7 @@ class ExpressionUtils {
         if (tree.and && Array.isArray(tree.and)) {
             // Start with single empty pathway
             let combinedPathways = [[]];
-            
+
             for (const part of tree.and) {
                 const partPathways = this.extractPathwaysFromTree(part);
                 // Cartesian product: combine each existing pathway with each part pathway
@@ -309,40 +250,48 @@ class ExpressionUtils {
 
     /**
      * Split expression by operator while respecting parentheses
-     * @param {string} expression - Expression to split
-     * @param {string} operator - Operator to split by ('AND' or 'OR')
-     * @returns {Array} Array of parts
+     * @param {string} expression - Expression to parse
+     * @param {string} operator - Operator to split by
+     * @returns {Array} Parts of the expression
      */
     static splitByOperator(expression, operator) {
         const parts = [];
-        let currentPart = '';
-        let parenthesesDepth = 0;
+        let current = '';
+        let depth = 0;
+
         const tokens = expression.split(/\s+/);
-        
+
         for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
-            
-            if (token === '(') {
-                parenthesesDepth++;
-                currentPart += (currentPart ? ' ' : '') + token;
-            } else if (token === ')') {
-                parenthesesDepth--;
-                currentPart += (currentPart ? ' ' : '') + token;
-            } else if (token === operator && parenthesesDepth === 0) {
-                // Split point found
-                if (currentPart.trim()) {
-                    parts.push(currentPart.trim());
-                }
-                currentPart = '';
-            } else {
-                currentPart += (currentPart ? ' ' : '') + token;
+
+            // Track parentheses depth BEFORE processing the token
+            // This handles cases where parentheses are attached to tokens like "(1" or "2)"
+            let tokenDepthChange = 0;
+            for (const char of token) {
+                if (char === '(') tokenDepthChange++;
+                else if (char === ')') tokenDepthChange--;
             }
+
+            // Check if this token is the operator at top level (depth === 0 before any changes)
+            // The operator must be a standalone token (not part of a larger token with parens)
+            if (token === operator && depth === 0 && tokenDepthChange === 0) {
+                // Found operator at top level - split here
+                if (current.trim()) {
+                    parts.push(current.trim());
+                }
+                current = '';
+            } else {
+                current += (current ? ' ' : '') + token;
+            }
+
+            // Update depth after processing
+            depth += tokenDepthChange;
         }
-        
-        if (currentPart.trim()) {
-            parts.push(currentPart.trim());
+
+        if (current.trim()) {
+            parts.push(current.trim());
         }
-        
+
         return parts;
     }
 
@@ -906,18 +855,22 @@ class ExpressionUtils {
      */
     static parseExpressionToTree(expression) {
         expression = expression.trim();
+        console.log('parseExpressionToTree:', expression);
         
         // Handle parentheses
         if (expression.startsWith('(') && expression.endsWith(')')) {
             const inner = expression.slice(1, -1).trim();
             if (this.isParenthesesBalanced(inner)) {
+                console.log('  Stripping outer parens, recursing on:', inner);
                 return this.parseExpressionToTree(inner);
             }
         }
         
         // Split by OR (lowest precedence)
         const orParts = this.splitByOperator(expression, 'OR');
+        console.log('  OR split result:', orParts);
         if (orParts.length > 1) {
+            console.log('  -> Creating OR node with', orParts.length, 'parts');
             return {
                 or: orParts.map(part => this.parseExpressionToTree(part))
             };
@@ -925,7 +878,9 @@ class ExpressionUtils {
         
         // Split by AND (higher precedence)
         const andParts = this.splitByOperator(expression, 'AND');
+        console.log('  AND split result:', andParts);
         if (andParts.length > 1) {
+            console.log('  -> Creating AND node with', andParts.length, 'parts');
             return {
                 and: andParts.map(part => this.parseExpressionToTree(part))
             };
@@ -933,39 +888,13 @@ class ExpressionUtils {
         
         // Base case: single node ID
         if (/^\d+$/.test(expression)) {
+            console.log('  -> Leaf node:', parseInt(expression));
             return { node: parseInt(expression) };
         }
         
         // Fallback: return as-is if can't parse
+        console.log('  -> Fallback expression');
         return { expression: expression };
-    }
-
-    /**
-     * Split expression by operator, respecting parentheses
-     * @param {string} expression - Expression to split
-     * @param {string} operator - Operator to split by
-     * @returns {Array} Parts of the expression
-     */
-    static splitByOperator(expression, operator) {
-        const parts = [];
-        let current = '';
-        let depth = 0;
-        
-        const tokens = expression.split(/\s+/);
-        for (const token of tokens) {
-            if (token === '(') depth++;
-            if (token === ')') depth--;
-            
-            if (token === operator && depth === 0) {
-                if (current.trim()) parts.push(current.trim());
-                current = '';
-            } else {
-                current += (current ? ' ' : '') + token;
-            }
-        }
-        
-        if (current.trim()) parts.push(current.trim());
-        return parts;
     }
 
     /**
@@ -1121,108 +1050,6 @@ class OpNode {
             return s;
         }).filter(function(s) { return s; });
         return parts.join(' ' + op + ' ');
-    }
-    /**
-     * Parse prerequisite string into tree structure with logic gates
-     * @param {string} expression - Prerequisite expression (e.g., "1 AND 2")
-     * @returns {Object|null} Tree structure with logic gates
-     */
-    static parsePrerequisiteToTree(expression) {
-        if (!expression || expression.trim() === '') return null;
-        
-        const cleaned = this.normalizeExpression(expression);
-        
-        // Check if it's a simple node ID (just a number)
-        if (/^\d+$/.test(cleaned)) {
-            return { node: parseInt(cleaned) };
-        }
-        
-        // Parse complex expressions
-        return this.parseExpressionToTree(cleaned);
-    }
-
-    /**
-     * Parse expression recursively into tree structure
-     * @param {string} expression - Expression to parse
-     * @returns {Object} Tree structure
-     */
-    static parseExpressionToTree(expression) {
-        expression = expression.trim();
-        
-        // Handle parentheses
-        if (expression.startsWith('(') && expression.endsWith(')')) {
-            const inner = expression.slice(1, -1).trim();
-            if (this.isParenthesesBalanced(inner)) {
-                return this.parseExpressionToTree(inner);
-            }
-        }
-        
-        // Split by OR (lowest precedence)
-        const orParts = this.splitByOperator(expression, 'OR');
-        if (orParts.length > 1) {
-            return {
-                or: orParts.map(part => this.parseExpressionToTree(part))
-            };
-        }
-        
-        // Split by AND (higher precedence)
-        const andParts = this.splitByOperator(expression, 'AND');
-        if (andParts.length > 1) {
-            return {
-                and: andParts.map(part => this.parseExpressionToTree(part))
-            };
-        }
-        
-        // Base case: single node ID
-        if (/^\d+$/.test(expression)) {
-            return { node: parseInt(expression) };
-        }
-        
-        // Fallback: return as-is if can't parse
-        return { expression: expression };
-    }
-
-    /**
-     * Split expression by operator, respecting parentheses
-     * @param {string} expression - Expression to split
-     * @param {string} operator - Operator to split by
-     * @returns {Array} Parts of the expression
-     */
-    static splitByOperator(expression, operator) {
-        const parts = [];
-        let current = '';
-        let depth = 0;
-        
-        const tokens = expression.split(/\s+/);
-        for (const token of tokens) {
-            if (token === '(') depth++;
-            if (token === ')') depth--;
-            
-            if (token === operator && depth === 0) {
-                if (current.trim()) parts.push(current.trim());
-                current = '';
-            } else {
-                current += (current ? ' ' : '') + token;
-            }
-        }
-        
-        if (current.trim()) parts.push(current.trim());
-        return parts;
-    }
-
-    /**
-     * Check if parentheses are balanced
-     * @param {string} expression - Expression to check
-     * @returns {boolean} Whether parentheses are balanced
-     */
-    static isParenthesesBalanced(expression) {
-        let depth = 0;
-        for (const char of expression) {
-            if (char === '(') depth++;
-            if (char === ')') depth--;
-            if (depth < 0) return false;
-        }
-        return depth === 0;
     }
 
     /**
