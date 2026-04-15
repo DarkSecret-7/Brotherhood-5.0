@@ -42,7 +42,7 @@ class BibliographyRead(BibliographyBase):
         from_attributes = True
 
 class BibliographySafeRead(BibliographyBase):   # Safe reading of bibliography, public_hash is optional
-    bib_hash: Optional[str]
+    bib_hash: Optional[str] = None
 
     class Config:
         from_attributes = True
