@@ -284,7 +284,8 @@ body {
 }
 
 /* Domain node items */
-.domain-node-item {
+.domain-node-item,
+.domain-child-domain-item {
     padding: 8px;
     margin: 4px 0;
     background: #f8f9fa;
@@ -293,7 +294,8 @@ body {
     transition: background-color 0.2s ease;
 }
 
-.domain-node-item:hover {
+.domain-node-item:hover,
+.domain-child-domain-item:hover {
     background: #e8eaed;
 }
 

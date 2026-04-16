@@ -707,7 +707,7 @@ class SnapshotService:
                         title=src.title,
                         author=getattr(src, 'author', None),
                         year=getattr(src, 'year', None),
-                        bib_type=getattr(src, 'bib_type', 'PDF'),
+                        bib_type=getattr(src, 'bib_type', 'Other'),
                         url=getattr(src, 'url', None),
                         public_hash=new_hash
                     )

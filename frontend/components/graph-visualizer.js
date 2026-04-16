@@ -13,6 +13,7 @@ class GraphVisualizer {
             onEdgeClick: options.onEdgeClick || (() => {}),
             onPositionChange: options.onPositionChange || (() => {}),
             onDomainClick: options.onDomainClick || (() => {}),
+            onUnfocus: options.onUnfocus || (() => {}),
             ...options
         };
 
@@ -223,14 +224,15 @@ class GraphVisualizer {
         }
 
         // Click on empty space - clear node and domain highlighting only (keep edge highlighting)
-        if (this.assignable.highlightedNodes.size > 0 || this.assignable.highlightedDomains.size > 0) {
+        /*const hadHighlights = this.assignable.highlightedNodes.size > 0 || this.assignable.highlightedDomains.size > 0;
+        if (hadHighlights) {
             this.assignable.highlightedNodes.clear();
             this.assignable.highlightedDomains.clear()
             // Trigger re-render to remove node highlights
             if (this.graphState) {
                 this.updateVisualization(this.graphState);
             }
-        }
+        }*/
 
         // Check for domain hull clicks
         const clickX = params.pointer.canvas.x;
@@ -255,9 +257,12 @@ class GraphVisualizer {
             }
         });
         
-        // Trigger click on the deepest domain
+        // Trigger click on the deepest domain, or unfocus if no domain clicked
         if (deepestDomainId !== null) {
             this.options.onDomainClick(parseInt(deepestDomainId, 10));
+        } else {
+            // Clicked empty space - trigger unfocus to close details panels
+            this.options.onUnfocus();
         }
     }
 

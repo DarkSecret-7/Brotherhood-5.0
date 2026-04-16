@@ -125,7 +125,8 @@ class GalleryController {
             onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
             onEdgeClick: (edgeId) => this.handleEdgeClick(edgeId),
             onPositionChange: (nodeId, position) => this.handlePositionChange(nodeId, position),
-            onDomainClick: (domainId) => this.handleDomainClick(domainId)
+            onDomainClick: (domainId) => this.handleDomainClick(domainId),
+            onUnfocus: () => this.handleUnfocus()
         });
 
         console.log('Graph visualizer initialized');
@@ -165,6 +166,10 @@ class GalleryController {
             const frontendSnapshot = this.transformer.transformSnapshotFromBackend(backendSnapshot);
             
             this.stateManager.loadSnapshot(frontendSnapshot);
+
+            // Clear Selections
+        this.visualizer.assignable.highlightedNodes.clear();
+        this.visualizer.assignable.highlightedDomains.clear();
             
             // Update visualization
             this.updateVisualization();
@@ -428,10 +433,28 @@ class GalleryController {
         }
 
         if (this.elements.main.domainDetailNodes) {
-            // Get all nodes in this domain from the full state (not graphState)
+            // Get child domains and nodes in this domain from the full state (not graphState)
+            const childDomains = this.stateManager.getChildDomains(domain.id);
             const domainNodes = this.stateManager.getNodesInDomain(domain.id);
+            
+            let contentHtml = '';
+            
+            // Show child domains first
+            if (childDomains && childDomains.length > 0) {
+                contentHtml += `<h4 style="margin: 10px 0 5px 0; color: #5f6368; font-size: 0.85em;">Sub-domains (${childDomains.length})</h4>`;
+                contentHtml += childDomains.map(childDomain => `
+                    <div class="domain-child-domain-item" data-domain-id="${childDomain.id}">
+                        <strong>${childDomain.id}: ${this.escapeHtml(childDomain.title)}</strong>
+                    </div>
+                `).join('');
+            }
+            
+            // Show nodes
             if (domainNodes && domainNodes.length > 0) {
-                const nodesHtml = domainNodes.map(node => {
+                if (childDomains.length > 0) {
+                    contentHtml += `<h4 style="margin: 15px 0 5px 0; color: #5f6368; font-size: 0.85em;">Nodes (${domainNodes.length})</h4>`;
+                }
+                contentHtml += domainNodes.map(node => {
                     const assessableBadge = node.assessable ? '<span class="assessable-badge">(assessable)</span>' : '';
                     return `
                         <div class="domain-node-item" data-node-id="${node.id}">
@@ -439,7 +462,18 @@ class GalleryController {
                         </div>
                     `;
                 }).join('');
-                this.elements.main.domainDetailNodes.innerHTML = nodesHtml;
+            }
+            
+            if (contentHtml) {
+                this.elements.main.domainDetailNodes.innerHTML = contentHtml;
+
+                // Add click handlers for child domain items
+                panel.querySelectorAll('.domain-child-domain-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const domainId = parseInt(item.dataset.domainId);
+                        this.handleDomainClick(domainId);
+                    });
+                });
 
                 // Add click handlers for domain node items
                 panel.querySelectorAll('.domain-node-item').forEach(item => {
@@ -449,7 +483,7 @@ class GalleryController {
                     });
                 });
             } else {
-                this.elements.main.domainDetailNodes.innerHTML = '<p style="color: #5f6368; font-style: italic;">No nodes in this domain</p>';
+                this.elements.main.domainDetailNodes.innerHTML = '<p style="color: #5f6368; font-style: italic;">No sub-domains or nodes in this domain</p>';
             }
         }
 
@@ -462,7 +496,6 @@ class GalleryController {
      */
     handleDomainNodeClick(nodeId) {
         // Close domain details and show node details
-        this.stateManager.closeDomainDetails();
         this.handleNodeClick(nodeId);
     }
 
@@ -487,9 +520,7 @@ class GalleryController {
      * Handle node click from visualizer
      * @param {number} nodeId - Node ID
      */
-    handleNodeClick(nodeId) {
-        console.log(nodeId, typeof nodeId);
-        
+    handleNodeClick(nodeId) {       
         // Clear only node and domain highlights (edge highlights are independent)
         this.visualizer.assignable.highlightedNodes.clear();
         this.visualizer.assignable.highlightedDomains.clear();
@@ -501,6 +532,7 @@ class GalleryController {
         this.updateVisualization();
 
         // Show node details
+        this.stateManager.closeDomainDetails();
         this.stateManager.selectNode(nodeId);
 
         console.log('Node clicked and highlighted:', nodeId);
@@ -576,9 +608,28 @@ class GalleryController {
         this.updateVisualization();
 
         // Show domain details panel
+        this.stateManager.closeNodeDetails();
         this.stateManager.selectDomain(domainId);
 
         console.log('Domain clicked and highlighted:', domainId);
+    }
+
+    /**
+     * Handle unfocus (click on empty space)
+     * Closes details panels and clears selections
+     */
+    handleUnfocus() {
+        // Clear highlights
+        this.visualizer.assignable.highlightedNodes.clear();
+        this.visualizer.assignable.highlightedDomains.clear();
+
+        // Close both node and domain details panels
+        this.stateManager.closeNodeDetails();
+        this.stateManager.closeDomainDetails();
+
+        this.updateVisualization();
+        
+        console.log('Unfocused - highlights cleared and details closed');
     }
 
     /**

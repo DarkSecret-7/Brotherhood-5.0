@@ -116,6 +116,13 @@ class GalleryStateManager {
         this.setLoading(true);
         this.setError(null);
 
+        // Clear UI
+        this.state.selectedNode = null;
+        this.state.selectedDomain = null;
+
+        this.state.showNodeDetails = false;
+        this.state.showDomainDetails = false;
+
         try {
             console.log('Loading gallery snapshot:', frontendSnapshot);
 
@@ -164,9 +171,22 @@ class GalleryStateManager {
     selectNode(nodeId) {
         const node = this.state.nodes.find(n => n.id === nodeId);
         if (node) {
-            this.state.selectedNode = node;
-            this.state.showNodeDetails = true;
-            this.notifyStateChange();
+            // Reset animation by briefly hiding then showing [NOT A VERY GOOD SOLUTION, TEMPORARY]
+            const wasShowing = this.state.showNodeDetails;
+            if (wasShowing && this.state.selectedNode?.id !== nodeId) {
+                this.state.showNodeDetails = false;
+                this.notifyStateChange();
+                // Small delay to allow CSS transition to reset
+                setTimeout(() => {
+                    this.state.selectedNode = node;
+                    this.state.showNodeDetails = true;
+                    this.notifyStateChange();
+                }, 2);
+            } else {
+                this.state.selectedNode = node;
+                this.state.showNodeDetails = true;
+                this.notifyStateChange();
+            }
         }
     }
 
@@ -191,9 +211,22 @@ class GalleryStateManager {
         if (domain) {
             console.log("Domain exists", domain);
             
-            this.state.selectedDomain = domain;
-            this.state.showDomainDetails = true;
-            this.notifyStateChange();
+            // Reset animation by briefly hiding then showing [NOT A VERY GOOD SOLUTION, TEMPORARY]
+            const wasShowing = this.state.showDomainDetails;
+            if (wasShowing && this.state.selectedDomain?.id !== domainId) {
+                this.state.showDomainDetails = false;
+                this.notifyStateChange();
+                // Small delay to allow CSS transition to reset
+                setTimeout(() => {
+                    this.state.selectedDomain = domain;
+                    this.state.showDomainDetails = true;
+                    this.notifyStateChange();
+                }, 2);
+            } else {
+                this.state.selectedDomain = domain;
+                this.state.showDomainDetails = true;
+                this.notifyStateChange();
+            }
         }
     }
 
@@ -213,6 +246,15 @@ class GalleryStateManager {
      */
     getNodesInDomain(domainId) {
         return this.state.nodes.filter(n => n.domainId === domainId);
+    }
+
+    /**
+     * Get child domains (nested domains) of a domain
+     * @param {number} domainId - Domain ID
+     * @returns {Array} Child domains
+     */
+    getChildDomains(domainId) {
+        return this.state.domains.filter(d => d.parentId === domainId);
     }
 
     /**
