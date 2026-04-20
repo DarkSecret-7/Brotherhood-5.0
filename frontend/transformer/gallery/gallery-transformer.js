@@ -74,7 +74,7 @@ class GalleryTransformer {
             title: node.title,
             description: node.description || '',
             prerequisites: node.prerequisite, // Keep as tree structure for direct edge extraction
-            prerequisitesString: this.transformPrerequisitesFromBackend(node.prerequisite), // Also keep string for display
+            prerequisiteString: this.transformPrerequisitesFromBackend(node.prerequisite), // Also keep string for display
             mentions: this.transformMentionsFromBackend(node.mentions) || [],
             sources: this.transformSourcesFromBackend(node.source_items || []),
             domainId: node.domain_id || null,

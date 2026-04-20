@@ -277,6 +277,11 @@ body {
     color: #202124;
 }
 
+#detail-prereq {
+    margin-bottom: 15px;
+    color: #202124;
+}
+
 #detail-title,
 #domain-detail-title {
     margin-top: 0;
@@ -430,6 +435,12 @@ body {
         right: 10px;
     }
     
+    .help-panel {
+        max-width: 240px;
+        top: 10px;
+        right: 10px;
+    }
+    
     .header {
         padding: 12px 16px;
     }
@@ -460,6 +471,17 @@ body {
         transform: translateY(-50%);
     }
     
+    .help-panel {
+        max-width: calc(100% - 20px);
+        top: 10px;
+        right: 10px;
+        left: auto;
+    }
+    
+    .help-toggle {
+        display: block;
+    }
+    
     .main-area {
         width: 100%;
     }
@@ -477,6 +499,88 @@ body {
 
 .node-details-panel {
     animation: fadeIn 0.2s ease;
+}
+
+/* Help Panel - Top right corner */
+.help-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    max-width: 280px;
+    z-index: 500;
+    backdrop-filter: blur(4px);
+}
+
+.help-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e8eaed;
+    border-radius: 8px 8px 0 0;
+}
+
+.help-icon {
+    width: 20px;
+    height: 20px;
+    background: #1a73e8;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.help-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #202124;
+}
+
+.help-toggle {
+    background: none;
+    border: none;
+    color: #5f6368;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.help-toggle:hover {
+    color: #202124;
+}
+
+.help-content {
+    padding: 12px 14px;
+}
+
+.help-item {
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #202124;
+}
+
+.help-item:last-child {
+    margin-bottom: 0;
+}
+
+.help-key {
+    font-weight: 600;
+    color: #1a73e8;
+}
+
+.help-desc {
+    color: #5f6368;
 }
 
 /* Custom scrollbar */

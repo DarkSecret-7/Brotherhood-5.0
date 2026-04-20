@@ -915,29 +915,34 @@ class ExpressionUtils {
     /**
      * Convert tree structure back to prerequisite string
      * @param {Object} tree - Tree structure
+     * @param {string} parentOp - Parent operator (for parentheses handling)
      * @returns {string} Prerequisite expression string
      */
-    static treeToPrerequisiteString(tree) {
+    static treeToPrerequisiteString(tree, parentOp = null) {
         if (!tree) return '';
-        
+
         if (tree.node !== undefined) {
             return String(tree.node);
         }
-        
+
         if (tree.expression) {
             return tree.expression;
         }
-        
+
         if (tree.and && Array.isArray(tree.and)) {
-            const parts = tree.and.map(part => this.treeToPrerequisiteString(part));
-            return parts.join(' AND ');
+            const parts = tree.and.map(part => this.treeToPrerequisiteString(part, 'and'));
+            const result = parts.join(' AND ');
+            // Wrap in parens if parent is OR (different operator needs parens)
+            return parentOp === 'or' ? `(${result})` : result;
         }
-        
+
         if (tree.or && Array.isArray(tree.or)) {
-            const parts = tree.or.map(part => this.treeToPrerequisiteString(part));
-            return parts.join(' OR ');
+            const parts = tree.or.map(part => this.treeToPrerequisiteString(part, 'or'));
+            const result = parts.join(' OR ');
+            // Wrap in parens if parent is AND (different operator needs parens)
+            return parentOp === 'and' ? `(${result})` : result;
         }
-        
+
         return '';
     }
 }
@@ -1050,35 +1055,6 @@ class OpNode {
             return s;
         }).filter(function(s) { return s; });
         return parts.join(' ' + op + ' ');
-    }
-
-    /**
-     * Convert tree structure back to prerequisite string
-     * @param {Object} tree - Tree structure
-     * @returns {string} Prerequisite expression string
-     */
-    static treeToPrerequisiteString(tree) {
-        if (!tree) return '';
-        
-        if (tree.node !== undefined) {
-            return String(tree.node);
-        }
-        
-        if (tree.expression) {
-            return tree.expression;
-        }
-        
-        if (tree.and && Array.isArray(tree.and)) {
-            const parts = tree.and.map(part => this.treeToPrerequisiteString(part));
-            return parts.join(' AND ');
-        }
-        
-        if (tree.or && Array.isArray(tree.or)) {
-            const parts = tree.or.map(part => this.treeToPrerequisiteString(part));
-            return parts.join(' OR ');
-        }
-        
-        return '';
     }
 }
 

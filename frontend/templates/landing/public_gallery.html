@@ -34,6 +34,33 @@
 
         <div class="main-area">
             <div id="graph-container"></div>
+
+            <!-- Quick Help Panel -->
+            <div id="help-panel" class="help-panel">
+                <div class="help-header">
+                    <span class="help-icon">?</span>
+                    <span class="help-title">How to use</span>
+                    <button class="help-toggle" onclick="toggleHelp()">+</button>
+                </div>
+                <div class="help-content" id="help-content" style="display: none;">
+                    <div class="help-item">
+                        <span class="help-key">Arrows</span>
+                        <span class="help-desc">show prerequisites — follow them to learn in order</span>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-key">Click a node</span>
+                        <span class="help-desc">to see details and access resources</span>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-key">Click an edge</span>
+                        <span class="help-desc">to highlight different learning paths</span>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-key">Domains</span>
+                        <span class="help-desc">group related topics — click the colored hull to explore</span>
+                    </div>
+                </div>
+            </div>
             
             <!-- Node Details Panel (Floating) -->
             <div id="node-details" class="node-details-panel">
@@ -41,6 +68,10 @@
                 <h3 id="detail-title">Node Title</h3>
                 <div id="detail-meta"></div>
                 <div id="detail-desc"></div>
+                <div id="detail-prereq-container">
+                    <h4>Prerequisites</h4>
+                    <div id="detail-prereq"></div>
+                </div>
 
                 <h4>Sources</h4>
                 <div id="detail-sources" class="sources-container"></div>
@@ -72,6 +103,19 @@
     
     <!-- Gallery Initialization -->
     <script>
+        // Help panel toggle
+        function toggleHelp() {
+            const content = document.getElementById('help-content');
+            const toggle = document.querySelector('.help-toggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '−';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '+';
+            }
+        }
+
         // Initialize gallery when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize the modern gallery architecture

@@ -49,6 +49,7 @@ class GalleryController {
                 detailTitle: document.getElementById('detail-title'),
                 detailMeta: document.getElementById('detail-meta'),
                 detailDesc: document.getElementById('detail-desc'),
+                detailPrereq: document.getElementById('detail-prereq'),
                 detailSources: document.getElementById('detail-sources'),
                 // Domain details panel
                 domainDetails: document.getElementById('domain-details'),
@@ -370,6 +371,10 @@ class GalleryController {
         
         if (this.elements.main.detailDesc) {
             this.elements.main.detailDesc.textContent = node.description || 'No description';
+        }
+
+        if (this.elements.main.detailPrereq) {
+            this.elements.main.detailPrereq.textContent = node.prerequisiteString || 'None';
         }
         
         if (this.elements.main.detailSources) {
