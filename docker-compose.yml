@@ -13,7 +13,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"    # Frontend
+      - "3000:3000"    # Frontend - only serves single static pages, for dynamic content use backend
       - "8000:10000"   # Backend API
     environment:
       PORT: 10000

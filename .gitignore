@@ -34,7 +34,7 @@ test/
 .docker/
 
 # Database Backups
-RENDER_DATABASE_BACKUPS/
+DATABASE_BACKUPS/
 
 # Development Artifacts
 teamplan/

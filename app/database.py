@@ -2,7 +2,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
-from urllib.parse import urlparse
 
 # Try to load environment variables from .env file for local development
 try:
@@ -13,14 +12,15 @@ except ImportError:
 
 # Determine the environment mode
 # Possible values: "production", "docker", "local"
-APP_MODE = os.getenv("APP_MODE", "production" if os.getenv("RENDER") else "local")
+# Note: Backend runs on Render, database is on Supabase
+APP_MODE = os.getenv("APP_MODE", "docker")
 # APP_MODE = "docker"   # Forcing docker for local development
 print(f"INFO: Application running in {APP_MODE} mode")
 
 # Isolated Pipeline Configurations
 if APP_MODE == "production":
-    # --- PRODUCTION PIPELINE (RENDER) ---
-    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+    # --- PRODUCTION PIPELINE (BACKEND ON RENDER, DATABASE ON SUPABASE) ---
+    SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_URL")
     
     if not SQLALCHEMY_DATABASE_URL:
         # Check all env vars for fallback (Render sometimes uses different keys)
@@ -36,16 +36,24 @@ if APP_MODE == "production":
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+    # Connection pool optimized for cloud database (Supabase)
+    # pool_size: Keep a small pool to avoid exhausting Supabase connection limits
+    # max_overflow: Allow burst connections during load spikes
+    # pool_recycle: Recycle connections before Supabase timeout (10 min default)
+    # pool_pre_ping: Verify connections are alive before use (prevents stale connections)
     engine_args = {
         "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "pool_size": 3,
-        "max_overflow": 2,
-        "pool_timeout": 30,
+        "pool_recycle": 540,    # 9 minutes (below Supabase 10 min timeout)
+        "pool_size": 5,         # Base connections per worker
+        "max_overflow": 10,     # Allow up to 15 total during spikes
+        "pool_timeout": 10,     # Wait time before giving up on getting connection
     }
     
-    # Enforce SSL for production
+    # Enforce SSL for production (Required for Supabase)
     if "sslmode" not in SQLALCHEMY_DATABASE_URL:
+        engine_args["connect_args"] = {"sslmode": "require"}
+    else:
+        # Ensure existing sslmode is set to require for Supabase
         engine_args["connect_args"] = {"sslmode": "require"}
 
     try:

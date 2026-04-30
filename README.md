@@ -415,23 +415,32 @@ API and health:
 ### API Documentation
 Visit [http://localhost:8000/docs](http://localhost:8000/docs) for the interactive Swagger UI.
 
-## Deployment to Render
+## Deployment to Render (with Supabase Database)
 
-This project is configured to deploy easily to [Render](https://render.com) using the provided `render.yaml` blueprint.
+This project uses a split architecture:
+- **Backend**: Deployed to [Render](https://render.com)
+- **Database**: Hosted on [Supabase](https://supabase.com)
 
-### 1. Connect your Database
-On Render, the database environment variable is usually provided automatically if you use the Blueprint. If you are setting it up manually:
-1. Go to your **Web Service** dashboard.
-2. Click **Environment**.
-3. Add a new environment variable:
+### 1. Set Up Supabase Database
+1. Create a project on [Supabase](https://supabase.com)
+2. Go to **Database → Connection String → URI (Direct connection)**
+3. Copy the connection string (use port 5432, not the pooler)
+4. Note: Keep the password handy (or reset it if needed)
+
+### 2. Connect Render to Supabase
+1. Go to your **Render Web Service** dashboard
+2. Click **Environment**
+3. Add/Update the environment variable:
    - **Key**: `DATABASE_URL`
-   - **Value**: (Copy the **Internal Database URL** from your Render Database dashboard)
-4. Save changes and the service will redeploy.
+   - **Value**: `postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT.supabase.co:5432/postgres`
+4. Ensure `APP_MODE` is set to `production`
+5. Save changes and the service will redeploy
 
-### 2. Troubleshoot "No Database Environment Variable"
-If the logs show `!!! WARNING: No database environment variable found`, it means the `DATABASE_URL` is missing from the environment.
-- Ensure the name of your database in `render.yaml` matches your actual database name (currently set to `brotherhood-db`).
-- Check that the database is in the same "Region" as your web service.
+### 3. Troubleshoot Connection Issues
+If the logs show connection errors:
+- Verify the Supabase database password is correct
+- Ensure you're using the **direct connection** (port 5432), not the pooler
+- Check that `sslmode=require` is enforced (handled automatically in `app/database.py`)
 
 ## Authentication & Security
 
@@ -443,14 +452,20 @@ If the logs show `!!! WARNING: No database environment variable found`, it means
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `APP_MODE` | `production`, `docker`, or `local`. Controls database connection strategy. | Yes |
-| `DATABASE_URL` | PostgreSQL connection string (required for docker/production). | For docker/prod |
+| `APP_MODE` | `production`, `docker`, or `local`. Controls database connection strategy. Use `production` for Render + Supabase. | Yes |
+| `DATABASE_URL` | PostgreSQL connection string. For Supabase: `postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres` | For docker/prod |
 | `GEMINI_API_KEY` | Google Gemini API key for AI node suggestions. If missing, returns mock data. | No |
 | `SECRET_KEY` | JWT signing key (has hardcoded default for development only). | Production |
 | `EMAIL_HOST` | SMTP server hostname for contact form. | For contact form |
 | `EMAIL_PORT` | SMTP server port. | For contact form |
 | `EMAIL_USER` | SMTP authentication username. | For contact form |
 | `EMAIL_PASSWORD` | SMTP authentication password. | For contact form |
+
+### Supabase Database Configuration
+When using Supabase with Render:
+1. Use the **Direct connection** (port 5432) - not the pooler
+2. SSL is enforced automatically (`sslmode=require`)
+3. The connection string format: `postgresql://postgres:PASSWORD@db.PROJECT_ID.supabase.co:5432/postgres`
 
 ## Refactor Status and Expectations
 The repository still contains transitional patterns.
