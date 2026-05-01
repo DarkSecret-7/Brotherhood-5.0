@@ -1,4 +1,20 @@
-import uuid
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from pydantic import BaseModel
 from typing import List, Optional, Union, Dict, Any
 from datetime import datetime
@@ -200,6 +216,20 @@ class UserRead(UserBase):
     class Config:
         from_attributes = True
 
+# Full profile schema for dashboard
+class UserProfileRead(UserRead):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    dob: Optional[datetime] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    social_github: Optional[str] = None
+    social_linkedin: Optional[str] = None
+    profile_image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class UserCreate(UserBase):
     password: str
     invitation_code: str
@@ -245,6 +275,36 @@ class GraphSnapshotRead(GraphSnapshotBase):
 
     class Config:
         from_attributes = True
+
+class GraphSnapshotMeta(BaseModel):
+    public_uuid: UUID
+    version_label: Optional[str] = None
+    created_at: Optional[datetime] = None
+    last_updated: Optional[datetime] = None
+    is_public: Optional[bool] = None
+    authors: Optional[List[UserRead]] = []
+    node_count: Optional[int] = None                    # Computed field
+    assessable_node_count: Optional[int] = None         # Computed field
+
+    class Config:
+        from_attributes = True
+
+# --- Bookmark Schemas ---
+
+class BookmarkBase(BaseModel):
+    graph_uuid: UUID
+
+class BookmarkCreate(BookmarkBase):
+    pass
+
+class BookmarkRead(BookmarkBase):
+    user_uuid: UUID
+    created_at: datetime
+    graph_meta: GraphSnapshotMeta
+
+    class Config:
+        from_attributes = True
+
 
 # --- LLM Integration ---
 

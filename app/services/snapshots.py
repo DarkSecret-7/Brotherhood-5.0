@@ -1,3 +1,20 @@
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 Snapshot service layer - Business logic for snapshot operations.
 Orchestrates CRUD operations and handles business rules.
@@ -9,6 +26,26 @@ from typing import List, Optional
 from .. import crud, schemas, models, utils
 
 class SnapshotService:
+
+    @staticmethod
+    def _extract_metadata(db: Session, snapshot_id: int) -> schemas.GraphSnapshotMeta:
+        snapshot = crud.snapshots.get_snapshot_by_id(db, snapshot_id)
+        authors = [schemas.UserRead(
+            user_uuid=author.public_uuid,
+            username=author.username,
+            is_active=author.is_active,
+            created_at=author.created_at
+        ) for author in snapshot.authors_ref]
+        return schemas.GraphSnapshotMeta(
+            public_uuid=snapshot.public_uuid,
+            version_label=snapshot.version_label,
+            created_at=snapshot.created_at,
+            last_updated=snapshot.last_updated,
+            is_public=snapshot.is_public,
+            authors=authors,
+            node_count=len(snapshot.nodes),
+            assessable_node_count=len([n for n in snapshot.nodes if n.assessable])
+        )
     
     @staticmethod
     def create_snapshot(db: Session, snapshot_data: schemas.GraphSnapshotCreate) -> schemas.GraphSnapshotRead:

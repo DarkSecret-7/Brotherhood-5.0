@@ -116,6 +116,23 @@ app.include_router(llm.router, prefix="/api/v1")
 # Assessment endpoints
 app.include_router(assessments.router, prefix="/api/v1")
 
+# Dashboard routes
+@app.get("/dashboard")
+async def dashboard_index():
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "index.html"))
+
+@app.get("/dashboard/profile")
+async def dashboard_profile(request: Request):
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "profile.html"))
+
+@app.get("/dashboard/library")
+async def dashboard_library(request: Request):
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "library.html"))
+
+@app.get("/dashboard/assessment")
+async def dashboard_assessment(request: Request):
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "assessment.html"))
+
 # Root endpoint - serve landing page directly
 @app.get("/")
 async def root():

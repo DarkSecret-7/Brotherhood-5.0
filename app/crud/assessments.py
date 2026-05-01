@@ -1,3 +1,20 @@
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 Pure CRUD operations for Capability/Assessment model.
 No business logic - only raw database operations.
@@ -9,13 +26,13 @@ def get_capability_by_hash(db: Session, public_hash: str):
     """Get capability by public_hash"""
     return db.query(models.Capability).filter(models.Capability.public_hash == public_hash).first()
 
-def get_latest_capability_by_user_and_graph(db: Session, user_id: int, graph_uuid: str, assessment_name: str):
+def get_latest_capability_by_user_and_graph(db: Session, user_id: int, graph_id: int, assessment_name: str):
     """Get latest capability by user, graph, and assessment name"""
     return db.query(models.Capability).filter(
-        models.Capability.user_uuid == graph_uuid,  # This should be user_id, need to check model
-        models.Capability.graph_uuid == graph_uuid,
+        models.Capability.user_id == user_id,
+        models.Capability.graph_id == graph_id,
         models.Capability.assessment_name == assessment_name
-    ).order_by(models.Capability.created_at.desc()).first()
+    ).order_by(models.Capability.assessment_date.desc()).first()
 
 def create_capability_record(db: Session, **kwargs):
     """Create a new capability record with provided fields"""
@@ -23,13 +40,6 @@ def create_capability_record(db: Session, **kwargs):
     db.add(db_capability)
     db.flush()
     return db_capability
-
-def update_capability_record(db: Session, capability_id: int, **kwargs):
-    """Update capability record with provided fields"""
-    db.query(models.Capability).filter(
-        models.Capability.id == capability_id
-    ).update(kwargs)
-    db.flush()
 
 def delete_capability_by_hash(db: Session, public_hash: str):
     """Delete capability by public_hash"""
@@ -39,3 +49,13 @@ def delete_capability_by_hash(db: Session, public_hash: str):
         db.commit()
         return True
     return False
+
+def delete_capabilities_by_user_and_graph(db: Session, user_id: int, graph_id: int, assessment_name: str):
+    """Delete all capabilities for a user, assessment name, and graph label"""
+    # Query and delete matching capabilities
+    db.query(models.Capability).filter(
+        models.Capability.user_id == user_id,
+        models.Capability.graph_id == graph_id,
+        models.Capability.assessment_name == assessment_name,
+    ).delete(synchronize_session=False)
+    db.commit()

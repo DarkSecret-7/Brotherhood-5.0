@@ -1,3 +1,20 @@
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 Authentication endpoints
 """
@@ -117,18 +134,44 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
         created_at=current_user.created_at
     )
 
-@router.put("/auth/me", response_model=schemas.UserRead)
+@router.get("/auth/me/profile", response_model=schemas.UserProfileRead)
+async def read_user_profile_me(current_user: models.User = Depends(get_current_user)):
+    """Return full user profile for dashboard"""
+    return schemas.UserProfileRead(
+        user_uuid=current_user.public_uuid,
+        username=current_user.username,
+        email=current_user.email,
+        phone=current_user.phone,
+        dob=current_user.dob.isoformat() if current_user.dob else None,
+        bio=current_user.bio,
+        location=current_user.location,
+        social_github=current_user.social_github,
+        social_linkedin=current_user.social_linkedin,
+        profile_image=current_user.profile_image,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at
+    )
+
+@router.patch("/auth/me/profile/update", response_model=schemas.UserProfileRead)
 async def update_user_me(user_update: schemas.UserProfileUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(database.get_db)):
     updated_user = services.users.UserService.update_user(db, current_user, user_update)
-    # Convert raw model to Pydantic schema
-    return schemas.UserRead(
+    # Return full profile after update
+    return schemas.UserProfileRead(
         user_uuid=updated_user.public_uuid,
         username=updated_user.username,
         email=updated_user.email,
+        phone=updated_user.phone,
+        dob=updated_user.dob.isoformat() if updated_user.dob else None,
+        bio=updated_user.bio,
+        location=updated_user.location,
+        social_github=updated_user.social_github,
+        social_linkedin=updated_user.social_linkedin,
+        profile_image=updated_user.profile_image,
+        is_active=updated_user.is_active,
         created_at=updated_user.created_at
     )
 
-@router.put("/auth/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.patch("/auth/me/password", status_code=status.HTTP_204_NO_CONTENT)
 async def update_user_password(password_update: schemas.UserPasswordUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(database.get_db)):
     # Verify old password
     if not utils.verify_password(password_update.old_password, current_user.hashed_password):

@@ -1,7 +1,25 @@
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from .. import services, schemas, database, models, utils
+from .. import services, schemas, database, models
+from uuid import UUID
 
 # Import self-assessment module (located in root)
 try:
@@ -20,8 +38,7 @@ from .auth import get_current_user
 @router.post("/capabilities", response_model=schemas.CapabilityRead)
 def create_capability(
     capability: schemas.CapabilityCreate,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(get_current_user)
+    db: Session = Depends(database.get_db)
 ):
     """
     Generic endpoint to save any type of assessment/capability.
@@ -35,105 +52,43 @@ def perform_self_assessment(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Perform a self-assessment using the service layer
+    """
     # 1. Fetch graph data
-    snapshot = services.snapshots.SnapshotService.get_user_snapshot(db, snapshot_uuid=request.graph_uuid, user_id=current_user.id)    
+    snapshot = services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid=request.graph_uuid)    
     if not snapshot:
         raise HTTPException(status_code=404, detail="Graph not found")
     
-    # Format graph data for assessment module
-    graph_data = {
-        "nodes": [
-            {
-                "local_id": n.local_id,
-                "title": n.title,
-                "prerequisite": n.prerequisite
-            } for n in snapshot.nodes
-        ]
-    }
-    
-    # 2. Format proof inputs for SelfAssessmentRequest
-    proof = [
-        sa_models.ProofInput(node_id=pi.node_id, value=pi.value)
-        for pi in request.proof_inputs
-    ]
-    
-    # 3. Call assessment module logic
-    capability_obj = sa_logic.perform_assessment(
-        graph_data=graph_data,
-        graph_label=request.graph_label,
-        proof_inputs=proof,
-        user_reference=current_user.username
-    )
+    return services.assessments.AssessmentService.perform_self_assessment(db, request, current_user)
 
-    assessed_nodes = [
-        schemas.Assessment(
-            node_id=n.node_id,
-            evaluation=dict(value=n.evaluation)
-        ) for n in capability_obj.assessed_nodes
-    ]
-    
-    # Check if previous capability exists and update or create new
-    previous_capability = services.assessments.AssessmentService.get_latest_capability(db, user_id=current_user.id, assessment_name=sa_logic.ASSESSMENT_NAME, graph_label=capability_obj.graph_label)
-    if previous_capability:
-        # Update existing capability
-        current_capability = services.assessments.AssessmentService.update_capability(
-            db,
-            user_id=current_user.id,
-            assessment_name=capability_obj.assessment_name,
-            db_capability=previous_capability, 
-            capability_update=schemas.CapabilityUpdate(
-                graph_label=capability_obj.graph_label,
-                assessed_nodes=assessed_nodes
-            )
-        )
-    else:
-        # Create new capability
-        current_capability = crud.create_capability(
-            db, 
-            user_id=current_user.id, 
-            capability_data=schemas.CapabilityCreate(
-                assessment_name=capability_obj.assessment_name,
-                assessment_type=capability_obj.assessment_type,
-                version=capability_obj.version,
-                graph_label=capability_obj.graph_label,
-                assessed_nodes=assessed_nodes
-            )
-        )
-    
-    return current_capability
-
-@router.get("/self-assessment/{graph_label}/latest", response_model=Optional[schemas.CapabilityRead])
+@router.get("/self-assessment/{graph_uuid}/latest", response_model=Optional[schemas.CapabilityRead])
 def get_latest_self_assessment(
-    graph_label: str,
+    graph_uuid: UUID,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Fetch latest capability for this user and graph_label
-    latest = crud.get_latest_capability(db, user_id=current_user.id, assessment_name=sa_logic.ASSESSMENT_NAME, graph_label=graph_label)   
+    # Fetch latest capability via service layer
+    latest = services.assessments.AssessmentService.get_latest_capability(
+        db,
+        user_uuid=current_user.public_uuid,
+        graph_uuid=graph_uuid,
+        assessment_name=sa_logic.ASSESSMENT_NAME
+    )
     return latest
 
-@router.delete("/self-assessment/{graph_label}/delete")
+@router.delete("/self-assessment/{graph_uuid}/delete")
 def delete_self_assessment(
-    graph_label: str,
+    graph_uuid: UUID,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Fetch graph data to generate hash
-    snapshot = crud.get_snapshot_by_label(db, graphLabel=graph_label)
-    if not snapshot:
-        raise HTTPException(status_code=404, detail="Graph not found")
-    
-    graph_data = {
-        "nodes": [
-            {
-                "local_id": n.local_id,
-                "title": n.title,
-                "prerequisite": n.prerequisite
-            } for n in snapshot.nodes
-        ]
-    }
-        
-    # 2. Delete all capabilities for this user and graph_label
-    crud.delete_capabilities(db, user_id=current_user.id, assessment_name=sa_logic.ASSESSMENT_NAME, graph_label=graph_label)
-    
-    return {"message": "All self-assessments for this graph have been cleared"}
+    # Delete all capabilities for this user and graph_uuid via services layer
+    services.assessments.AssessmentService.delete_capabilities_by_user_and_graph(
+        db,
+        user_uuid=current_user.public_uuid,
+        graph_uuid=graph_uuid,
+        assessment_name=sa_logic.ASSESSMENT_NAME
+    )
+
+    return True

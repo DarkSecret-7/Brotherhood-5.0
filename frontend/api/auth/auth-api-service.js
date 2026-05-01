@@ -1,3 +1,22 @@
+/*
+ * This file is part of The Brotherhood Project
+ *
+ * Copyright (C) 2026  The Brotherhood Project
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 /**
  * Auth API Service - Authentication endpoints
  * Handles user login, signup, profile management
@@ -159,26 +178,18 @@ class AuthApiService extends BaseApiService {
     }
 
     /**
-     * Update user profile
-     * @param {Object} updateData - { user_uuid, username?, email?, phone?, etc. }
-     */
-    async updateProfile(updateData) {
-        return await this.put('/auth/me', updateData);
-    }
-
-    /**
      * Update user password
      * @param {Object} passwordData - { old_password, new_password }
      */
     async updatePassword(passwordData) {
         const response = await fetch(`${this.baseURL}/auth/me/password`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: this._getAuthHeaders(),
             body: JSON.stringify(passwordData)
         });
         
         await this._handleResponse(response);
-        // No content returned on success
+        // No content returned on success (204)
         return { success: true };
     }
 

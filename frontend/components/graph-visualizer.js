@@ -1,4 +1,21 @@
-//const GraphUtils = require("../utils/graph-utils");
+/*
+ * This file is part of The Brotherhood Project
+ *
+ * Copyright (C) 2026  The Brotherhood Project
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 /**
  * Graph Visualizer - Simple vis.js visualization component
@@ -17,26 +34,44 @@ class GraphVisualizer {
             ...options
         };
 
+        // Assignable system - supports both flat IDs (backward compat) and {id, group} format
         this.assignable = {
-            highlightedNodes: new Set(),        // Set of node IDs to highlight
-            highlightedEdges: new Set(),        // Set of edge IDs to highlight
-            highlightedDomains: new Set()       // Set of domain IDs to highlight
+            highlightedNodes: new Set(),        // Set of {id, group} or just IDs
+            highlightedEdges: new Set(),        // Set of {id, group} or just IDs
+            highlightedDomains: new Set()       // Set of {id, group} or just IDs
         };
 
-        // Highlight configuration
-        this.highlightConfig = {
-            node: {
-                border: '#541a96',
-                background: '#ba92ee'
+        // 5 highlight configurations (group 0-4)
+        // Group 0: Click-selected/highlighted (default for backward compat)
+        // Groups 1-3: Assessment states (Unknown=0, Familiar=1, Mastered=2)
+        // Group 4: Empty/default
+        this.highlightConfigs = [
+            {   // Group 0: Click-selected
+                node: { border: '#541a96', background: '#ba92ee' },
+                edge: { border: '#99e0c9', background: '#7cdabb' },
+                domain: { border: '#eb7474' }
             },
-            edge: {
-                border: '#99e0c9',
-                background: '#7cdabb'
+            {   // Group 1: Unknown (assessment value 0)
+                node: { border: '#9e9e9e', background: '#e0e0e0' },
+                edge: { border: '#9e9e9e', background: '#bdbdbd' },
+                domain: { border: '#9e9e9e' }
             },
-            domain: {
-                border: '#eb7474'  // Highlight border color for domains
+            {   // Group 2: Familiar (assessment value 1)
+                node: { border: '#ff9800', background: '#ffe0b2' },
+                edge: { border: '#ff9800', background: '#ffcc80' },
+                domain: { border: '#ff9800' }
+            },
+            {   // Group 3: Mastered (assessment value 2)
+                node: { border: '#4caf50', background: '#c8e6c9' },
+                edge: { border: '#4caf50', background: '#a5d6a7' },
+                domain: { border: '#4caf50' }
+            },
+            {   // Group 4: Empty/default
+                node: { border: '#2B7CE9', background: '#97C2FC' },
+                edge: { border: '#848484', background: '#848484' },
+                domain: { border: 'transparent' }
             }
-        };
+        ];
         
         this.network = null;
         this.nodes = null;
@@ -47,12 +82,66 @@ class GraphVisualizer {
     }
 
     /**
+     * Normalize assignment to {id, group} format
+     * Supports backward compatibility with flat IDs
+     * @param {any} item - Assignment item (id, {id, group}, {nodeId, assignedGroup}, etc.)
+     * @returns {Object} - Normalized {id, group} object
+     */
+    normalizeAssignment(item) {
+        // If primitive (string/number), default to group 0
+        if (typeof item === 'string' || typeof item === 'number') {
+            return { id: item, group: 0 };
+        }
+        
+        // If object, check for various property names
+        if (item && typeof item === 'object') {
+            // Direct {id, group} format
+            if ('id' in item && 'group' in item) {
+                return { id: item.id, group: Math.max(0, Math.min(4, item.group)) };
+            }
+            
+            // {nodeId, assignedGroup} or {edgeId, assignedGroup} or {domainId, assignedGroup}
+            if ('assignedGroup' in item) {
+                const id = item.nodeId ?? item.edgeId ?? item.domainId;
+                if (id !== undefined) {
+                    return { id: id, group: Math.max(0, Math.min(4, item.assignedGroup)) };
+                }
+            }
+            
+            // Fallback: look for id-like property
+            const id = item.id ?? item.nodeId ?? item.edgeId ?? item.domainId;
+            if (id !== undefined) {
+                return { id: id, group: 0 };
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the group for a given ID from a Set of assignments
+     * @param {Set} assignmentSet - Set of assignments
+     * @param {string|number} id - ID to look up
+     * @returns {number} - Group number (0-4), or -1 if not found
+     */
+    getAssignmentGroup(assignmentSet, id) {
+        for (const item of assignmentSet) {
+            const normalized = this.normalizeAssignment(item);
+            if (normalized && String(normalized.id) === String(id)) {
+                return normalized.group;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Initialize vis.js network
+     * @returns {boolean} - True if initialization succeeded, false otherwise
      */
     initializeNetwork() {
         if (!this.container || typeof vis === 'undefined') {
             console.error('GraphVisualizer: Container or vis.js not available');
-            return;
+            return false;
         }
 
         // Create datasets
@@ -119,6 +208,8 @@ class GraphVisualizer {
         
         // Initialize domain hull rendering
         this.initializeDomainHullRendering();
+        
+        return true;
     }
 
     /**
@@ -182,13 +273,13 @@ class GraphVisualizer {
                     // Calculate deterministic hue based on title + id
                     const hue = GraphUtils.getDeterministicHue(domain.title, domain.id);
                     const alpha = 0.15;
-                    const isHighlighted = this.assignable.highlightedDomains.has(domain.id);
+                    const domainGroup = this.getAssignmentGroup(this.assignable.highlightedDomains, domain.id);
+                    const isHighlighted = domainGroup >= 0;
 
                     // Domain keeps its own color, but border changes when highlighted
                     ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${alpha})`;
-                    ctx.strokeStyle = isHighlighted
-                        ? this.highlightConfig.domain.border
-                        : `hsl(${hue}, 70%, 60%)`;
+                    const config = isHighlighted ? this.highlightConfigs[domainGroup] : null;
+                    ctx.strokeStyle = config ? config.domain.border : `hsl(${hue}, 70%, 60%)`;
                     ctx.lineWidth = isHighlighted ? 30 : 20;
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
@@ -299,7 +390,11 @@ class GraphVisualizer {
         this.graphState = graphState;
 
         if (!this.network) {
-            this.initializeNetwork();
+            // Try to initialize - if it fails, don't retry (will just fail again)
+            const initialized = this.initializeNetwork();
+            if (!initialized) {
+                return; // Initialization failed, don't retry
+            }
             // After network is created, update with data
             setTimeout(() => this.updateVisualization(graphState), 100);
             return;
@@ -348,11 +443,13 @@ class GraphVisualizer {
                 visNode.y = position.y;
             }
 
-            // Apply highlight if this node is in the highlighted set
-            if (this.assignable.highlightedNodes.has(node.id)) {
+            // Apply highlight based on group assignment
+            const nodeGroup = this.getAssignmentGroup(this.assignable.highlightedNodes, node.id);
+            if (nodeGroup >= 0) {
+                const config = this.highlightConfigs[nodeGroup];
                 visNode.color = {
-                    border: this.highlightConfig.node.border,
-                    background: this.highlightConfig.node.background
+                    border: config.node.border,
+                    background: config.node.background
                 };
                 visNode.borderWidth = 3;
             }
@@ -375,11 +472,13 @@ class GraphVisualizer {
                 arrows: edge.arrows || 'to'
             };
 
-            // Apply highlight if this edge is in the highlighted set
-            if (this.assignable.highlightedEdges.has(index)) {
+            // Apply highlight based on group assignment
+            const edgeGroup = this.getAssignmentGroup(this.assignable.highlightedEdges, index);
+            if (edgeGroup >= 0) {
+                const config = this.highlightConfigs[edgeGroup];
                 visEdge.color = {
-                    color: this.highlightConfig.edge.border,
-                    highlight: this.highlightConfig.edge.border
+                    color: config.edge.border,
+                    highlight: config.edge.border
                 };
                 visEdge.width = 3;
             }

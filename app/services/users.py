@@ -1,3 +1,20 @@
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 User service layer - Business logic for user operations.
 Orchestrates CRUD operations and handles business rules.
@@ -45,8 +62,8 @@ class UserService:
         update_data = user_update.model_dump(exclude_unset=True)
         
         # Never change UUID - business rule
-        if 'public_uuid' in update_data:
-            del update_data['public_uuid']
+        if 'user_uuid' in update_data:
+            del update_data['user_uuid']
         
         # Handle password update separately if present
         if 'password' in update_data:

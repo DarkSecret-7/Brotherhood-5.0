@@ -1,3 +1,22 @@
+/*
+ * This file is part of The Brotherhood Project
+ *
+ * Copyright (C) 2026  The Brotherhood Project
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 /**
  * Assessments Transformer - Convert between backend and frontend assessment data structures
  * Handles capabilities, assessments, and self-assessment transformations
@@ -24,11 +43,7 @@ class AssessmentsTransformer {
             // Computed properties
             nodeCount: (backendCapability.assessed_nodes || []).length,
             averageScore: this.calculateAverageScore(backendCapability.assessed_nodes || []),
-            completionStatus: this.determineCompletionStatus(backendCapability.assessed_nodes || []),
-            // UI state
-            isExpanded: false,
-            isSelected: false,
-            isShared: false
+            // completionStatus: this.determineCompletionStatus(backendCapability.assessed_nodes || [])
         };
     }
 
@@ -56,18 +71,15 @@ class AssessmentsTransformer {
     transformAssessedNodesFromBackend(backendAssessedNodes) {
         if (!Array.isArray(backendAssessedNodes)) return [];
 
-        return backendAssessed.map(node => ({
+        return backendAssessedNodes.map(node => ({
             nodeId: node.node_id,
             snapshotUuid: node.snapshot_uuid,
-            evaluation: node.evaluation || {},
+            evaluation: node.evaluation || {},      // A flexible dict
             // Computed properties
-            score: this.extractScore(node.evaluation),
-            status: this.determineNodeStatus(node.evaluation),
-            feedback: this.extractFeedback(node.evaluation),
-            evidence: this.extractEvidence(node.evaluation),
-            // UI state
-            isExpanded: false,
-            isEditing: false
+            // score: this.extractScore(node.evaluation),
+            // status: this.determineNodeStatus(node.evaluation),
+            // feedback: this.extractFeedback(node.evaluation),
+            // evidence: this.extractEvidence(node.evaluation)
         }));
     }
 
@@ -94,138 +106,21 @@ class AssessmentsTransformer {
     transformSelfAssessmentToBackend(frontendRequest) {
         return {
             graph_uuid: frontendRequest.graphUuid,
-            proof_inputs: frontendRequest.proofInputs.map(input => ({
-                node_id: input.nodeId,
-                value: input.value
-            }))
+            proof_inputs: this.transformProofInputsToBackend(frontendRequest.proofInputs)
         };
-    }
-
-    /**
-     * Transform proof inputs from backend format
-     * @param {Array} backendProofInputs - Backend proof inputs
-     * @returns {Array} Frontend proof inputs
-     */
-    transformProofInputsFromBackend(backendProofInputs) {
-        if (!Array.isArray(backendProofInputs)) return [];
-
-        return backendProofInputs.map(input => ({
-            nodeId: input.node_id,
-            value: input.value,
-            // UI state
-            isValid: true,
-            errorMessage: ''
-        }));
     }
 
     /**
      * Transform proof inputs to backend format
-     * @param {Array} frontendProofInputs - Frontend proof inputs
-     * @returns {Array} Backend proof inputs
+     * @param {Object} frontendProofInputs - Frontend proof inputs as dictionary {nodeId: value}
+     * @returns {Array} Backend proof inputs as array [{node_id, value}]
      */
     transformProofInputsToBackend(frontendProofInputs) {
-        if (!Array.isArray(frontendProofInputs)) return [];
+        if (!frontendProofInputs || typeof frontendProofInputs !== 'object') return [];
 
-        return frontendProofInputs.map(input => ({
-            node_id: input.nodeId,
-            value: input.value
-        }));
-    }
-
-    /**
-     * Transform assessment template from backend format
-     * @param {Object} backendTemplate - Backend assessment template
-     * @returns {Object} Frontend assessment template
-     */
-    transformAssessmentTemplateFromBackend(backendTemplate) {
-        if (!backendTemplate) return null;
-
-        return {
-            graphLabel: backendTemplate.graph_label,
-            assessmentName: backendTemplate.assessment_name,
-            assessmentType: backendTemplate.assessment_type,
-            version: backendTemplate.version,
-            instructions: backendTemplate.instructions || '',
-            nodes: this.transformTemplateNodesFromBackend(backendTemplate.nodes || []),
-            scoringCriteria: backendTemplate.scoring_criteria || {},
-            timeLimit: backendTemplate.time_limit || null,
-            maxAttempts: backendTemplate.max_attempts || null
-        };
-    }
-
-    /**
-     * Transform template nodes from backend format
-     * @param {Array} backendNodes - Backend template nodes
-     * @returns {Array} Frontend template nodes
-     */
-    transformTemplateNodesFromBackend(backendNodes) {
-        if (!Array.isArray(backendNodes)) return [];
-
-        return backendNodes.map(node => ({
-            id: node.local_id,
-            title: node.title,
-            description: node.description || '',
-            required: node.required || false,
-            weight: node.weight || 1,
-            assessmentType: node.assessment_type || 'score',
-            options: node.options || [],
-            maxScore: node.max_score || null,
-            // UI state
-            isAnswered: false,
-            answer: null,
-            score: null
-        }));
-    }
-
-    /**
-     * Transform assessment statistics from backend format
-     * @param {Object} backendStats - Backend assessment stats
-     * @returns {Object} Frontend assessment stats
-     */
-    transformAssessmentStatsFromBackend(backendStats) {
-        return {
-            totalAssessments: backendStats.total_assessments || 0,
-            averageScore: backendStats.average_score || 0,
-            completionRate: backendStats.completion_rate || 0,
-            passRate: backendStats.pass_rate || 0,
-            lastAssessment: backendStats.last_assessment ? new Date(backendStats.last_assessment) : null,
-            scoreDistribution: backendStats.score_distribution || {},
-            timeStats: {
-                averageTime: backendStats.average_time_minutes || 0,
-                fastestTime: backendStats.fastest_time_minutes || 0,
-                slowestTime: backendStats.slowest_time_minutes || 0
-            },
-            improvementStats: {
-                averageImprovement: backendStats.average_improvement || 0,
-                improvedCount: backendStats.improved_count || 0,
-                declinedCount: backendStats.declined_count || 0
-            }
-        };
-    }
-
-    /**
-     * Transform assessment history from backend format
-     * @param {Array} backendHistory - Backend assessment history
-     * @returns {Array} Frontend assessment history
-     */
-    transformAssessmentHistoryFromBackend(backendHistory) {
-        if (!Array.isArray(backendHistory)) return [];
-
-        return backendHistory.map(entry => ({
-            id: entry.id,
-            assessmentName: entry.assessment_name,
-            assessmentType: entry.assessment_type,
-            score: entry.score || 0,
-            maxScore: entry.max_score || 0,
-            status: entry.status || 'completed',
-            completedAt: entry.completed_at ? new Date(entry.completed_at) : null,
-            timeSpent: entry.time_spent_minutes || 0,
-            attemptNumber: entry.attempt_number || 1,
-            improvement: entry.improvement || 0,
-            // Computed properties
-            percentage: this.calculatePercentage(entry.score, entry.max_score),
-            grade: this.calculateGrade(entry.score, entry.max_score),
-            relativeTime: this.getRelativeTime(entry.completed_at)
+        return Object.entries(frontendProofInputs).map(([nodeId, value]) => ({
+            node_id: parseInt(nodeId),
+            value: parseInt(value)
         }));
     }
 
@@ -237,7 +132,7 @@ class AssessmentsTransformer {
     calculateAverageScore(assessedNodes) {
         if (!Array.isArray(assessedNodes) || assessedNodes.length === 0) return 0;
         
-        const scores = assessedNodes.map(node => this.extractScore(node.evaluation)).filter(score => score !== null);
+        const scores = assessedNodes.map(node => this.extractScore(node.evaluation)).filter(score => typeof score === 'number' && score !== null);
         if (scores.length === 0) return 0;
         
         return scores.reduce((sum, score) => sum + score, 0) / scores.length;
@@ -303,127 +198,6 @@ class AssessmentsTransformer {
     extractEvidence(evaluation) {
         if (!evaluation || typeof evaluation !== 'object') return [];
         return evaluation.evidence || [];
-    }
-
-    /**
-     * Calculate percentage score
-     * @param {number} score - Achieved score
-     * @param {number} maxScore - Maximum possible score
-     * @returns {number} Percentage
-     */
-    calculatePercentage(score, maxScore) {
-        if (!maxScore || maxScore === 0) return 0;
-        return Math.round((score / maxScore) * 100);
-    }
-
-    /**
-     * Calculate grade from score
-     * @param {number} score - Achieved score
-     * @param {number} maxScore - Maximum possible score
-     * @returns {string} Grade
-     */
-    calculateGrade(score, maxScore) {
-        const percentage = this.calculatePercentage(score, maxScore);
-        
-        if (percentage >= 90) return 'A';
-        if (percentage >= 80) return 'B';
-        if (percentage >= 70) return 'C';
-        if (percentage >= 60) return 'D';
-        return 'F';
-    }
-
-    /**
-     * Get relative time string
-     * @param {string|Date} timestamp - Timestamp
-     * @returns {string} Relative time
-     */
-    getRelativeTime(timestamp) {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return 'just now';
-        if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-        
-        return date.toLocaleDateString();
-    }
-
-    /**
-     * Validate assessment data
-     * @param {Object} assessmentData - Assessment data to validate
-     * @returns {Object} Validation result
-     */
-    validateAssessmentData(assessmentData) {
-        const errors = [];
-
-        if (!assessmentData.snapshotUuid) {
-            errors.push('Snapshot UUID is required');
-        }
-
-        if (!assessmentData.userUuid) {
-            errors.push('User UUID is required');
-        }
-
-        if (!assessmentData.assessmentName || assessmentData.assessmentName.trim().length === 0) {
-            errors.push('Assessment name is required');
-        }
-
-        if (!assessmentData.assessedNodes || assessmentData.assessedNodes.length === 0) {
-            errors.push('At least one assessed node is required');
-        } else {
-            assessmentData.assessedNodes.forEach((node, index) => {
-                if (!node.nodeId) {
-                    errors.push(`Assessed node ${index + 1}: Node ID is required`);
-                }
-                if (!node.snapshotUuid) {
-                    errors.push(`Assessed node ${index + 1}: Snapshot UUID is required`);
-                }
-            });
-        }
-
-        return {
-            isValid: errors.length === 0,
-            errors
-        };
-    }
-
-    /**
-     * Create empty frontend capability structure
-     * @returns {Object} Empty capability object
-     */
-    createEmptyCapability() {
-        return {
-            hash: null,
-            snapshotUuid: null,
-            userUuid: null,
-            assessmentName: '',
-            assessmentType: '',
-            assessmentVersion: '1.0',
-            assessmentDate: null,
-            assessedNodes: [],
-            nodeCount: 0,
-            averageScore: 0,
-            completionStatus: 'not_started',
-            isExpanded: false,
-            isSelected: false,
-            isShared: false
-        };
-    }
-
-    /**
-     * Create empty self-assessment request
-     * @returns {Object} Empty self-assessment request
-     */
-    createEmptySelfAssessmentRequest() {
-        return {
-            graphUuid: null,
-            proofInputs: []
-        };
     }
 }
 

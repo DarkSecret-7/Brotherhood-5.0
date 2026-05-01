@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
-from .models import CapabilityObject, Assessment, ProofInput, NodeData, GraphData
+from .models import CapabilityObject, Assessment, ProofInput, NodeData, GraphData, UserData
 from .utils import generate_graph_hash
 
 # Assessment Constants
@@ -26,21 +26,33 @@ ASSESSMENT_VERSION = "0.1"
 ASSESSMENT_TYPE = "Self-assessment"
 
 def perform_assessment(
-    graph_data: Dict[str, Any],
-    graph_label: str,
+    graph_data: Union[GraphData, Dict[str, Any]],
     proof_inputs: List[ProofInput],
-    user_reference: str,
-) -> CapabilityObject:
+    user_reference: Union[UserData, Dict[str, Any]],
+) -> Optional[CapabilityObject]:
     """
     Standalone Python assessment module logic.
-    Accepts arbitrary graph structure and proof inputs for specified nodes.
+    Accepts arbitrary graph structure (as GraphData, dict, or SQLAlchemy model) and proof inputs.
     Generates a capability object with essential metadata.
     """
-    # 1. Generate a consistent hash for the graph to maintain references
-    # graph_hash = generate_graph_hash(graph_data)
+    # 1. Handle different input formats for graph
+    if isinstance(graph_data, dict):
+        graph = GraphData(**graph_data)
+    elif hasattr(graph_data, 'public_uuid'): # Likely SQLAlchemy model
+        graph = GraphData.model_validate(graph_data)
+    else:
+        return None
     
-    # 2. Assess the nodes based on proof inputs
-        # Simply copy the value from proof inputs
+    # 2. Handle user reference
+    if isinstance(user_reference, dict):
+        user = UserData(**user_reference)
+    elif hasattr(user_reference, 'public_uuid'): # Likely User SQLAlchemy model
+        user = UserData.model_validate(user_reference)
+    else:
+        return None
+    
+    # 3. Assess the nodes based on proof inputs
+    # Simply copy the value from proof inputs
     assessed_nodes = []
     for pi in proof_inputs:
         assessment = Assessment(
@@ -49,13 +61,13 @@ def perform_assessment(
         )
         assessed_nodes.append(assessment)
     
-    # 3. Construct and return the capability object
+    # 4. Construct and return the capability object
     return CapabilityObject(
         assessment_name=ASSESSMENT_NAME,
         assessment_type=ASSESSMENT_TYPE,
         version=ASSESSMENT_VERSION,
         assessment_date=datetime.now(),
-        user_reference=user_reference,
-        graph_label=graph_label,
+        user=user,
+        graph_uuid=graph.public_uuid,
         assessed_nodes=assessed_nodes
     )

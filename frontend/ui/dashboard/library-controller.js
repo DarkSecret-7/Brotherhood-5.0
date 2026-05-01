@@ -1,0 +1,235 @@
+/*
+ * This file is part of The Brotherhood Project
+ *
+ * Copyright (C) 2026  The Brotherhood Project
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Library Controller
+ * Manages bookmarks and public graph browsing
+ */
+class LibraryController {
+    constructor(stateManager, apiService) {
+        this.stateManager = stateManager;
+        this.apiService = apiService;
+        this.container = document.getElementById('library-content');
+        this.activeTab = 'bookmarks'; // 'bookmarks' or 'browse'
+    }
+
+    async init() {
+        this.stateManager.subscribe(this.render.bind(this));
+        
+        // First load cached bookmarks from localStorage for instant display
+        this.loadCachedBookmarks();
+        
+        // Then fetch fresh data from API
+        await this.loadBookmarks();
+    }
+
+    /**
+     * Load cached bookmarks from localStorage
+     */
+    loadCachedBookmarks() {
+        try {
+            const cached = localStorage.getItem('library_bookmarks_cache');
+            if (cached) {
+                const bookmarks = JSON.parse(cached);
+                this.stateManager.setBookmarks(bookmarks);
+                console.log('LibraryController: Loaded cached bookmarks from localStorage');
+            }
+        } catch (e) {
+            console.error('Failed to load cached bookmarks', e);
+        }
+    }
+
+    /**
+     * Save bookmarks to localStorage cache
+     */
+    saveBookmarksToCache(bookmarks) {
+        try {
+            localStorage.setItem('library_bookmarks_cache', JSON.stringify(bookmarks));
+        } catch (e) {
+            console.error('Failed to save bookmarks to cache', e);
+        }
+    }
+
+    async loadBookmarks() {
+        try {
+            const bookmarks = await this.apiService.getBookmarks();
+            this.stateManager.setBookmarks(bookmarks);
+            // Cache for instant loading on next visit
+            this.saveBookmarksToCache(bookmarks);
+        } catch (error) {
+            console.error('Failed to load bookmarks', error);
+        }
+    }
+
+    /**
+     * Hard refresh - force reload from API and clear cache
+     */
+    async refreshBookmarks() {
+        try {
+            // Clear cache first
+            localStorage.removeItem('library_bookmarks_cache');
+            // Show loading state
+            this.stateManager.setState({ bookmarks: [], isLoading: true });
+            // Fetch fresh data
+            await this.loadBookmarks();
+            this.stateManager.setState({ isLoading: false });
+        } catch (error) {
+            console.error('Failed to refresh bookmarks', error);
+            this.stateManager.setState({ isLoading: false });
+        }
+    }
+
+    async switchTab(tab) {
+        this.activeTab = tab;
+        if (tab === 'browse' && this.stateManager.getState().browseResults.length === 0) {
+            await this.searchGraphs();
+        }
+        this.render(this.stateManager.getState());
+    }
+
+    async searchGraphs(query = '') {
+        try {
+            const results = await this.apiService.getPublicGraphs(0, 20);
+            this.stateManager.setState({ browseResults: results });
+        } catch (error) {
+            console.error('Search failed', error);
+        }
+    }
+
+    async toggleBookmark(graphUuid) {
+        const isBookmarked = this.stateManager.isBookmarked(graphUuid);
+        try {
+            if (isBookmarked) {
+                // Remove assessment from localStorage if it matches the graph being unbookmarked
+                const currentAssessment = localStorage.getItem('assessment_graph_uuid');
+                if (currentAssessment === graphUuid) {
+                    localStorage.removeItem('assessment_graph_uuid');
+                }
+                await this.apiService.deleteBookmark(graphUuid);
+            } else {
+                await this.apiService.createBookmark(graphUuid);
+            }
+            await this.loadBookmarks(); // Refresh list
+        } catch (error) {
+            console.error('Failed to toggle bookmark', error);
+            alert('Action failed.');
+        }
+    }
+
+    render(state) {
+        // Update tab button active states
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            if (this.activeTab === 'bookmarks' && btn.innerText.includes('Bookmarks')) {
+                btn.classList.add('active');
+            } else if (this.activeTab === 'browse' && btn.innerText.includes('Browse')) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Show/hide sections
+        const bookmarksSection = document.getElementById('bookmarks-section');
+        const browseSection = document.getElementById('browse-section');
+        
+        if (bookmarksSection) {
+            bookmarksSection.style.display = this.activeTab === 'bookmarks' ? 'block' : 'none';
+        }
+        if (browseSection) {
+            browseSection.style.display = this.activeTab === 'browse' ? 'block' : 'none';
+        }
+
+        // Render content into appropriate container
+        let contentHtml = '';
+        if (this.activeTab === 'bookmarks') {
+            contentHtml = this.renderBookmarks(state.bookmarks);
+            const contentContainer = document.getElementById('library-content');
+            if (contentContainer) contentContainer.innerHTML = contentHtml;
+        } else {
+            contentHtml = this.renderBrowse(state.browseResults);
+            const contentContainer = document.getElementById('browse-content');
+            if (contentContainer) contentContainer.innerHTML = contentHtml;
+        }
+    }
+
+    renderBookmarks(bookmarks) {
+        if (bookmarks.length === 0 && !this.stateManager.getState().isLoading) {
+            return `
+                <div class="card" style="text-align: center; padding: 40px;">
+                    <p>You have no bookmarks. Go to 'Browse' to find graphs to follow!</p>
+                </div>
+            `;
+        }
+
+        if (bookmarks.length === 0) {
+            return `<div class="card" style="text-align: center; padding: 40px;"><p>Loading bookmarks...</p></div>`;
+        }
+
+        console.log(bookmarks);
+
+        return `
+            <div class="graph-grid">
+                ${bookmarks.map(b => `
+                    <div class="graph-card">
+                        <h3>${b.graph_meta.version_label}</h3>
+                        <p>Bookmarked on: ${new Date(b.created_at).toLocaleDateString()}</p>
+                        <div class="card-actions">
+                            <button class="btn btn-primary" onclick="localStorage.setItem('assessment_graph_uuid', '${b.graph_uuid}'); window.location.href='/dashboard/assessment'">Assess</button>
+                            <button class="btn btn-outline" onclick="dashboardStateManager.loadAndOpenPreview('${b.graph_uuid}')">Preview</button>
+                            <button class="btn btn-danger" onclick="libraryController.toggleBookmark('${b.graph_uuid}')">Remove</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    renderBrowse(results) {
+        return `
+            <div class="search-box card">
+                <input type="text" placeholder="Search graphs (WIP)..." onkeyup="if(event.key==='Enter') libraryController.searchGraphs(this.value)">
+            </div>
+            <div class="graph-grid">
+                ${results.map(g => `
+                    <div class="graph-card">
+                        <h3>${g.version_label}</h3>
+                        <p>Authors: ${this.extractAuthors(g.authors)}</p>
+                        <p>Nodes: ${g.node_count}, Assessable: ${g.assessable_node_count}</p>
+                        <div class="card-actions">
+                            <button class="btn btn-outline" onclick="dashboardStateManager.loadAndOpenPreview('${g.public_uuid}')">Preview</button>
+                            <button class="btn ${this.stateManager.isBookmarked(g.public_uuid) ? 'btn-danger' : 'btn-primary'}"
+                                    onclick="libraryController.toggleBookmark('${g.public_uuid}')">
+                                ${this.stateManager.isBookmarked(g.public_uuid) ? 'Remove Bookmark' : 'Bookmark'}
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    extractAuthors(authors) {
+        if (!authors || authors.length === 0) {
+            return 'None';
+        }
+
+        return authors.map(a => a.username).join(', ');
+    }
+}

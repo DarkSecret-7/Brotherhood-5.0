@@ -1,3 +1,22 @@
+/*
+ * This file is part of The Brotherhood Project
+ *
+ * Copyright (C) 2026  The Brotherhood Project
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 /**
  * Auth Transformer - Convert between backend and frontend auth data structures
  * Handles user profile, authentication data transformation
@@ -17,6 +36,7 @@ class AuthTransformer {
             username: backendUser.username,
             email: backendUser.email || '',
             phone: backendUser.phone || '',
+            dob: this.convertDate(backendUser.dob) || null,
             bio: backendUser.bio || '',
             location: backendUser.location || '',
             socialLinks: {
@@ -33,7 +53,25 @@ class AuthTransformer {
     }
 
     /**
+     * Convert date string to YYYY-MM-DD format without timezone issues
+     * Extracts date portion directly to avoid UTC conversion shifting the date
+     * @param {string} date - Date string (e.g., "1990-05-15" or "1990-05-15T00:00:00")
+     * @returns {string} YYYY-MM-DD date string
+     */
+    convertDate(date) {
+        if (!date) return null;
+        // Extract YYYY-MM-DD directly from the string to avoid timezone conversion
+        // Backend sends "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss", we just need the date part
+        const dateMatch = date.toString().match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+            return `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+        }
+        return null;
+    }
+
+    /**
      * Transform frontend user data to backend format
+     * Converts empty strings to null for proper database handling
      * @param {Object} frontendUser - Frontend user object
      * @returns {Object} Backend user update data
      */
@@ -42,17 +80,25 @@ class AuthTransformer {
             user_uuid: frontendUser.uuid
         };
 
+        // Helper to convert empty string to null, or keep value if present
+        const toNullable = (value) => {
+            if (value === undefined) return undefined;
+            if (value === null || value === '') return null;
+            return value;
+        };
+
         // Only include fields that are being updated
         if (frontendUser.username !== undefined) backendData.username = frontendUser.username;
-        if (frontendUser.email !== undefined) backendData.email = frontendUser.email;
-        if (frontendUser.phone !== undefined) backendData.phone = frontendUser.phone;
-        if (frontendUser.bio !== undefined) backendData.bio = frontendUser.bio;
-        if (frontendUser.location !== undefined) backendData.location = frontendUser.location;
+        if (frontendUser.email !== undefined) backendData.email = toNullable(frontendUser.email);
+        if (frontendUser.phone !== undefined) backendData.phone = toNullable(frontendUser.phone);
+        if (frontendUser.dob !== undefined) backendData.dob = toNullable(frontendUser.dob);
+        if (frontendUser.bio !== undefined) backendData.bio = toNullable(frontendUser.bio);
+        if (frontendUser.location !== undefined) backendData.location = toNullable(frontendUser.location);
         if (frontendUser.socialLinks) {
-            if (frontendUser.socialLinks.github !== undefined) backendData.social_github = frontendUser.socialLinks.github;
-            if (frontendUser.socialLinks.linkedin !== undefined) backendData.social_linkedin = frontendUser.socialLinks.linkedin;
+            if (frontendUser.socialLinks.github !== undefined) backendData.social_github = toNullable(frontendUser.socialLinks.github);
+            if (frontendUser.socialLinks.linkedin !== undefined) backendData.social_linkedin = toNullable(frontendUser.socialLinks.linkedin);
         }
-        if (frontendUser.profileImage !== undefined) backendData.profile_image = frontendUser.profileImage;
+        if (frontendUser.profileImage !== undefined) backendData.profile_image = toNullable(frontendUser.profileImage);
 
         return backendData;
     }

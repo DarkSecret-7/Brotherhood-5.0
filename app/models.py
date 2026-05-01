@@ -1,3 +1,20 @@
+# This file is part of The Brotherhood Project
+#
+# Copyright (C) 2026  The Brotherhood Project
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from sqlalchemy import Column, Float, Integer, String, Date, DateTime, ForeignKey, UniqueConstraint, Boolean, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship, backref
@@ -25,6 +42,7 @@ class GraphSnapshot(Base):
     nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan")
     domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan")
     redirects = relationship("NodeRedirect", back_populates="snapshot", cascade="all, delete-orphan")
+    bookmarks = relationship("Bookmark", back_populates="graph", cascade="all, delete-orphan")
 
     # Properties
     @property
@@ -149,6 +167,26 @@ class User(Base):
     social_linkedin = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)  # Store base64 or URL
 
+    # Relationships
+    bookmarks = relationship("Bookmark", back_populates="user")
+
+class Bookmark(Base):
+    __tablename__ = "bookmarks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "graph_id", name="uq_user_graph_bookmark_id"),
+        UniqueConstraint("user_uuid", "graph_uuid", name="uq_user_graph_bookmark_uuid")
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)   # Foreign key to users table
+    graph_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="CASCADE"), nullable=False, index=True)   # Foreign key to graph_snapshots table
+    user_uuid = Column(UUID, nullable=False, index=True)
+    graph_uuid = Column(UUID(as_uuid=True), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User", back_populates="bookmarks")
+    graph = relationship("GraphSnapshot", back_populates="bookmarks")
+
 class Invitation(Base):
     __tablename__ = "invitations"
 
@@ -175,7 +213,7 @@ class Capability(Base):
     assessed_nodes = Column(JSONB, nullable=False)      # JSONB of assessed nodes
 
     user = relationship("User", backref="capabilities")
-    graph = relationship("GraphSnapshot")
+    graph = relationship("GraphSnapshot", backref="capabilities")
 
 class GraphProposal(Base):
     __tablename__ = "graph_proposals"
