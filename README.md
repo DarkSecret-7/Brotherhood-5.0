@@ -7,7 +7,7 @@ The official digital infrastructure for The Brotherhood project - a full-stack w
 This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE.txt](LICENSE.txt) file for details.
 
 ## More information on The Brotherhood project
-For more information on The Brotherhood project, please check out the docs or visit the [official website](https://brotherhood-11pi.onrender.com/landing/).
+For more information on The Brotherhood project, please check out the docs or visit the [official website](https://the-brotherhood-project.onrender.com/).
 
 ## Project Overview
 The project currently functions with two main components:
