@@ -818,6 +818,9 @@ class AssessmentController {
                     onUnfocus: () => {
                         this.stateManager.closeNodeDetails();
                         this.stateManager.closeDomainDetails();
+                    },
+                    onPositionChange: (nodeId, position) => {
+                        this.stateManager.updateNodePosition(nodeId, position);
                     }
                 });
             }

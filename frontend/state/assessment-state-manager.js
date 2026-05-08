@@ -189,6 +189,18 @@ class AssessmentStateManager {
     }
 
     /**
+     * Updates a node position
+     * @param {number} nodeId 
+     * @param {Object} position 
+     */
+    updateNodePosition(nodeId, position) {
+        const node = this.state.currentGraph.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.position = { x: position.x, y: position.y };
+        }
+    }
+
+    /**
      * Select a node and show details
      * @param {number} nodeId 
      */

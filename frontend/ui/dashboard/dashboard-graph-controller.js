@@ -59,7 +59,7 @@ class DashboardGraphController {
             onEdgeClick: (edgeId) => this.handleEdgeClick(edgeId),
             onDomainClick: (domainId) => this.handleDomainClick(domainId),
             onUnfocus: () => this.handleUnfocus(),
-            onPositionChange: (nodeId, pos) => this.callbacks.onPositionChange(nodeId, pos)
+            onPositionChange: (nodeId, pos) => this.handlePositionChange(nodeId, pos)
         });
     }
 
@@ -68,7 +68,10 @@ class DashboardGraphController {
      * @param {Object} graphData - The graph state (nodes, edges, cycles, domains)
      */
     update(graphData) {
-        if (!graphData) return;
+        if (!graphData) {
+            console.log('No graph data provided, returning');
+            return;
+        }
         this.graphData = graphData;
 
         // Initialize pathway indices for new nodes
@@ -195,6 +198,21 @@ class DashboardGraphController {
         this.visualizer.updateVisualization(this.graphData);
         
         this.callbacks.onUnfocus();
+    }
+
+    /**
+     * Handle simple position change
+     * @param {number} nodeId 
+     * @param {Object} position 
+     */
+    handlePositionChange(nodeId, position) {
+        // Update position in graphData.nodes (real-time update)
+        const node = this.graphData.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.position = { x: position.x, y: position.y };
+        }
+
+        this.callbacks.onPositionChange(nodeId, position);
     }
 
     /**

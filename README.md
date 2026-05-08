@@ -175,9 +175,9 @@ The system runs as a single web service:
 3. **Public Gallery**
    - **URL**: [http://localhost:8000/landing/gallery](http://localhost:8000/landing/gallery)
 
-4. **User Profile** (authenticated)
-   - **URL**: `http://localhost:8000/profile/{user_uuid}`
-   - View and manage user profiles
+4. **Dashboard** (authenticated)
+   - **URL**: `http://localhost:8000/dashboard/`
+   - View and manage user infomartion like profiles and graph bookmarks
 
 ### 5. Import & Export (.knw)
 The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs. The .knw format is **JSON-based** with a `.knw` extension.

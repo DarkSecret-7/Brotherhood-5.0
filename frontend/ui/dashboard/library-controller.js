@@ -27,10 +27,20 @@ class LibraryController {
         this.apiService = apiService;
         this.container = document.getElementById('library-content');
         this.activeTab = 'bookmarks'; // 'bookmarks' or 'browse'
+        this.currentPreviewGraphUuid = null;
+        
+        // Bind button event handlers
+        this.bindPreviewModalEvents();
     }
 
     async init() {
         this.stateManager.subscribe(this.render.bind(this));
+        
+        // Initialize modal as hidden
+        this.initializePreviewModal();
+        
+        // Subscribe to state changes for preview modal
+        this.stateManager.subscribe(this.handlePreviewModalState.bind(this));
         
         // First load cached bookmarks from localStorage for instant display
         this.loadCachedBookmarks();
@@ -231,5 +241,134 @@ class LibraryController {
         }
 
         return authors.map(a => a.username).join(', ');
+    }
+
+    /**
+     * Initialize preview modal as hidden
+     */
+    initializePreviewModal() {
+        const modalOverlay = document.getElementById('preview-modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    }
+
+    /**
+     * Handle preview modal state changes
+     */
+    handlePreviewModalState(state) {
+        if (!state.previewModal) return;
+
+        const modalOverlay = document.getElementById('preview-modal-overlay');
+        const loadingElement = document.getElementById('preview-loading');
+        const graphNameElement = document.getElementById('preview-graph-name');
+        const graphUuidElement = document.getElementById('preview-graph-uuid');
+        
+        if (state.previewModal.isOpen) {
+            modalOverlay.style.display = 'flex';
+            if (state.previewModal.isLoading) {
+                loadingElement.style.display = 'block';
+                // Clear previous titles while loading
+                if (graphNameElement) graphNameElement.textContent = '';
+                if (graphUuidElement) graphUuidElement.textContent = '';
+            } else {
+                loadingElement.style.display = 'none';
+                // Set graph titles when data is available
+                this.updatePreviewTitles(state.previewModal);
+            }
+        } else {
+            modalOverlay.style.display = 'none';
+        }
+
+        // Update graph when data is available
+        if (state.previewModal.graphData && !state.previewModal.isLoading) {
+            if (window.dashboardGraphController) {
+                window.dashboardGraphController.update(state.previewModal.graphData);
+            }
+        }
+    }
+
+    /**
+     * Update preview modal titles with graph information
+     */
+    updatePreviewTitles(previewModal) {
+        const graphNameElement = document.getElementById('preview-graph-name');
+        const graphUuidElement = document.getElementById('preview-graph-uuid');
+
+        if (graphNameElement) {
+            graphNameElement.textContent = previewModal.graphName || 'Unknown Graph';
+        }
+
+        if (graphUuidElement) {
+            graphUuidElement.textContent = previewModal.graphUuid || 'Unknown UUID';
+        }
+
+        // Store current graph UUID and update button states
+        this.currentPreviewGraphUuid = previewModal.graphUuid;
+        this.updatePreviewButtons(previewModal.graphUuid);
+    }
+
+    /**
+     * Bind preview modal button event handlers
+     */
+    bindPreviewModalEvents() {
+        const bookmarkBtn = document.getElementById('preview-bookmark-btn');
+        const assessBtn = document.getElementById('preview-assess-btn');
+
+        if (bookmarkBtn) {
+            bookmarkBtn.addEventListener('click', () => this.handlePreviewBookmark());
+        }
+
+        if (assessBtn) {
+            assessBtn.addEventListener('click', () => this.handlePreviewAssess());
+        }
+    }
+
+    /**
+     * Handle bookmark button click in preview modal
+     */
+    async handlePreviewBookmark() {
+        if (!this.currentPreviewGraphUuid) return;
+
+        try {
+            await this.toggleBookmark(this.currentPreviewGraphUuid);
+            // Update button states after bookmark toggle
+            this.updatePreviewButtons(this.currentPreviewGraphUuid);
+        } catch (error) {
+            console.error('Failed to toggle bookmark from preview:', error);
+        }
+    }
+
+    /**
+     * Handle assess button click in preview modal
+     */
+    handlePreviewAssess() {
+        if (!this.currentPreviewGraphUuid) return;
+
+        // Set the assessment graph UUID and navigate to assessment page
+        localStorage.setItem('assessment_graph_uuid', this.currentPreviewGraphUuid);
+        window.location.href = '/dashboard/assessment';
+    }
+
+    /**
+     * Update preview modal button states based on bookmark status
+     */
+    updatePreviewButtons(graphUuid) {
+        const bookmarkBtn = document.getElementById('preview-bookmark-btn');
+        const assessBtn = document.getElementById('preview-assess-btn');
+
+        if (!bookmarkBtn || !assessBtn) return;
+
+        const isBookmarked = this.stateManager.isBookmarked(graphUuid);
+
+        if (isBookmarked) {
+            bookmarkBtn.textContent = 'Remove Bookmark';
+            bookmarkBtn.className = 'btn btn-danger btn-sm';
+            assessBtn.style.display = 'inline-block';
+        } else {
+            bookmarkBtn.textContent = 'Bookmark';
+            bookmarkBtn.className = 'btn btn-primary btn-sm';
+            assessBtn.style.display = 'none';
+        }
     }
 }

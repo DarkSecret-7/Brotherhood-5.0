@@ -156,7 +156,9 @@ class DashboardStateManager {
                 previewModal: {
                     ...this.state.previewModal,
                     isLoading: false,
-                    graphData: transformedSnapshot
+                    graphData: transformedSnapshot.graphData,
+                    graphName: transformedSnapshot.currentVersionLabel,
+                    graphUuid: transformedSnapshot.currentSnapshotUuid
                 }
             });
         } catch (error) {

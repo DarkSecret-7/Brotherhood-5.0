@@ -76,8 +76,18 @@
     <!-- Graph Preview Modal -->
     <div id="preview-modal-overlay" class="preview-modal-overlay">
         <div class="preview-modal-container">
+            <div class="preview-modal-header">
+                <h2 class="preview-modal-title">Preview Window</h2>
+            </div>
             <button class="preview-close-btn" onclick="dashboardStateManager.closePreviewModal()">&times;</button>
-            <div id="preview-meta-panel" class="preview-meta-panel"></div>
+            <div id="preview-meta-panel" class="preview-meta-panel">
+                <h2 id="preview-graph-name" class="preview-graph-name"></h2>
+                <p id="preview-graph-uuid" class="preview-graph-uuid"></p>
+                <div class="preview-modal-actions">
+                    <button id="preview-bookmark-btn" class="btn btn-primary btn-sm">Bookmark</button>
+                    <button id="preview-assess-btn" class="btn btn-success btn-sm" style="display: none;">Assess</button>
+                </div>
+            </div>
             <div id="preview-graph-container" class="preview-graph-container"></div>
             <div id="preview-details-panel" class="preview-details-panel">
                 <h3 id="preview-detail-title"></h3>
@@ -106,6 +116,7 @@
     <script src="/frontend/utils/expression-utils.js"></script>
     <script src="/frontend/utils/graph-utils.js"></script>
     <script src="/frontend/components/graph-visualizer.js"></script>
+    <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
     <script src="/frontend/ui/dashboard/dashboard-graph-controller.js"></script>
     <script src="/frontend/state/dashboard-state-manager.js"></script>
     <script src="/frontend/ui/nav/nav-controller.js"></script>
@@ -121,8 +132,7 @@
             window.dashboardStateManager = new DashboardStateManager();
             window.dashboardGraphController = new DashboardGraphController(
                 'preview-graph-container',
-                'preview',
-                { stateManager: dashboardStateManager }
+                {}                          // No callbacks for preview
             );
             window.libraryController = new LibraryController(dashboardStateManager, dashboardApiService);
             await libraryController.init();
