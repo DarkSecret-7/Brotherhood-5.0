@@ -19,9 +19,9 @@
 Snapshot CRUD endpoints
 """
 import json
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 from .. import services, schemas, models, database
 from .auth import get_current_user

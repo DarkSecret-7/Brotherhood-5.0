@@ -20,7 +20,7 @@ Invitation service layer - Business logic for invitation operations.
 Orchestrates CRUD operations and handles business rules.
 """
 from sqlalchemy.orm import Session
-from .. import crud, schemas, models
+from .. import crud, models
 
 class InvitationService:
     

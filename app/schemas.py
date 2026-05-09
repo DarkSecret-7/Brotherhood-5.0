@@ -16,7 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pydantic import BaseModel
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
@@ -384,13 +384,10 @@ class TokenData(BaseModel):     # DEPRECATED
 
 # --- Proposal Response Schemas ---
 
-class ProposalResponse(BaseModel):
-    approve: bool
-    message: Optional[str] = None
-
 class ProposalConsentCreate(BaseModel):
     proposal_hash: str
     user_uuid: UUID
+    consent_date: Optional[datetime] = None
     user_vote: int  # 1 for approve, -1 for reject
 
 class ProposalConsentRead(BaseModel):

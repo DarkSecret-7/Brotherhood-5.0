@@ -20,7 +20,6 @@ Pure CRUD operations for GraphSnapshot model.
 No business logic - only raw database operations.
 """
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
 from uuid import UUID
 from .. import models
 

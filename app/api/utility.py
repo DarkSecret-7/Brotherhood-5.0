@@ -18,7 +18,7 @@
 """
 Utility endpoints (health check, contact form, etc.)
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from .. import schemas, utils
 
 router = APIRouter()

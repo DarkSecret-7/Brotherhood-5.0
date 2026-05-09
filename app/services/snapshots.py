@@ -22,8 +22,8 @@ Orchestrates CRUD operations and handles business rules.
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from uuid import UUID
-from typing import List, Optional
-from .. import crud, schemas, models, utils
+from typing import List
+from .. import crud, schemas, models
 
 class SnapshotService:
 

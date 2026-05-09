@@ -20,7 +20,6 @@ Pure CRUD operations for access control.
 No business logic - only raw database operations.
 """
 from sqlalchemy.orm import Session
-from uuid import UUID
 from .. import models
 
 def get_authorship_by_graph(db: Session, graph_id: int):

@@ -20,7 +20,6 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from .database import Base
-from uuid import uuid4
 
 class GraphSnapshot(Base):
     __tablename__ = "graph_snapshots"

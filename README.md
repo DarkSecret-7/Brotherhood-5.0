@@ -95,8 +95,7 @@ This split separates draft editing from direct backend communication.
 │  ├─ database.py             # Engine/session setup
 │  ├─ models.py               # SQLAlchemy models
 │  ├─ schemas.py              # Pydantic request/response schemas
-│  ├─ utils.py                # Auth helpers, email utilities, import/export (.knw), validation
-│  └─ crud.py                 # DEPRECATED: Transitional monolith (being migrated to app/crud/)
+│  └─ utils.py                # Auth helpers, email utilities, import/export (.knw), validation
 ├─ frontend/
 │  ├─ api/                    # HTTP client and endpoint services
 │  ├─ assets/                 # Static assets (images, icons)
@@ -334,14 +333,14 @@ Current endpoint modules include:
 All API routes are exposed under `/api/v1` when registered.
 
 #### Service layer (`app/services/`)
-Business logic lives here (snapshots, users, invitations, bibliography, assessments, proposals).
+Business logic lives here (snapshots, users, invitations, bibliography, assessments, proposals, authorship, bookmarks).
 Services should own:
 - authorization checks
 - orchestration across multiple CRUD calls
 - domain rules and transformations
 
 #### CRUD layer (`app/crud/`)
-Database operations only:
+Database operations only (modular structure: snapshots, users, proposals, access_control, invitations, bibliography, assessments, bookmarks):
 - entity fetch/create/update/delete helpers
 - query composition
 - no endpoint or business branching logic
@@ -473,7 +472,6 @@ When using Supabase with Render:
 The repository still contains transitional patterns.
 
 ### Legacy Code (Migration in Progress)
-- **`app/crud.py`**: DEPRECATED - Transitional monolith being migrated to `app/crud/` module. Do not add new code here.
 - **`static [LEGACY]/`**: Old frontend assets. Being replaced by `frontend/` architecture.
 - **`templates [LEGACY]/`**: Old HTML templates. Being replaced by `frontend/templates/`.
 - **`profile [LEGACY]/`**: Old profile management. Being replaced by `frontend/templates/lab/user-profile.html`.

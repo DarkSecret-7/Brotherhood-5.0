@@ -20,7 +20,6 @@ Assessment service layer - Business logic for assessment operations.
 Orchestrates CRUD operations and handles business rules.
 """
 from datetime import datetime
-from sqlalchemy import DateTime
 from sqlalchemy.orm import Session
 from typing import Optional
 from .. import crud, schemas, models, utils

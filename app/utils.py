@@ -15,15 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import re
 import os
 from datetime import datetime, timedelta
-from typing import List, Set, Dict, Optional, Union
+from typing import List, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import hashlib
 from uuid import UUID
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import json
 from fastapi.responses import StreamingResponse
@@ -293,3 +292,58 @@ def validate_contact_form(payload):
     """Validate contact form input"""
     if not payload.name.strip() or not payload.email.strip() or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Name, email, and message are required")
+
+# --- LLM Utilities ---
+
+def extract_suggestions_from_truncated(content: str) -> dict:
+    """
+    Attempt to extract valid suggestions from a truncated JSON response.
+    Uses regex to find complete suggestion objects.
+    """
+    import re
+
+    # Pattern to match individual suggestion objects
+    pattern = r'\{\s*"title"\s*:\s*"([^"]+)"\s*,\s*"description"\s*:\s*"([^"]+)"\s*\}'
+    matches = re.findall(pattern, content)
+
+    suggestions = []
+    for title, desc in matches:
+        suggestions.append({
+            "title": title,
+            "description": desc
+        })
+
+    if suggestions:
+        print(f"[LLM DEBUG] Recovered {len(suggestions)} suggestions from truncated response")
+        return {"suggestions": suggestions}
+
+    # If regex didn't work, try to find any JSON array
+    try:
+        # Find the start of suggestions array
+        start_idx = content.find('"suggestions"')
+        if start_idx != -1:
+            # Find opening bracket
+            bracket_idx = content.find('[', start_idx)
+            if bracket_idx != -1:
+                # Try to parse just the array portion
+                array_content = content[bracket_idx:]
+                # Close any unclosed braces/brackets
+                open_braces = array_content.count('{') - array_content.count('}')
+                open_brackets = array_content.count('[') - array_content.count(']')
+
+                for _ in range(open_braces):
+                    array_content += '}'
+                for _ in range(open_brackets):
+                    array_content += ']'
+
+                # Try to add closing for the main object
+                if not array_content.rstrip().endswith('}'):
+                    array_content += '}'
+
+                result = json.loads('{"suggestions": ' + array_content)
+                print(f"[LLM DEBUG] Recovered suggestions by closing JSON structure")
+                return result
+    except Exception as e:
+        print(f"[LLM DEBUG] Recovery attempt failed: {e}")
+
+    raise ValueError("Could not extract valid suggestions from truncated response")
