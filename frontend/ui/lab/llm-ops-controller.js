@@ -25,6 +25,77 @@ class LLMOpsController {
     constructor(stateManager) {
         this.stateManager = stateManager;
         this.currentSuggestions = [];
+        this.availableModels = [];
+        this.defaultModel = null;
+        this.selectedModel = null;
+    }
+
+    /**
+     * Load available models from the API
+     * @param {Function} onSuccess - Callback with models on success
+     * @param {Function} onError - Callback with error message on error
+     */
+    async loadAvailableModels(onSuccess, onError) {
+        try {
+            if (!window.llmApiService) {
+                throw new Error('LLM API service not available');
+            }
+
+            const response = await window.llmApiService.getAvailableModels();
+            this.availableModels = response.models || [];
+            this.defaultModel = response.default;
+            this.selectedModel = this.defaultModel;
+            onSuccess(this.availableModels, this.defaultModel);
+        } catch (error) {
+            console.error('Failed to load models:', error);
+            onError(error.message);
+        }
+    }
+
+    /**
+     * Set the selected model
+     * @param {string} modelId - Model ID to use
+     */
+    setSelectedModel(modelId) {
+        this.selectedModel = modelId;
+    }
+
+    /**
+     * Get the currently selected model
+     * @returns {string} Selected model ID
+     */
+    getSelectedModel() {
+        return this.selectedModel || this.defaultModel;
+    }
+
+    /**
+     * Get context from selected nodes or all nodes
+     * @returns {Object} Context string and count info
+     */
+    getContextForLLM() {
+        const { nodes, selectedNodes } = this.stateManager.state;
+        const selectedNodeIds = Array.from(selectedNodes || []);
+
+        // If selections exist, use only selected nodes
+        if (selectedNodeIds.length > 0) {
+            const selectedNodesList = nodes.filter(n => selectedNodes.has(n.id));
+            const context = selectedNodesList.map(n => `${n.title}: ${n.description}`).join('\n');
+            return {
+                context,
+                count: selectedNodesList.length,
+                isSelection: true
+            };
+        }
+
+        // Otherwise use all nodes
+        const context = nodes && nodes.length > 0
+            ? nodes.map(n => `${n.title}: ${n.description}`).join('\n')
+            : '';
+        return {
+            context,
+            count: nodes ? nodes.length : 0,
+            isSelection: false
+        };
     }
 
     /**
@@ -40,12 +111,8 @@ class LLMOpsController {
         }
 
         try {
-            // Build context from current nodes
-            let context = '';
-            const nodes = this.stateManager.state.nodes;
-            if (nodes && nodes.length > 0) {
-                context = nodes.map(n => `${n.title}: ${n.description}`).join('\n');
-            }
+            // Build context from selected nodes or all nodes
+            const { context, count, isSelection } = this.getContextForLLM();
 
             // Get Graph Name
             let graphName = 'Unknown Graph';
@@ -65,7 +132,11 @@ class LLMOpsController {
             // System prompt capability available but using backend default for now
             const systemPrompt = null;
 
-            const suggestions = await window.llmApiService.getSuggestions(prompt, context, graphName, systemPrompt);
+            const model = this.getSelectedModel();
+
+            console.log(`[LLM] Using ${isSelection ? 'selected' : 'all'} nodes: ${count} nodes as context`);
+
+            const suggestions = await window.llmApiService.getSuggestions(prompt, context, graphName, systemPrompt, model);
             this.currentSuggestions = suggestions;
             onSuccess(suggestions);
 

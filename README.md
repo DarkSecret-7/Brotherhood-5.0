@@ -309,7 +309,9 @@ Multi-author graph collaboration:
 The system prevents the creation of circular dependencies (e.g., A -> B -> A) by performing a cycle check during every create or update operation.
 
 ### AI-Powered Suggestions
-- **Context-Aware**: The system uses Google Gemini to suggest new nodes based on your prompt and the current graph structure.
+- **Multi-Model Support**: Choose from various AI models (Qwen, Claude, Gemini, GPT-4o, Llama, DeepSeek) via OpenRouter.
+- **Context-Aware**: The system uses AI to suggest new nodes based on your prompt and the current graph structure.
+- **Selection-Aware Context**: When nodes are selected, only those nodes are used as context for more focused suggestions. A blue reminder banner shows when this is active.
 - **Modularity**: Suggestions are tailored to fit the existing granularity and modularity of your graph.
 - **Bulk Import**: Select multiple suggestions and import them directly into your workspace with automatically assigned IDs.
 
@@ -327,7 +329,7 @@ Current endpoint modules include:
 - Authorship (`authorship.py`)
 - Utility endpoints (`utility.py`)
 - Assessment/capability endpoints (`assessments.py`)
-- LLM suggestion endpoint (`llm.py`)
+- LLM suggestion endpoint (`llm.py`) using OpenRouter API with multi-model support
 
 All API routes are exposed under `/api/v1` when registered.
 
@@ -454,7 +456,7 @@ If the logs show connection errors:
 |----------|-------------|----------|
 | `APP_MODE` | `production`, `docker`, or `local`. Controls database connection strategy. Use `production` for Render + Supabase. | Yes |
 | `DATABASE_URL` | PostgreSQL connection string. For Supabase: `postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres` | For docker/prod |
-| `GEMINI_API_KEY` | Google Gemini API key for AI node suggestions. If missing, returns mock data. | No |
+| `OPENROUTER_API_KEY` | OpenRouter API key for AI node suggestions. If missing, returns mock data. Get one at https://openrouter.ai/keys | No |
 | `SECRET_KEY` | JWT signing key (has hardcoded default for development only). | Production |
 | `EMAIL_HOST` | SMTP server hostname for contact form. | For contact form |
 | `EMAIL_PORT` | SMTP server port. | For contact form |

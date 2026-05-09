@@ -31,16 +31,26 @@ class LLMApiService extends BaseApiService {
      * @param {string} context - Current graph context (node titles/descriptions)
      * @param {string} graphName - Current graph name
      * @param {string} systemPrompt - System prompt describing graph nature/purpose/goals
+     * @param {string} model - Model ID to use for generation
      * @returns {Promise<Array>} Array of suggestion objects
      */
-    async getSuggestions(prompt, context, graphName, systemPrompt) {
+    async getSuggestions(prompt, context, graphName, systemPrompt, model) {
         const response = await this.post('/llm/suggest', {
             prompt: prompt,
             context: context.substring(0, 3000),
             graph_name: graphName,
-            system_prompt: systemPrompt
+            system_prompt: systemPrompt,
+            model: model
         });
         return response.suggestions || [];
+    }
+
+    /**
+     * Get list of available LLM models
+     * @returns {Promise<Object>} Object with models array and default model ID
+     */
+    async getAvailableModels() {
+        return await this.get('/llm/models');
     }
 }
 

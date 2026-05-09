@@ -14,4 +14,3 @@ passlib[bcrypt]
 bcrypt==3.2.0
 python-multipart
 python-dotenv
-google-generativeai

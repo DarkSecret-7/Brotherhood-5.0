@@ -119,5 +119,8 @@ Stuck on what to add next? Let the AI help you!
 *   **Get Suggestions**: The AI analyzes your current graph to provide relevant, modular additions.
 *   **Select & Import**: Check the boxes for the nodes you like and click **"Import Selected"**. They will be automatically added to your draft with the correct IDs!
 
+### 🎯 Selection-Aware Context
+When you have nodes selected in the workspace, the AI will use **only those selected nodes** as context instead of the entire graph. This is useful for focused expansion, domain-specific suggestions, and reducing noise. A blue reminder banner appears when selections are active.
+
 ---
 **Happy Curating!** 🚀

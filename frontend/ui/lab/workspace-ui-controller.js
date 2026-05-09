@@ -745,6 +745,52 @@ class LabUIController {
      */
     openLLMModal() {
         this.openModal('llm');
+
+        // Load available models
+        const modelSelect = document.getElementById('llm-model-select');
+        if (modelSelect && window.llmOpsController) {
+            window.llmOpsController.loadAvailableModels(
+                (models, defaultModel) => {
+                    modelSelect.innerHTML = '';
+                    models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.name;
+                        if (model.id === defaultModel) {
+                            option.selected = true;
+                        }
+                        modelSelect.appendChild(option);
+                    });
+                },
+                (error) => {
+                    modelSelect.innerHTML = '<option value="" disabled>Error loading models</option>';
+                    console.error('Failed to load models:', error);
+                }
+            );
+        }
+
+        // Add change listener for model selection
+        if (modelSelect) {
+            modelSelect.onchange = (e) => {
+                if (window.llmOpsController) {
+                    window.llmOpsController.setSelectedModel(e.target.value);
+                }
+            };
+        }
+
+        // Check for selections and show/hide reminder
+        const reminderDiv = document.getElementById('llm-selection-reminder');
+        const selectedCountSpan = document.getElementById('llm-selected-count');
+        if (reminderDiv && selectedCountSpan) {
+            const { selectedNodes } = this.stateManager.state;
+            const selectedCount = selectedNodes ? selectedNodes.size : 0;
+            if (selectedCount > 0) {
+                reminderDiv.style.display = 'block';
+                selectedCountSpan.textContent = selectedCount;
+            } else {
+                reminderDiv.style.display = 'none';
+            }
+        }
     }
 
     /**
@@ -1222,12 +1268,18 @@ class LabUIController {
      */
     async queryLLM() {
         const queryInput = document.getElementById('llm-query');
+        const modelSelect = document.getElementById('llm-model-select');
         const resultsContainer = document.getElementById('llm-results');
         const loadingIndicator = document.getElementById('llm-loading');
 
         if (!queryInput || !resultsContainer || !loadingIndicator) return;
 
         const prompt = queryInput.value.trim();
+
+        // Update selected model from dropdown
+        if (modelSelect && window.llmOpsController) {
+            window.llmOpsController.setSelectedModel(modelSelect.value);
+        }
 
         // Show loading
         loadingIndicator.style.display = 'block';

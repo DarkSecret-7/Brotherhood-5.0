@@ -313,6 +313,7 @@ class LLMQuery(BaseModel):
     context: Optional[str] = None
     graph_name: Optional[str] = None
     system_prompt: Optional[str] = None
+    model: Optional[str] = None
 
 class LLMSuggestion(BaseModel):
     title: str
