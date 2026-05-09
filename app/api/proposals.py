@@ -48,14 +48,14 @@ def get_proposal(proposal_hash: str, db: Session = Depends(database.get_db), cur
 @router.post("/proposals/{proposal_hash}/respond")
 def respond_to_proposal(
     proposal_hash: str,
-    response: schemas.ProposalResponse,
+    response: schemas.ProposalConsentCreate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """Respond to a proposal (approve/reject)"""
     try:
         result = services.proposals.ProposalService.respond_to_proposal(
-            db, proposal_hash, current_user.public_uuid, response.approve
+            db, response
         )
         return result
     except ValueError as e:

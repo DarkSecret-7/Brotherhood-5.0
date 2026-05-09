@@ -21,7 +21,7 @@ Sends API requests and processes responses.
 """
 import json
 import requests
-from .. import utils
+from .. import schemas, utils
 
 # Available free models on OpenRouter (rate limited: 20 req/min, 50-1000 req/day)
 # Rate limits: 50/day without credits, 1000/day with 10+ credits purchased
