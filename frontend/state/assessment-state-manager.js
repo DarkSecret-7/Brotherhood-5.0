@@ -59,6 +59,20 @@ class AssessmentStateManager {
         };
 
         this.subscribers = [];
+        
+        // Add beforeunload event handler to ensure cache is saved
+        this.setupCachePersistence();
+    }
+
+    /**
+     * Setup cache persistence with beforeunload event
+     */
+    setupCachePersistence() {
+        window.addEventListener('beforeunload', () => {
+            if (this.state.currentGraph && this.state.currentGraph.currentSnapshotUuid) {
+                this.saveAssessmentToCache(this.state.currentGraph.currentSnapshotUuid);
+            }
+        });
     }
 
     /**
@@ -141,10 +155,10 @@ class AssessmentStateManager {
         this.setState({
             savedProofInputs,
             hasSavedAssessment: true,
-            currentCapability: capability,
-            // Also clear current proof inputs
-            proofInputs: {}
+            currentCapability: capability
         });
+
+        this.saveAssessmentToCache(this.state.currentGraph.currentSnapshotUuid);
     }
 
     /**
@@ -268,6 +282,8 @@ class AssessmentStateManager {
         console.log(`AssessmentStateManager: Updated node ${nodeId} status to ${status}`);
         
         this.setState({ proofInputs });
+
+        // this.saveAssessmentToCache(this.state.currentGraph.currentSnapshotUuid);
     }
 
     /**
@@ -362,12 +378,14 @@ class AssessmentStateManager {
      * @param {string} snapshotUuid
      * @param {Object} capabilityData
      */
-    saveAssessmentToCache(snapshotUuid, capabilityData) {
+    saveAssessmentToCache(snapshotUuid) {
         try {
             const cacheKey = this.getAssessmentCacheKey(snapshotUuid);
             const cacheData = {
                 snapshotUuid,
-                capability: capabilityData,
+                capability: this.state.currentCapability,
+                // Also save current session assessment
+                currentProofInputs: this.state.proofInputs,
                 timestamp: Date.now()
             };
             localStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -390,6 +408,11 @@ class AssessmentStateManager {
             const cacheData = JSON.parse(cached);
             // Verify the cached data is for the same snapshot
             if (cacheData.snapshotUuid !== snapshotUuid) return null;
+
+            // Restore current session assessment if available
+            if (cacheData.currentProofInputs) {
+                this.state.proofInputs = cacheData.currentProofInputs;
+            }
 
             return cacheData.capability;
         } catch (e) {
@@ -450,18 +473,6 @@ class AssessmentStateManager {
         this.state.currentCapability = null;
         this.state.assessmentInProgress = false;
         this.state.hasSavedAssessment = false;
-
-        // Clear localstorage graph_uuid
-        try {
-            localStorage.removeItem('assessment_graph_uuid');
-        } catch (e) {
-            console.warn('AssessmentStateManager: Failed to clear graph', e);
-            this.showAlert({
-                title: 'Failed to clear graph',
-                message: 'Failed to clear graph',
-                type: 'error'
-            });
-        }
     }
 }
 

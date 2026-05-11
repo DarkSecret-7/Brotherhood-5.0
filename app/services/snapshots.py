@@ -28,8 +28,8 @@ from .. import crud, schemas, models
 class SnapshotService:
 
     @staticmethod
-    def _extract_metadata(db: Session, snapshot_id: int) -> schemas.GraphSnapshotMeta:
-        snapshot = crud.snapshots.get_snapshot_by_id(db, snapshot_id)
+    def _extract_metadata(db: Session, snapshot_uuid: UUID) -> schemas.GraphSnapshotMeta:
+        snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
         authors = [schemas.UserRead(
             user_uuid=author.public_uuid,
             username=author.username,
@@ -404,7 +404,6 @@ class SnapshotService:
         - "read": Read-only access
         - "fetch": Read for editing (registered users only)
         - "write": Update/overwrite access (authors only)
-        - "delete": Delete access (authors only)
         """
         if not SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, action):
             raise ValueError(f"Not authorized to '{action}' this snapshot")
@@ -424,6 +423,7 @@ class SnapshotService:
         - "fetch": Read for editing (only for registered users)
         - "write": Update/overwrite operations (authorship check)
         - "delete": Delete operations (authorship check)
+        - "assess": Assessment access (requires bookmark)
         """
         # This is business logic - check if user is author or has access
         snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
@@ -438,6 +438,15 @@ class SnapshotService:
         if action == "fetch":
             # Must be a registered user (user_id > 0)
             return user_id is not None and user_id > 0
+            
+        # "assess" action - requires bookmark
+        if action == "assess":
+            # Must be a registered user with bookmark
+            if user_id is None or user_id <= 0:
+                return False
+            # Check if user has bookmarked this graph
+            bookmark = crud.bookmarks.get_bookmark(db, user_id=user_id, graph_id=snapshot.id)
+            return bookmark is not None
             
         # "write" and "delete" actions - require authorship
         if action in ["write", "delete"]:

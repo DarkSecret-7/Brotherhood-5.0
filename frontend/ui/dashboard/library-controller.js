@@ -22,9 +22,9 @@
  * Manages bookmarks and public graph browsing
  */
 class LibraryController {
-    constructor(stateManager, apiService) {
+    constructor(stateManager) {
         this.stateManager = stateManager;
-        this.apiService = apiService;
+        // Use global API services from scope
         this.container = document.getElementById('library-content');
         this.activeTab = 'bookmarks'; // 'bookmarks' or 'browse'
         this.currentPreviewGraphUuid = null;
@@ -78,7 +78,7 @@ class LibraryController {
 
     async loadBookmarks() {
         try {
-            const bookmarks = await this.apiService.getBookmarks();
+            const bookmarks = await dashboardApiService.getBookmarks();
             this.stateManager.setBookmarks(bookmarks);
             // Cache for instant loading on next visit
             this.saveBookmarksToCache(bookmarks);
@@ -115,7 +115,7 @@ class LibraryController {
 
     async searchGraphs(query = '') {
         try {
-            const results = await this.apiService.getPublicGraphs(0, 20);
+            const results = await snapshotsApiService.getSnapshots({ publicOnly: true, limit: 20 });
             this.stateManager.setState({ browseResults: results });
         } catch (error) {
             console.error('Search failed', error);
@@ -126,14 +126,9 @@ class LibraryController {
         const isBookmarked = this.stateManager.isBookmarked(graphUuid);
         try {
             if (isBookmarked) {
-                // Remove assessment from localStorage if it matches the graph being unbookmarked
-                const currentAssessment = localStorage.getItem('assessment_graph_uuid');
-                if (currentAssessment === graphUuid) {
-                    localStorage.removeItem('assessment_graph_uuid');
-                }
-                await this.apiService.deleteBookmark(graphUuid);
+                await dashboardApiService.deleteBookmark(graphUuid);
             } else {
-                await this.apiService.createBookmark(graphUuid);
+                await dashboardApiService.createBookmark(graphUuid);
             }
             await this.loadBookmarks(); // Refresh list
         } catch (error) {
@@ -201,7 +196,7 @@ class LibraryController {
                         <h3>${b.graph_meta.version_label}</h3>
                         <p>Bookmarked on: ${new Date(b.created_at).toLocaleDateString()}</p>
                         <div class="card-actions">
-                            <button class="btn btn-primary" onclick="localStorage.setItem('assessment_graph_uuid', '${b.graph_uuid}'); window.location.href='/dashboard/assessment'">Assess</button>
+                            <button class="btn btn-primary" onclick="window.location.href='/dashboard/assessment?graph=${b.graph_uuid}'">Assess</button>
                             <button class="btn btn-outline" onclick="dashboardStateManager.loadAndOpenPreview('${b.graph_uuid}')">Preview</button>
                             <button class="btn btn-danger" onclick="libraryController.toggleBookmark('${b.graph_uuid}')">Remove</button>
                         </div>
@@ -345,9 +340,8 @@ class LibraryController {
     handlePreviewAssess() {
         if (!this.currentPreviewGraphUuid) return;
 
-        // Set the assessment graph UUID and navigate to assessment page
-        localStorage.setItem('assessment_graph_uuid', this.currentPreviewGraphUuid);
-        window.location.href = '/dashboard/assessment';
+        // Navigate to assessment page with graph UUID as URL parameter
+        window.location.href = `/dashboard/assessment?graph=${this.currentPreviewGraphUuid}`;
     }
 
     /**

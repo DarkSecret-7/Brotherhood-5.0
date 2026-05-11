@@ -173,10 +173,15 @@ The system runs as a single web service:
 
 3. **Public Gallery**
    - **URL**: [http://localhost:8000/landing/gallery](http://localhost:8000/landing/gallery)
+   - **Purpose**: Public gallery with URL-based snapshot access
+   - **Access Pattern**: Uses unified `/snapshots` endpoints with query parameters
+   - **URL Structure**: 
+     - Gallery list: `/landing/gallery?graph={uuid}` (for direct graph access)
+     - Graph viewing: `/landing/gallery?graph={uuid}&view=true` (for viewing specific graph)
 
 4. **Dashboard** (authenticated)
    - **URL**: `http://localhost:8000/dashboard/`
-   - View and manage user infomartion like profiles and graph bookmarks
+   - View and manage user information like profiles and graph bookmarks
 
 ### 5. Import & Export (.knw)
 The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs. The .knw format is **JSON-based** with a `.knw` extension.
@@ -358,9 +363,20 @@ Primary entities include snapshots, nodes, domains, users, authorship, redirects
 #### API layer (`frontend/api/`)
 Base HTTP client and domain-specific services:
 - auth
-- snapshots
+- **snapshots** - Unified snapshot operations service (replaces gallery-api-service)
+  - `getSnapshots(options)` - Bulk operations with query parameters
+  - `getSnapshot(uuid, options)` - Single operations with action parameter
+  - `getPublicSnapshots(metadataOnly)` - Public gallery convenience method
+  - `getPublicSnapshot(uuid)` - Public viewing convenience method
+  - `getSnapshotForAssessment(uuid)` - Assessment with bookmark validation
+  - `getSnapshotMetadata(uuid)` - Metadata-only convenience method
+  - `fetchSnapshotForEdit(uuid)` - Edit mode convenience method
 - assessments
 - users (present in codebase for evolving profile/social endpoints)
+- proposals
+- authorship
+- utility
+- llm
 
 #### Transformer layer (`frontend/transformer/`)
 Maps backend shapes (snake_case and backend metadata) to frontend shapes used by state/UI and maps back on save.

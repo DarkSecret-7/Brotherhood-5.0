@@ -59,23 +59,6 @@ class DashboardApiService extends BaseApiService {
     async updateProfile(profileData) {
         return await this.patch('/auth/me/profile/update', profileData);
     }
-
-    /**
-     * Search/Browse public graphs
-     * @param {number} skip 
-     * @param {number} limit 
-     */
-    async getPublicGraphs(skip = 0, limit = 20) {
-        return await this.get(`/public/snapshots?skip=${skip}&limit=${limit}`);
-    }
-
-    /**
-     * Get details for a specific graph (lazy loading)
-     * @param {string} graphUuid 
-     */
-    async getGraphDetails(graphUuid) {
-        return await this.get(`/public/snapshots/${graphUuid}`);
-    }
 }
 
 const dashboardApiService = new DashboardApiService();

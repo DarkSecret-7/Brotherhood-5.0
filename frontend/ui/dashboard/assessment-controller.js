@@ -25,14 +25,11 @@
 class AssessmentController {
     /**
      * @param {AssessmentStateManager} stateManager - Assessment state manager
-     * @param {DashboardApiService} dashboardApiService - For loading graphs
-     * @param {AssessmentsApiService} assessmentsApiService - For assessment operations
      * @param {GalleryTransformer} transformer - For data transformation
      */
-    constructor(stateManager, dashboardApiService, assessmentsApiService, transformer) {
+    constructor(stateManager, transformer) {
         this.stateManager = stateManager;
-        this.apiService = dashboardApiService;
-        this.assessmentsApiService = assessmentsApiService;
+        // Use global API services from scope
         this.transformer = transformer;
 
         this.graphController = null;
@@ -56,6 +53,9 @@ class AssessmentController {
         // Subscribe to state changes
         this.stateManager.subscribe(this.handleStateChange);
         
+        // Parse URL parameters for direct graph loading
+        const urlParams = UrlParser.parseUrlParameters();
+        
         // Check if we already have a graph loaded (e.g., from state persistence)
         const currentState = this.stateManager.state;
         if (currentState.currentGraph) {
@@ -64,12 +64,10 @@ class AssessmentController {
             return;
         }
         
-        // Check localStorage for graph to assess (set by library "Assess" button or from previous session)
-        const graphUuid = this.getAssessmentGraphFromStorage();
-        
-        if (graphUuid) {
-            // Restore the assessment graph (persists across page refreshes)
-            await this.loadGraphForAssessment(graphUuid);
+        // Use only URL parameters for graph loading
+        if (urlParams.graph) {
+            // Load assessment graph from URL parameter
+            await this.loadGraphForAssessmentFromUrl(urlParams.graph);
         } else {
             // No graph selected - show default view (static in HTML)
             // HTML already shows the no-graph message by default
@@ -78,15 +76,45 @@ class AssessmentController {
     }
 
     /**
-     * Get assessment graph UUID from localStorage
-     * @returns {string|null}
+     * Load graph for assessment from URL parameter with dashboard-specific error handling
+     * @param {string} graphUuid
      */
-    getAssessmentGraphFromStorage() {
+    async loadGraphForAssessmentFromUrl(graphUuid) {
         try {
-            return localStorage.getItem('assessment_graph_uuid');
-        } catch (e) {
-            console.error('Failed to read from localStorage', e);
-            return null;
+            this.stateManager.setLoading(true);
+            
+            // Validate UUID format
+            if (!UrlParser.isValidUuid(graphUuid)) {
+                throw new Error('Invalid graph UUID format in URL parameter');
+            }
+            
+            // Fetch and transform graph data with bookmark validation
+            const backendSnapshot = await snapshotsApiService.getSnapshotForAssessment(graphUuid);
+            const transformedData = this.transformer.transformSnapshotFromBackend(backendSnapshot);
+            
+            // Update state
+            this.stateManager.loadGraph(transformedData);
+            this.stateManager.setViewMode('assessment');
+            
+            // Fetch latest saved self-assessment for this graph
+            await this.fetchSavedAssessment(graphUuid);
+            
+            // Update URL to reflect loaded graph (without page refresh)
+            UrlParser.updateUrlParameters({ graph: graphUuid }, true);
+            
+            console.log('AssessmentController: Graph loaded from URL parameter', graphUuid);
+        } catch (error) {
+            console.error('AssessmentController: Failed to load graph from URL parameter', error);
+            
+            // Use dashboard-specific error handling with custom dialog
+            await this.stateManager.showAlert({
+                title: 'Failed to Load Graph',
+                message: `Could not load the requested graph for assessment: ${error.message}. Please try again from the Library.`
+            });
+            
+            this.showNoGraphView();
+        } finally {
+            this.stateManager.setLoading(false);
         }
     }
 
@@ -98,8 +126,8 @@ class AssessmentController {
         try {
             this.stateManager.setLoading(true);
             
-            // Fetch and transform graph data
-            const backendSnapshot = await this.apiService.getGraphDetails(graphUuid);
+            // Fetch and transform graph data with bookmark validation
+            const backendSnapshot = await snapshotsApiService.getSnapshotForAssessment(graphUuid);
             const transformedData = this.transformer.transformSnapshotFromBackend(backendSnapshot);
             
             // Update state
@@ -109,12 +137,11 @@ class AssessmentController {
             // Fetch latest saved self-assessment for this graph
             await this.fetchSavedAssessment(graphUuid);
             
-            // Keep localStorage intact so assessment persists across refreshes
             console.log('AssessmentController: Graph loaded successfully', graphUuid);
         } catch (error) {
             console.error('AssessmentController: Failed to load graph for assessment', error);
-            this.stateManager.setError('Failed to load graph data. Please try again from the Library.');
-            this.showErrorView('Failed to load graph data. Please try again from the Library.');
+            this.stateManager.setError('Failed to load graph data. Please try again from Library.');
+            this.showErrorView('Failed to load graph data. Please try again from Library.');
         } finally {
             this.stateManager.setLoading(false);
         }
@@ -142,8 +169,6 @@ class AssessmentController {
                 // Transform backend capability to frontend format using transformer
                 const capability = assessmentsTransformer.transformCapabilityFromBackend(backendCapability);
                 this.stateManager.loadSavedAssessment(capability);
-                // Save to cache
-                this.stateManager.saveAssessmentToCache(graphUuid, capability);
                 console.log('AssessmentController: Loaded saved assessment from backend', capability);
             } else {
                 console.log('AssessmentController: No saved assessment found');
@@ -220,7 +245,7 @@ class AssessmentController {
         }
 
         try {
-            await this.assessmentsApiService.deleteSelfAssessment(state.currentGraph.currentSnapshotUuid);
+            await assessmentsApiService.deleteSelfAssessment(state.currentGraph.currentSnapshotUuid);
             
             // Clear saved data from state and cache
             this.stateManager.setState({
@@ -310,7 +335,7 @@ class AssessmentController {
             // 1. Delete previous self-assessment if exists
             if (state.hasSavedAssessment) {
                 try {
-                    await this.assessmentsApiService.deleteSelfAssessment(state.currentGraph.currentSnapshotUuid);
+                    await assessmentsApiService.deleteSelfAssessment(state.currentGraph.currentSnapshotUuid);
                     console.log('AssessmentController: Deleted previous self-assessment');
                 } catch (deleteError) {
                     console.warn('AssessmentController: Failed to delete previous assessment, continuing anyway', deleteError);
@@ -326,13 +351,11 @@ class AssessmentController {
             console.log('Request Data sending to the backend', requestData);
             
 
-            const result = await this.assessmentsApiService.performSelfAssessment(requestData);
+            const result = await assessmentsApiService.performSelfAssessment(requestData);
             
             // 4. Update state with saved data, save to cache, and clear current session
             const transformedCapability = assessmentsTransformer.transformCapabilityFromBackend(result);
             this.stateManager.loadSavedAssessment(transformedCapability);
-            // Save to cache
-            this.stateManager.saveAssessmentToCache(state.currentGraph.currentSnapshotUuid, transformedCapability);
             
             await this.stateManager.showAlert({
                 title: 'Success',
@@ -350,7 +373,6 @@ class AssessmentController {
     }
 
     /**
-     * Exit the current graph assessment - remove graphUuid from localStorage and redirect to library
      * Assessment cache is preserved for future use
      */
     exitGraph() {
@@ -876,10 +898,12 @@ class AssessmentController {
                 this.elements.nodeAssessmentControls.style.display = 'flex';
                 
                 // Highlight current status if any
-                const currentStatus = state.proofInputs[node.id] || state.savedProofInputs[node.id];
+                const currentStatus = state.proofInputs[node.id] ?? state.savedProofInputs[node.id] ?? null;        // Javascript shenanigans with int 0
+                
                 this.elements.statusButtons.forEach(btn => {
                     const btnStatus = parseInt(btn.getAttribute('data-status'));
-                    if (currentStatus !== undefined && btnStatus === currentStatus) {
+
+                    if (currentStatus !== null && currentStatus !== undefined && btnStatus === currentStatus) {
                         btn.classList.add('active');
                     } else {
                         btn.classList.remove('active');

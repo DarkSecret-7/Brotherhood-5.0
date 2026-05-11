@@ -127,7 +127,7 @@
             window.dashboardStateManager = new DashboardStateManager();
 
             // Architecture: Controller → Transformer → API → State
-            window.profileController = new ProfileController(dashboardStateManager, authTransformer, dashboardApiService);
+            window.profileController = new ProfileController(dashboardStateManager, authTransformer);
 
             // Subscribe controller's dialog renderer to state changes
             dashboardStateManager.subscribe(profileController.renderDialog.bind(profileController));

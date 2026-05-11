@@ -112,9 +112,11 @@
     <!-- Scripts -->
     <script src="/frontend/api/base-api-service.js"></script>
     <script src="/frontend/api/auth/auth-api-service.js"></script>
+    <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
     <script src="/frontend/api/dashboard/dashboard-api-service.js"></script>
     <script src="/frontend/utils/expression-utils.js"></script>
     <script src="/frontend/utils/graph-utils.js"></script>
+    <script src="/frontend/utils/url-parser.js"></script>
     <script src="/frontend/components/graph-visualizer.js"></script>
     <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
     <script src="/frontend/ui/dashboard/dashboard-graph-controller.js"></script>
@@ -134,7 +136,7 @@
                 'preview-graph-container',
                 {}                          // No callbacks for preview
             );
-            window.libraryController = new LibraryController(dashboardStateManager, dashboardApiService);
+            window.libraryController = new LibraryController(dashboardStateManager);
             await libraryController.init();
         });
 

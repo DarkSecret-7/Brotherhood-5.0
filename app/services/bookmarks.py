@@ -28,7 +28,7 @@ class BookmarkService:
         bookmarks = crud.bookmarks.get_bookmarks(db, user_id=user_id)
         result = []
         for bookmark in bookmarks:
-            graph_meta = snapshots.SnapshotService._extract_metadata(db, bookmark.graph_id)
+            graph_meta = snapshots.SnapshotService._extract_metadata(db, bookmark.graph_uuid)
             bookmark_read = schemas.BookmarkRead(
                 graph_uuid=bookmark.graph_uuid,
                 user_uuid=bookmark.user_uuid,
@@ -49,7 +49,7 @@ class BookmarkService:
         if not bookmark:
             bookmark = crud.bookmarks.create_bookmark(db, user_id=user_id, graph_id=graph_id)
 
-        graph_meta = snapshots.SnapshotService._extract_metadata(db, bookmark.graph_id)
+        graph_meta = snapshots.SnapshotService._extract_metadata(db, bookmark.graph_uuid)
         return schemas.BookmarkRead(
             graph_uuid=bookmark.graph_uuid,
             user_uuid=bookmark.user_uuid,

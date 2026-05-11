@@ -23,10 +23,9 @@
  * Architecture: Controller → Transformer → API → State
  */
 class ProfileController {
-    constructor(stateManager, transformer, apiService) {
+    constructor(stateManager, transformer) {
         this.stateManager = stateManager;
         this.transformer = transformer;
-        this.apiService = apiService;
         this.container = document.getElementById('profile-container');
     }
 
@@ -68,7 +67,7 @@ class ProfileController {
     async loadProfile() {
         try {
             // Controller → API → Transformer → State
-            const backendProfile = await this.apiService.getFullProfile();
+            const backendProfile = await dashboardApiService.getFullProfile();
             const frontendProfile = this.transformer.transformUserFromBackend(backendProfile);
             this.stateManager.setProfile(frontendProfile);
         } catch (error) {
@@ -102,7 +101,7 @@ class ProfileController {
         const backendData = this.transformer.transformUserToBackend(frontendData);
 
         try {
-            const updatedBackendProfile = await this.apiService.updateProfile(backendData);
+            const updatedBackendProfile = await dashboardApiService.updateProfile(backendData);
             const updatedFrontendProfile = this.transformer.transformUserFromBackend(updatedBackendProfile);
             this.stateManager.setProfile(updatedFrontendProfile);
             this.stateManager.toggleProfileEditMode(false);

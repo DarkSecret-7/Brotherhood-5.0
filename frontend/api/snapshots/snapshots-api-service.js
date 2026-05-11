@@ -18,11 +18,100 @@
  */
 
 /**
- * Snapshots API Service - Graph snapshot endpoints
- * Handles CRUD operations for graph snapshots using UUIDs
+ * Unified Snapshots API Service
+ * Handles all snapshot operations through two main endpoints:
+ * - Bulk: GET /snapshots (with filters: public_only, metadata_only, skip, limit)
+ * - Single: GET /snapshots/{uuid} (with action: read, fetch, assess, write, delete)
  */
 class SnapshotsApiService extends BaseApiService {
-    
+
+    // ============== BULK OPERATIONS ==============
+
+    /**
+     * Get snapshots list - unified bulk endpoint
+     * @param {Object} options - {
+     *   skip?: number,
+     *   limit?: number,
+     *   publicOnly?: boolean - true for public gallery, false for user accessible
+     *   metadataOnly?: boolean - true to get only metadata (lightweight)
+     * }
+     */
+    async getSnapshots(options = {}) {
+        const params = new URLSearchParams();
+        if (options.skip !== undefined) params.append('skip', options.skip);
+        if (options.limit !== undefined) params.append('limit', options.limit);
+        if (options.publicOnly) params.append('public_only', 'true');
+        if (options.metadataOnly) params.append('metadata_only', 'true');
+
+        const endpoint = `/snapshots${params.toString() ? '?' + params.toString() : ''}`;
+        return await this.get(endpoint);
+    }
+
+    // ============== SINGLE SNAPSHOT OPERATIONS ==============
+
+    /**
+     * Get single snapshot - unified endpoint with action parameter
+     * @param {string} snapshotUuid - The snapshot UUID
+     * @param {Object} options - {
+     *   action?: string - "read" | "fetch" | "assess" | "write" | "delete"
+     *   public?: boolean - true for public access (skips auth)
+     *   metadata_only?: boolean - true for metadata only
+     * }
+     */
+    async getSnapshot(snapshotUuid, options = {}) {
+        const params = new URLSearchParams();
+        const action = options.action || 'read';
+        params.append('action', action);
+        if (options.public) params.append('public', 'true');
+        if (options.metadataOnly) params.append('metadata_only', 'true');
+
+        return await this.get(`/snapshots/${snapshotUuid}?${params.toString()}`);
+    }
+
+    // ============== CONVENIENCE METHODS (using unified endpoints) ==============
+
+    /**
+     * Get public snapshots for gallery etc
+     * @param {boolean} metadataOnly - true for metadata only (lightweight)
+     */
+    async getPublicSnapshots(metadataOnly = false) {
+        return await this.getSnapshots({ action: 'read', publicOnly: true, metadataOnly: metadataOnly });
+    }
+
+    /**
+     * Get public snapshot for gallery viewing etc
+     * @param {string} snapshotUuid
+     */
+    async getPublicSnapshot(snapshotUuid) {
+        return await this.getSnapshot(snapshotUuid, { action: 'read', public: true });
+    }
+
+    /**
+     * Get snapshot for assessment (requires bookmark)
+     * @param {string} snapshotUuid
+     */
+    async getSnapshotForAssessment(snapshotUuid) {
+        return await this.getSnapshot(snapshotUuid, { action: 'assess', public: true });
+    }
+
+    /**
+     * Get snapshot metadata only
+     * @param {string} snapshotUuid
+     */
+    async getSnapshotMetadata(snapshotUuid) {
+        return await this.getSnapshot(snapshotUuid, { action: 'read', metadataOnly: true });
+    }
+
+    /**
+     * Fetch snapshot for editing
+     * @param {string} snapshotUuid
+     */
+    async fetchSnapshotForEdit(snapshotUuid) {
+        return await this.getSnapshot(snapshotUuid, { action: 'fetch' });
+    }
+
+    // ============== WRITE OPERATIONS ==============
+
     /**
      * Create new snapshot
      * @param {Object} snapshotData - { version_label, nodes, domains, base_uuid?, redirects? }
@@ -32,60 +121,9 @@ class SnapshotsApiService extends BaseApiService {
     }
 
     /**
-     * Get user's accessible snapshots
-     * @param {Object} options - { skip?, limit? }
-     */
-    async getUserSnapshots(options = {}) {
-        const params = new URLSearchParams();
-        if (options.skip) params.append('skip', options.skip);
-        if (options.limit) params.append('limit', options.limit);
-        
-        const endpoint = `/snapshots${params.toString() ? '?' + params.toString() : ''}`;
-        return await this.get(endpoint);
-    }
-
-    /**
-     * Get public snapshots
-     * @param {Object} options - { skip?, limit? }
-     */
-    async getPublicSnapshots(options = {}) {
-        const params = new URLSearchParams();
-        if (options.skip) params.append('skip', options.skip);
-        if (options.limit) params.append('limit', options.limit);
-        
-        const endpoint = `/public/snapshots${params.toString() ? '?' + params.toString() : ''}`;
-        return await this.get(endpoint);
-    }
-
-    /**
-     * Get specific snapshot by UUID
-     * @param {string} snapshotUuid - The snapshot UUID
-     * @param {string} action - "read", "fetch", "write", or "delete"
-     */
-    async getSnapshot(snapshotUuid, action = 'read') {
-        return await this.get(`/snapshots/${snapshotUuid}?action=${action}`);
-    }
-
-    /**
-     * Get public snapshot by UUID
-     * @param {string} snapshotUuid - The snapshot UUID
-     */
-    async getPublicSnapshot(snapshotUuid) {
-        return await this.get(`/public/snapshots/${snapshotUuid}`);
-    }
-
-    /**
-     * Legacy: Get snapshot for reading (backward compatibility)
-     * @param {string} snapshotUuid - The snapshot UUID
-     */
-    async readSnapshot(snapshotUuid) {
-        return await this.get(`/snapshots/${snapshotUuid}/read`);
-    }
-
-    /**
      * Update snapshot
-     * @param {string} snapshotUuid - The snapshot UUID
-     * @param {Object} updateData - { version_label?, nodes?, domains?, overwrite?, is_public? }
+     * @param {string} snapshotUuid
+     * @param {Object} updateData
      */
     async updateSnapshot(snapshotUuid, updateData) {
         return await this.patch(`/snapshots/${snapshotUuid}`, updateData);
@@ -93,15 +131,17 @@ class SnapshotsApiService extends BaseApiService {
 
     /**
      * Delete snapshot
-     * @param {string} snapshotUuid - The snapshot UUID
+     * @param {string} snapshotUuid
      */
     async deleteSnapshot(snapshotUuid) {
         return await this.delete(`/snapshots/${snapshotUuid}`);
     }
 
+    // ============== IMPORT/EXPORT ==============
+
     /**
      * Export snapshot as file
-     * @param {string} snapshotUuid - The snapshot UUID
+     * @param {string} snapshotUuid
      */
     async exportSnapshot(snapshotUuid) {
         return await this.download(`/snapshots/${snapshotUuid}/export`);
@@ -109,57 +149,30 @@ class SnapshotsApiService extends BaseApiService {
 
     /**
      * Import snapshot from file
-     * @param {File} file - The .knw file to import
-     * @param {boolean} overwrite - Whether to overwrite if exists
+     * @param {File} file - The .knw file
+     * @param {boolean} overwrite
      */
     async importSnapshot(file, overwrite = false) {
         return await this.upload('/snapshots/import', file, overwrite);
     }
 
+    // ============== AUTHORIZATION CHECK ==============
+
     /**
-     * Check if user has authorization for specific action on snapshot
-     * @param {string} snapshotUuid - The snapshot UUID
-     * @param {string} action - "read", "fetch", "write", or "delete"
+     * Check if user has authorization for specific action
+     * @param {string} snapshotUuid
+     * @param {string} action - "read" | "fetch" | "assess" | "write" | "delete"
      */
     async checkAuthorization(snapshotUuid, action) {
         try {
-            await this.get(`/snapshots/${snapshotUuid}?action=${action}`);
+            await this.getSnapshot(snapshotUuid, { action });
             return true;
         } catch (error) {
-            if (error.message.includes('403') || error.message.includes('Unauthorized')) {
+            if (error.message.includes('403') || error.message.includes('Unauthorized') || error.message.includes('Not authorized')) {
                 return false;
             }
             throw error;
         }
-    }
-
-    /**
-     * Get snapshot with full graph data for editing
-     * @param {string} snapshotUuid - The snapshot UUID
-     */
-    async fetchSnapshotForEdit(snapshotUuid) {
-        return await this.getSnapshot(snapshotUuid, 'fetch');
-    }
-
-    /**
-     * Get snapshot metadata only (without full graph data)
-     * @param {string} snapshotUuid - The snapshot UUID
-     */
-    async getSnapshotMetadata(snapshotUuid) {
-        const snapshot = await this.getSnapshot(snapshotUuid, 'read');
-        // Return only metadata, exclude large arrays
-        return {
-            public_uuid: snapshot.public_uuid,
-            base_uuid: snapshot.base_uuid,
-            base_graph_label: snapshot.base_graph_label,
-            version_label: snapshot.version_label,
-            created_at: snapshot.created_at,
-            last_updated: snapshot.last_updated,
-            is_public: snapshot.is_public,
-            authors: snapshot.authors,
-            node_count: snapshot.node_count,
-            assessable_node_count: snapshot.assessable_node_count
-        };
     }
 }
 

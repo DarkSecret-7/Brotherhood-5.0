@@ -63,27 +63,9 @@ class DatabaseStateManager {
         // Load cached data from localStorage
         this.loadCachedSnapshots();
         
-        // Initialize service references
-        this.snapshotsApiService = null;
-        this.snapshotsTransformer = null;
+        // Use global services from scope
     }
 
-    /**
-     * Initialize API service and transformer references
-     */
-    initializeServices(snapshotsApiService, snapshotsTransformer) {
-        this.snapshotsApiService = snapshotsApiService;
-        this.snapshotsTransformer = snapshotsTransformer;
-    }
-
-    /**
-     * Ensure orchestration dependencies are available
-     */
-    ensureServicesInitialized() {
-        if (!this.snapshotsApiService || !this.snapshotsTransformer) {
-            throw new Error('Required services not initialized');
-        }
-    }
 
     /**
      * Stage transformed snapshot for workspace consumption.
@@ -406,7 +388,6 @@ class DatabaseStateManager {
      * Refresh snapshots from API
      */
     async refreshSnapshots(force = false) {
-        this.ensureServicesInitialized();
 
         // Cache Check: If force is false, try to load from cache
         if (!force) {
@@ -421,7 +402,7 @@ class DatabaseStateManager {
         this.clearError();
         
         try {
-            const backendSnapshots = await this.snapshotsApiService.getUserSnapshots();
+            const backendSnapshots = await snapshotsApiService.getSnapshots({ metadataOnly: true });
 
             console.log('Backend snapshots:', backendSnapshots);
             
@@ -432,7 +413,7 @@ class DatabaseStateManager {
             }
 
             // Transform backend data to frontend format
-            const frontendSnapshots = this.snapshotsTransformer.transformSnapshotListFromBackend(backendSnapshots);
+            const frontendSnapshots = snapshotsTransformer.transformSnapshotListFromBackend(backendSnapshots);
             console.log('Frontend snapshots:', frontendSnapshots);
 
             // Cache the new data and update state
@@ -462,7 +443,6 @@ class DatabaseStateManager {
             throw new Error("Graph name cannot be empty");
         }
         
-        this.ensureServicesInitialized();
         
         this.setLoading(true);
         this.clearError();
@@ -484,7 +464,7 @@ class DatabaseStateManager {
             };
 
             // Delegate to transformer - it handles transformation + API call + response transformation
-            const savedFrontendSnapshot = await this.snapshotsTransformer.saveSnapshot(workspaceDraft, {
+            const savedFrontendSnapshot = await snapshotsTransformer.saveSnapshot(workspaceDraft, {
                 currentSnapshotUuid: snapshotUuid,
                 overwrite: true,
                 metadataOnly: true
@@ -516,7 +496,6 @@ class DatabaseStateManager {
      * @returns {Object} Transformed saved snapshot
      */
     async saveWorkspaceSnapshot(workspaceDraft) {
-        this.ensureServicesInitialized();
 
         if (!workspaceDraft || !Array.isArray(workspaceDraft.nodes) || !Array.isArray(workspaceDraft.domains)) {
             throw new Error('Invalid workspace draft payload');
@@ -545,7 +524,7 @@ class DatabaseStateManager {
             }
 
             console.log('workspaceDraft', workspaceDraft);
-            const savedFrontendSnapshot = await this.snapshotsTransformer.saveSnapshot(workspaceDraft, {
+            const savedFrontendSnapshot = await snapshotsTransformer.saveSnapshot(workspaceDraft, {
                 currentSnapshotUuid: overwriteTargetUuid,
                 overwrite: shouldOverwrite
             });
@@ -587,13 +566,11 @@ class DatabaseStateManager {
             throw new Error('No current snapshot selected');
         }
         
-        this.ensureServicesInitialized();
-        
         try {
             // Use UUID for API call, version label only for filename
             const uuid = currentSnapshot.uuid;
             const label = currentSnapshot.versionLabel || ('graph_' + uuid);
-            const blob = await this.snapshotsApiService.exportSnapshot(uuid);
+            const blob = await snapshotsApiService.exportSnapshot(uuid);
             return { blob, label };
         } catch (error) {
             this.setError('Export failed: ' + error.message);
@@ -610,13 +587,11 @@ class DatabaseStateManager {
             throw new Error('No file selected');
         }
         
-        this.ensureServicesInitialized();
-        
         this.setLoading(true);
         this.clearError();
         
         try {
-            const result = await this.snapshotsTransformer.importSnapshot(file, true);
+            const result = await snapshotsTransformer.importSnapshot(file, true);
             
             // Refresh list
             await this.refreshSnapshots(true);
@@ -639,15 +614,13 @@ class DatabaseStateManager {
             throw new Error('No current snapshot selected');
         }
         
-        this.ensureServicesInitialized();
-        
         this.setLoading(true);
         this.clearError();
         
         try {
             // Use UUID for API call
             const uuid = currentSnapshot.uuid;
-            await this.snapshotsApiService.deleteSnapshot(uuid);
+            await snapshotsApiService.deleteSnapshot(uuid);
             
             this.clearCachedSnapshots();
             await this.refreshSnapshots(true);
@@ -669,8 +642,6 @@ class DatabaseStateManager {
         if (!file) {
             throw new Error('No file selected');
         }
-        
-        this.ensureServicesInitialized();
         
         this.setLoading(true);
         this.clearError();
@@ -694,17 +665,16 @@ class DatabaseStateManager {
      * Fetch snapshot to workspace
      */
     async fetchSnapshotToWorkspace(snapshotUuid) {
-        this.ensureServicesInitialized();
         
         try {
             if (!snapshotUuid) {
                 throw new Error('Snapshot UUID is required');
             }
 
-            const backendSnapshot = await this.snapshotsApiService.getSnapshot(snapshotUuid, 'fetch');
+            const backendSnapshot = await snapshotsApiService.getSnapshot(snapshotUuid, { action: 'fetch' });
             
             // Transform backend snapshot to frontend format
-            const frontendSnapshot = this.snapshotsTransformer.transformSnapshotFromBackend(backendSnapshot);
+            const frontendSnapshot = snapshotsTransformer.transformSnapshotFromBackend(backendSnapshot);
 
             console.log('fetched snaphot:', frontendSnapshot);
             

@@ -397,9 +397,6 @@ class DatabaseManager {
 document.addEventListener('DOMContentLoaded', function() {
     // Check if required services are available
     if (window.snapshotsApiService && window.databaseStateManager && window.snapshotsTransformer) {
-        // Initialize services in state manager
-        window.databaseStateManager.initializeServices(window.snapshotsApiService, window.snapshotsTransformer);
-        
         // Initialize database manager
         window.databaseManager = new DatabaseManager(window.databaseStateManager);
         

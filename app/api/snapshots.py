@@ -18,10 +18,11 @@
 """
 Snapshot CRUD endpoints
 """
+from importlib import metadata
 import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Union
 from uuid import UUID
 from .. import services, schemas, models, database
 from .auth import get_current_user
@@ -32,41 +33,59 @@ router = APIRouter()
 def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     return services.snapshots.SnapshotService.create_snapshot(db=db, snapshot_data=snapshot)
 
-@router.get("/snapshots", response_model=List[schemas.GraphSnapshotRead])
-def read_snapshots(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
-    return services.snapshots.SnapshotService.get_user_accessible_snapshots(db, current_user.id, skip=skip, limit=limit)
-
-@router.get("/public/snapshots", response_model=List[schemas.GraphSnapshotRead])
-def read_public_snapshots(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
-    return services.snapshots.SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
-
-@router.get("/snapshots/{snapshot_uuid}", response_model=schemas.GraphSnapshotRead)
-def get_snapshot(
-    snapshot_uuid: UUID, 
-    action: str = "read",  # Default to read-only
-    db: Session = Depends(database.get_db), 
+@router.get("/snapshots", response_model=Union[List[schemas.GraphSnapshotRead], List[schemas.GraphSnapshotMeta]])
+def read_snapshots(
+    skip: int = 0,
+    limit: int = 100,
+    public_only: bool = False,
+    metadata_only: bool = False,
+    db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    Get snapshot with specified action:
-    - "read": Read-only access (always allowed)
-    - "fetch": Read for editing (registered users only) 
-    - "write": Update/overwrite access (authors only)
-    - "delete": Delete access (authors only)
+    Get snapshots list - unified bulk endpoint
+    - public_only=true: Returns only public snapshots (no auth required)
+    - public_only=false (default): Returns user accessible snapshots
+    - metadata_only=true: Returns only metadata (lightweight)
     """
     user_id = current_user.id if current_user else None
-    return services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
 
-@router.get("/public/snapshots/{snapshot_uuid}", response_model=schemas.GraphSnapshotRead)
-def read_public_snapshot(snapshot_uuid: UUID, db: Session = Depends(database.get_db)):
-    return services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid)
+    if public_only:
+        snapshots = services.snapshots.SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
+    else:
+        snapshots = services.snapshots.SnapshotService.get_user_accessible_snapshots(db, user_id, skip=skip, limit=limit)
 
-# Legacy endpoints for backward compatibility
-@router.get("/snapshots/{snapshot_uuid}/read", response_model=schemas.GraphSnapshotRead)
-def get_snapshot_legacy(snapshot_uuid: UUID, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
-    """Legacy endpoint - use GET /snapshots/{uuid}?action=read instead"""
-    user_id = current_user.id if current_user else None
-    return services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, "read")
+    if metadata_only:
+        # Return only metadata fields
+        return [services.snapshots.SnapshotService._extract_metadata(db, s.public_uuid) for s in snapshots]
+
+    return snapshots
+
+@router.get("/snapshots/{snapshot_uuid}", response_model=Union[schemas.GraphSnapshotRead, schemas.GraphSnapshotMeta])
+def get_snapshot(
+    snapshot_uuid: UUID,
+    action: str = "read",
+    public: bool = False,
+    metadata_only: bool = False,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get single snapshot - unified endpoint
+    - action: "read" | "fetch" | "assess"
+    - public=true: Skip auth, return public snapshot
+    - metadata_only=true: Return only metadata fields
+    """
+    if public:
+        snapshot = services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid)
+    else:
+        user_id = current_user.id if current_user else None
+        snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
+
+    if metadata_only:
+        return services.snapshots.SnapshotService._extract_metadata(db, snapshot_uuid)
+
+    return snapshot
 
 @router.patch("/snapshots/{snapshot_uuid}", response_model=schemas.GraphSnapshotRead)
 def update_snapshot(

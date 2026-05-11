@@ -22,9 +22,9 @@
  * Combines UI controller and operations controller for read-only gallery
  */
 class GalleryController {
-    constructor(stateManager, apiService, transformer) {
+    constructor(stateManager, transformer) {
         this.stateManager = stateManager;
-        this.apiService = apiService;
+        // Use global API services from scope
         this.transformer = transformer;
 
         this.visualizer = null;
@@ -125,11 +125,53 @@ class GalleryController {
      * Initialize gallery
      */
     async initializeGallery() {
+        // Parse URL parameters using utility
+        const urlParams = UrlParser.parseUrlParameters();
+        
         // Load snapshot list
         await this.loadSnapshotList();
         
         // Initialize graph visualizer
         this.initializeVisualizer();
+        
+        // Load specific graph if UUID provided in URL
+        if (urlParams.graph) {
+            await this.loadSnapshotFromUrl(urlParams.graph);
+        }
+    }
+    
+    /**
+     * Load snapshot from URL parameter with error handling
+     * @param {string} graphUuid - Graph UUID from URL
+     */
+    async loadSnapshotFromUrl(graphUuid) {
+        try {
+            // Check if the graph exists in the snapshot list
+            const snapshotExists = this.stateManager.state.snapshotList.some(
+                snapshot => snapshot.uuid === graphUuid
+            );
+            
+            if (!snapshotExists) {
+                console.warn('Graph UUID not found in public gallery:', graphUuid);
+                this.stateManager.showMessage(
+                    `The requested graph is not available in the public gallery.`, 
+                    'error'
+                );
+                return;
+            }
+            
+            // Load the snapshot
+            await this.loadSnapshot(graphUuid);
+            
+            console.log('Loaded graph from URL parameter:', graphUuid);
+            
+        } catch (error) {
+            console.error('Failed to load graph from URL parameter:', error);
+            this.stateManager.showMessage(
+                `Failed to load the requested graph: ${error.message}`, 
+                'error'
+            );
+        }
     }
 
     /**
@@ -159,7 +201,7 @@ class GalleryController {
         try {
             this.stateManager.setLoadingList(true);
             
-            const backendList = await this.apiService.getPublicGallerySnapshots();
+            const backendList = await snapshotsApiService.getPublicSnapshots(true);
             const frontendList = this.transformer.transformSnapshotListFromBackend(backendList);
             
             this.stateManager.loadSnapshotList(frontendList);
@@ -182,7 +224,7 @@ class GalleryController {
         try {
             this.stateManager.setLoading(true);
             
-            const backendSnapshot = await this.apiService.getPublicGallerySnapshot(publicUuid);
+            const backendSnapshot = await snapshotsApiService.getPublicSnapshot(publicUuid);
             const frontendSnapshot = this.transformer.transformSnapshotFromBackend(backendSnapshot);
             
             this.stateManager.loadSnapshot(frontendSnapshot);
@@ -313,6 +355,9 @@ class GalleryController {
             item.addEventListener('click', () => {
                 const uuid = item.dataset.uuid;
                 this.loadSnapshot(uuid);
+                
+                // Update URL to reflect selected graph (without page refresh)
+                UrlParser.updateUrlParameters({ graph: uuid }, true);
             });
         });
     }

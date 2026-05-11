@@ -111,9 +111,9 @@
     <!-- Modern Architecture Dependencies -->
     <script src="/frontend/api/base-api-service.js"></script>
     <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
-    <script src="/frontend/api/snapshots/gallery-api-service.js"></script>
     <script src="/frontend/utils/expression-utils.js"></script>
     <script src="/frontend/utils/graph-utils.js"></script>
+    <script src="/frontend/utils/url-parser.js"></script>
     <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
     <script src="/frontend/state/gallery-state-manager.js"></script>
     <script src="/frontend/ui/gallery/gallery-controller.js"></script>
@@ -138,11 +138,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize the modern gallery architecture
             const stateManager = galleryStateManager;
-            const apiService = galleryApiService;
             const transformer = galleryTransformer;
             
             // Create unified gallery controller
-            const galleryController = new GalleryController(stateManager, apiService, transformer);
+            const galleryController = new GalleryController(stateManager, transformer);
         });
     </script>
 </body>

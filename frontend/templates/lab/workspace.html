@@ -489,9 +489,7 @@
             }
 
             // Initialize database orchestration dependencies for delegated save/load flows
-            if (window.databaseStateManager && window.snapshotsApiService && window.snapshotsTransformer) {
-                window.databaseStateManager.initializeServices(window.snapshotsApiService, window.snapshotsTransformer);
-            } else {
+            if (!(window.databaseStateManager && window.snapshotsApiService && window.snapshotsTransformer)) {
                 console.error('Database orchestration dependencies missing:', {
                     databaseStateManager: !!window.databaseStateManager,
                     snapshotsApiService: !!window.snapshotsApiService,
