@@ -18,14 +18,13 @@
 """
 Snapshot CRUD endpoints
 """
-from importlib import metadata
 import json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Union
 from uuid import UUID
 from .. import services, schemas, models, database
-from .auth import get_current_user, get_current_user_optional
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -37,11 +36,11 @@ def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends
 def read_snapshots(
     skip: int = 0,
     limit: int = 100,
-    public_only: bool = False,
+    public_only: bool = True,
     action: str = "read",
-    metadata_only: bool = False,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(get_current_user_optional)
+    metadata_only: bool = True,
+    db: Session = Depends(database.get_db)
+    # current_user moved to internal to support no auth for public graphs
 ):
     """
     Get snapshots list - unified bulk endpoint
@@ -50,19 +49,13 @@ def read_snapshots(
     - action: "read" | "fetch" | "assess" - authorization level required
     - metadata_only=true: Returns only metadata (lightweight)
     """
-    # Require auth if not public_only
-    if not public_only and not current_user:
-        from fastapi import HTTPException, status
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
-        )
-
-    user_id = current_user.id if current_user else None
 
     if public_only:
         snapshots = services.snapshots.SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
     else:
+        current_user = get_current_user()
+        user_id = current_user.id if current_user else None
+
         snapshots = services.snapshots.SnapshotService.get_user_accessible_snapshots(db, user_id, action=action, skip=skip, limit=limit)
 
     if metadata_only:
@@ -75,10 +68,10 @@ def read_snapshots(
 def get_snapshot(
     snapshot_uuid: UUID,
     action: str = "read",
-    public: bool = False,
+    public: bool = True,
     metadata_only: bool = False,
     db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(get_current_user_optional)      # public graphs accessible to non-registered users
+    # current_user moved to internal to support no auth for public graphs
 ):
     """
     Get single snapshot - unified endpoint
@@ -86,18 +79,13 @@ def get_snapshot(
     - public=true: Skip auth, return public snapshot
     - metadata_only=true: Return only metadata fields
     """
-    # Require auth if not public
-    if not public and not current_user:
-        from fastapi import HTTPException, status
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
-        )
 
     if public:
         snapshot = services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid)
     else:
+        current_user = get_current_user()
         user_id = current_user.id if current_user else None
+
         snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
 
     if metadata_only:
