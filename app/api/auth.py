@@ -34,29 +34,40 @@ async def get_current_user(db: Session = Depends(database.get_db), token: str = 
         user = services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
         if user is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return user
     except Exception:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+async def get_current_user_optional(db: Session = Depends(database.get_db), token: str = Depends(oauth2_scheme)):
+    """FastAPI dependency for getting current user, returns None if not authenticated"""
+    try:
+        token_data = utils.get_current_user_token_data(token)
+        user = services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
+        if user is None:
+            return None
+        return user
+    except Exception:
+        return None
 
 @router.post("/auth/signup", response_model=schemas.UserRead)
 def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     # Check if user already exists
     db_user = services.users.UserService.get_user_by_username(db, username=user.username)
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
     
     # Check invitation code
     db_invitation = services.invitations.InvitationService.get_invitation_by_code(db, code=user.invitation_code)
     if not db_invitation or db_invitation.is_used:
-        raise HTTPException(status_code=400, detail="Invalid or used invitation code")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or used invitation code")
     
     # Create user - frontend sends plain passwords now
     new_user = services.users.UserService.create_user(db, user=user)

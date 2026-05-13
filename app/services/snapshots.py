@@ -624,7 +624,7 @@ class SnapshotService:
                     )
                 else:
                     # Create new node
-                    db_node = models.Node(
+                    db_node = crud.snapshots.create_node_record(db,
                         snapshot_id=snapshot_id,
                         local_id=local_id,
                         title=node_data.title,
@@ -634,9 +634,7 @@ class SnapshotService:
                         assessable=node_data.assessable,
                         domain_id=domain_db_id,
                         x=node_data.x,
-                        y=node_data.y
-                    )
-                    crud.snapshots.create_node_record(db, db_node)
+                        y=node_data.y)
                     db.flush()  # Need to flush to get the node.id for source fragments
                     
                     # Create source fragments for new node

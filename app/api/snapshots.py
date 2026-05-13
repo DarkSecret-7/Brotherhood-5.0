@@ -18,13 +18,14 @@
 """
 Snapshot CRUD endpoints
 """
+from ast import Raise
 import json
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Union
 from uuid import UUID
 from .. import services, schemas, models, database
-from .auth import get_current_user
+from .auth import get_current_user, get_current_user_optional
 
 router = APIRouter()
 
@@ -36,11 +37,11 @@ def create_snapshot(snapshot: schemas.GraphSnapshotCreate, db: Session = Depends
 def read_snapshots(
     skip: int = 0,
     limit: int = 100,
-    public_only: bool = True,
+    public_only: bool = False,
     action: str = "read",
-    metadata_only: bool = True,
-    db: Session = Depends(database.get_db)
-    # current_user moved to internal to support no auth for public graphs
+    metadata_only: bool = True,     # Defaults to true for bulk snapshot fetching
+    db: Session = Depends(database.get_db),
+    current_user = Depends(get_current_user_optional)
 ):
     """
     Get snapshots list - unified bulk endpoint
@@ -53,9 +54,13 @@ def read_snapshots(
     if public_only:
         snapshots = services.snapshots.SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
     else:
-        current_user = get_current_user()
-        user_id = current_user.id if current_user else None
-
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_id = current_user.id
         snapshots = services.snapshots.SnapshotService.get_user_accessible_snapshots(db, user_id, action=action, skip=skip, limit=limit)
 
     if metadata_only:
@@ -68,10 +73,10 @@ def read_snapshots(
 def get_snapshot(
     snapshot_uuid: UUID,
     action: str = "read",
-    public: bool = True,
+    public: bool = False,
     metadata_only: bool = False,
     db: Session = Depends(database.get_db),
-    # current_user moved to internal to support no auth for public graphs
+    current_user = Depends(get_current_user_optional)
 ):
     """
     Get single snapshot - unified endpoint
@@ -83,9 +88,13 @@ def get_snapshot(
     if public:
         snapshot = services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid)
     else:
-        current_user = get_current_user()
-        user_id = current_user.id if current_user else None
-
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_id = current_user.id
         snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
 
     if metadata_only:
@@ -104,7 +113,7 @@ def update_snapshot(
     user_id = current_user.id if current_user else None
     # Check write authorization before updating
     if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "write"):
-        raise HTTPException(status_code=403, detail="Not authorized to update this snapshot")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this snapshot")
     
     return services.snapshots.SnapshotService.update_snapshot(db, snapshot_uuid, update_data)
 
@@ -114,11 +123,11 @@ def delete_snapshot(snapshot_uuid: UUID, db: Session = Depends(database.get_db),
     user_id = current_user.id if current_user else None
     # Check delete authorization before deleting
     if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "delete"):
-        raise HTTPException(status_code=403, detail="Not authorized to delete this snapshot")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this snapshot")
     
     success = services.snapshots.SnapshotService.delete_snapshot(db, snapshot_uuid)
     if not success:
-        raise HTTPException(status_code=404, detail="Snapshot not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
     
     return {"message": "Snapshot deleted successfully"}
 
@@ -134,7 +143,7 @@ def export_snapshot(
     
     # Check read authorization
     if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "read"):
-        raise HTTPException(status_code=403, detail="Not authorized to export this snapshot")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to export this snapshot")
     
     try:
         # Get snapshot data for export
@@ -145,7 +154,7 @@ def export_snapshot(
         graph_label = snapshot_data.get('version_label') or f"graph_{snapshot_uuid}"
         return create_export_file(snapshot_data, graph_label)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.post("/snapshots/import", response_model=schemas.GraphSnapshotRead)
@@ -157,12 +166,12 @@ def import_snapshot(
 ):
     """Import snapshot from .knw file"""
     if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     
     # Validate file extension
     from ..utils import validate_import_file, parse_import_content
     if not validate_import_file(file.filename):
-        raise HTTPException(status_code=400, detail="Invalid file format. Only .knw files are allowed.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file format. Only .knw files are allowed.")
     
     try:
         # Read and parse file content
@@ -178,6 +187,6 @@ def import_snapshot(
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON content in file")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON content in file")
