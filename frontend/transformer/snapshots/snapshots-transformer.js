@@ -361,8 +361,8 @@ class SnapshotsTransformer {
      * @param {boolean} overwrite - Whether to overwrite if exists
      * @returns {Object} Transformed snapshot in frontend format
      */
-    async importSnapshot(file, overwrite = false) {
-        const backendSnapshot = await window.snapshotsApiService.importSnapshot(file, overwrite);
+    async importSnapshot(file, overwrite = false, targetUuid = null) {
+        const backendSnapshot = await window.snapshotsApiService.importSnapshot(file, overwrite, targetUuid);
         // Transform backend response to frontend format
         return this.transformSnapshotFromBackend(backendSnapshot);
     }

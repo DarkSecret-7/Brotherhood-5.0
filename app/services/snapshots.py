@@ -237,7 +237,7 @@ class SnapshotService:
         }
 
     @staticmethod
-    def import_snapshot(db: Session, import_data: dict, current_user: models.User, overwrite: bool = False) -> schemas.GraphSnapshotRead:
+    def import_snapshot(db: Session, import_data: dict, current_user: models.User, overwrite: bool = False, target_uuid: UUID = None) -> schemas.GraphSnapshotRead:
         """Import snapshot from .knw file data"""
         from ..utils import clean_import_data, handle_redirects_import
         from datetime import datetime
@@ -263,9 +263,16 @@ class SnapshotService:
                 pass
         
         # Check if a snapshot with this UUID already exists
+        # If target_uuid is provided, search for overwrite target first
+        # If not, simply use uuid on the import file
         existing_snapshot = None
         import_uuid = cleaned_data.get('public_uuid')
-        if import_uuid:
+        if target_uuid:
+            try:
+                existing_snapshot = crud.snapshots.get_snapshot_by_uuid(db, UUID(target_uuid))
+            except (ValueError, TypeError):
+                pass
+        elif import_uuid:
             try:
                 existing_snapshot = crud.snapshots.get_snapshot_by_uuid(db, UUID(import_uuid))
             except (ValueError, TypeError):

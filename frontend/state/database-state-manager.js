@@ -582,7 +582,7 @@ class DatabaseStateManager {
      * Import graph (overwrite existing)
      * Delegates to transformer for proper response transformation.
      */
-    async importGraph(file) {
+    async importGraph(file, targetUuid) {
         if (!file) {
             throw new Error('No file selected');
         }
@@ -591,7 +591,7 @@ class DatabaseStateManager {
         this.clearError();
         
         try {
-            const result = await snapshotsTransformer.importSnapshot(file, true);
+            const result = await snapshotsTransformer.importSnapshot(file, true, targetUuid);
             
             // Refresh list
             await this.refreshSnapshots(true);

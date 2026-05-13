@@ -161,6 +161,7 @@ def export_snapshot(
 def import_snapshot(
     file: UploadFile = File(...),
     overwrite: bool = False,
+    target_uuid: UUID = None,       # target snapshot UUID for overwrite (Optional)
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -183,7 +184,8 @@ def import_snapshot(
             db=db,
             import_data=import_data,
             current_user=current_user,
-            overwrite=overwrite
+            overwrite=overwrite,
+            target_uuid=target_uuid
         )
         return result
     except ValueError as e:

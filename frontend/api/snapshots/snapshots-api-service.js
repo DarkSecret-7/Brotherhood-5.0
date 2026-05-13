@@ -153,9 +153,10 @@ class SnapshotsApiService extends BaseApiService {
      * Import snapshot from file
      * @param {File} file - The .knw file
      * @param {boolean} overwrite
+     * @param {string} targetUuid - Target snapshot UUID for overwrite (optional)
      */
-    async importSnapshot(file, overwrite = false) {
-        return await this.upload('/snapshots/import', file, overwrite);
+    async importSnapshot(file, overwrite = false, targetUuid = null) {
+        return await this.upload('/snapshots/import', file, overwrite, targetUuid);
     }
 
     // ============== AUTHORIZATION CHECK ==============
