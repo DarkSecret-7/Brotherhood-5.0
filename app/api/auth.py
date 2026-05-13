@@ -46,6 +46,17 @@ async def get_current_user(db: Session = Depends(database.get_db), token: str = 
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+async def get_current_user_optional(db: Session = Depends(database.get_db), token: str = Depends(oauth2_scheme)):
+    """Optional FastAPI dependency for getting current user - returns None if not authenticated"""
+    try:
+        token_data = utils.get_current_user_token_data(token)
+        user = services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
+        if user is None:
+            return None
+        return user
+    except Exception:
+        return None
+
 @router.post("/auth/signup", response_model=schemas.UserRead)
 def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     # Check if user already exists

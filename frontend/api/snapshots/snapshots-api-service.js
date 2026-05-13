@@ -33,6 +33,7 @@ class SnapshotsApiService extends BaseApiService {
      *   skip?: number,
      *   limit?: number,
      *   publicOnly?: boolean - true for public gallery, false for user accessible
+     *   action?: string - "read" | "fetch" | "assess" - authorization level required
      *   metadataOnly?: boolean - true to get only metadata (lightweight)
      * }
      */
@@ -41,6 +42,7 @@ class SnapshotsApiService extends BaseApiService {
         if (options.skip !== undefined) params.append('skip', options.skip);
         if (options.limit !== undefined) params.append('limit', options.limit);
         if (options.publicOnly) params.append('public_only', 'true');
+        if (options.action) params.append('action', options.action);
         if (options.metadataOnly) params.append('metadata_only', 'true');
 
         const endpoint = `/snapshots${params.toString() ? '?' + params.toString() : ''}`;

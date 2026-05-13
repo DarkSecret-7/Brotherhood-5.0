@@ -149,13 +149,13 @@ class SnapshotService:
         return SnapshotService._convert_to_read_schema(snapshot)
 
     @staticmethod
-    def get_user_accessible_snapshots(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[schemas.GraphSnapshotRead]:
+    def get_user_accessible_snapshots(db: Session, user_id: int, action: str = "read", skip: int = 0, limit: int = 100) -> List[schemas.GraphSnapshotRead]:
         """Get snapshots user has access to with business logic"""
         snapshots = crud.snapshots.get_snapshots_paginated(db, skip=skip, limit=limit)
-        # Filter to only show snapshots user has access to
+        # Filter to only show snapshots user has access to based on action
         accessible_snapshots = []
         for snapshot in snapshots:
-            if SnapshotService.check_snapshot_authorization(db, snapshot.public_uuid, user_id, "read"):
+            if SnapshotService.check_snapshot_authorization(db, snapshot.public_uuid, user_id, action):
                 accessible_snapshots.append(SnapshotService._convert_to_read_schema(snapshot))
         return accessible_snapshots
 
