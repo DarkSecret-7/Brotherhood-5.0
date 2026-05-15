@@ -149,7 +149,7 @@ class DashboardStateManager {
         });
 
         try {
-            const backendSnapshot = await dashboardApiService.getGraphDetails(graphUuid);
+            const backendSnapshot = await snapshotsApiService.getPublicSnapshot(graphUuid);
             const transformedSnapshot = galleryTransformer.transformSnapshotFromBackend(backendSnapshot);
             
             this.setState({
