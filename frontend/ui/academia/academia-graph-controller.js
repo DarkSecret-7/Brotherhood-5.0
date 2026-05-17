@@ -18,11 +18,11 @@
  */
 
 /**
- * Dashboard Graph Controller - Reusable graph visualization component for the dashboard
+ * Academia Graph Controller - Reusable graph visualization component for the academia
  * ONLY manipulates graph visualization. NEVER mutates state directly.
  * Passes events back to calling controller via callbacks.
  */
-class DashboardGraphController {
+class AcademiaGraphController {
     /**
      * @param {HTMLElement|string} container - Container element or ID
      * @param {Object} callbacks - { onNodeClick, onEdgeClick, onDomainClick, onUnfocus, onPositionChange }
@@ -50,7 +50,7 @@ class DashboardGraphController {
      */
     initializeVisualizer() {
         if (!this.container) {
-            console.error('DashboardGraphController: Container not found');
+            console.error('AcademiaGraphController: Container not found');
             return;
         }
 
@@ -310,7 +310,7 @@ class DashboardGraphController {
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { DashboardGraphController };
+    module.exports = { AcademiaGraphController };
 } else {
-    window.DashboardGraphController = DashboardGraphController;
+    window.AcademiaGraphController = AcademiaGraphController;
 }

@@ -390,7 +390,7 @@ class AssessmentController {
                 this.stateManager.clearGraph();
                 
                 // Redirect to library
-                window.location.href = '/dashboard/library';
+                window.location.href = '/academia/library';
             }
         });
     }
@@ -834,7 +834,7 @@ class AssessmentController {
             
             // Initialize graph controller if not already done
             if (!this.graphController && this.elements.graphContainer) {
-                this.graphController = new DashboardGraphController(this.elements.graphContainer, {
+                this.graphController = new AcademiaGraphController(this.elements.graphContainer, {
                     onNodeClick: (nodeId) => this.stateManager.selectNode(nodeId),
                     onDomainClick: (domainId) => this.stateManager.selectDomain(domainId),
                     onUnfocus: () => {

@@ -154,6 +154,7 @@ class AssessmentStateManager {
 
         this.setState({
             savedProofInputs,
+            proofInputs: {},
             hasSavedAssessment: true,
             currentCapability: capability
         });

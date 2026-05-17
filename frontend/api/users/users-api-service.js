@@ -18,10 +18,47 @@
  */
 
 /**
- * Users API Service - User management endpoints
- * Handles user profile and related operations using UUIDs
+ * Users API Service - User, profile, and bookmark endpoints
+ * Handles dashboard/academia profile and bookmark operations plus user endpoints
  */
 class UsersApiService extends BaseApiService {
+    /**
+     * Get full profile for the authenticated user
+     */
+    async getFullProfile() {
+        return await this.get('/auth/me/profile');
+    }
+
+    /**
+     * Update profile for the authenticated user
+     * @param {Object} profileData
+     */
+    async updateProfile(profileData) {
+        return await this.patch('/auth/me/profile/update', profileData);
+    }
+
+    /**
+     * Get user bookmarks
+     */
+    async getBookmarks() {
+        return await this.get('/bookmarks');
+    }
+
+    /**
+     * Add a bookmark
+     * @param {string} graphUuid
+     */
+    async createBookmark(graphUuid) {
+        return await this.post('/bookmarks', { graph_uuid: graphUuid });
+    }
+
+    /**
+     * Remove a bookmark
+     * @param {string} graphUuid
+     */
+    async deleteBookmark(graphUuid) {
+        return await this.delete(`/bookmarks/${graphUuid}`);
+    }
     
     /**
      * Get user by UUID

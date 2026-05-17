@@ -125,13 +125,18 @@ async def dashboard_index():
 async def dashboard_profile(request: Request):
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "profile.html"))
 
-@app.get("/dashboard/library")
-async def dashboard_library(request: Request):
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "library.html"))
+# Academia routes
+@app.get("/academia")
+async def academia_index():
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "index.html"))
 
-@app.get("/dashboard/assessment")
+@app.get("/academia/library")
+async def dashboard_library(request: Request):
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "library.html"))
+
+@app.get("/academia/assessment")
 async def dashboard_assessment(request: Request):
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "assessment.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "assessment.html"))
 
 # Root endpoint - serve landing page directly
 @app.get("/")

@@ -22,8 +22,8 @@
  * Manages bookmarks and public graph browsing
  */
 class LibraryController {
-    constructor(stateManager) {
-        this.stateManager = stateManager;
+    constructor(academiaStateManager) {
+        this.stateManager = academiaStateManager;
         // Use global API services from scope
         this.container = document.getElementById('library-content');
         this.activeTab = 'bookmarks'; // 'bookmarks' or 'browse'
@@ -78,7 +78,7 @@ class LibraryController {
 
     async loadBookmarks() {
         try {
-            const bookmarks = await dashboardApiService.getBookmarks();
+            const bookmarks = await usersApiService.getBookmarks();
             this.stateManager.setBookmarks(bookmarks);
             // Cache for instant loading on next visit
             this.saveBookmarksToCache(bookmarks);
@@ -126,9 +126,9 @@ class LibraryController {
         const isBookmarked = this.stateManager.isBookmarked(graphUuid);
         try {
             if (isBookmarked) {
-                await dashboardApiService.deleteBookmark(graphUuid);
+                await usersApiService.deleteBookmark(graphUuid);
             } else {
-                await dashboardApiService.createBookmark(graphUuid);
+                await usersApiService.createBookmark(graphUuid);
             }
             await this.loadBookmarks(); // Refresh list
         } catch (error) {
@@ -196,8 +196,8 @@ class LibraryController {
                         <h3>${b.graph_meta.version_label}</h3>
                         <p>Bookmarked on: ${new Date(b.created_at).toLocaleDateString()}</p>
                         <div class="card-actions">
-                            <button class="btn btn-primary" onclick="window.location.href='/dashboard/assessment?graph=${b.graph_uuid}'">Assess</button>
-                            <button class="btn btn-outline" onclick="dashboardStateManager.loadAndOpenPreview('${b.graph_uuid}')">Preview</button>
+                            <button class="btn btn-primary" onclick="window.location.href='/academia/assessment?graph=${b.graph_uuid}'">Assess</button>
+                            <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${b.graph_uuid}')">Preview</button>
                             <button class="btn btn-danger" onclick="libraryController.toggleBookmark('${b.graph_uuid}')">Remove</button>
                         </div>
                     </div>
@@ -218,7 +218,7 @@ class LibraryController {
                         <p>Authors: ${this.extractAuthors(g.authors)}</p>
                         <p>Nodes: ${g.node_count}, Assessable: ${g.assessable_node_count}</p>
                         <div class="card-actions">
-                            <button class="btn btn-outline" onclick="dashboardStateManager.loadAndOpenPreview('${g.public_uuid}')">Preview</button>
+                            <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${g.public_uuid}')">Preview</button>
                             <button class="btn ${this.stateManager.isBookmarked(g.public_uuid) ? 'btn-danger' : 'btn-primary'}"
                                     onclick="libraryController.toggleBookmark('${g.public_uuid}')">
                                 ${this.stateManager.isBookmarked(g.public_uuid) ? 'Remove Bookmark' : 'Bookmark'}
@@ -277,8 +277,8 @@ class LibraryController {
 
         // Update graph when data is available
         if (state.previewModal.graphData && !state.previewModal.isLoading) {
-            if (window.dashboardGraphController) {
-                window.dashboardGraphController.update(state.previewModal.graphData);
+            if (window.academiaGraphController) {
+                window.academiaGraphController.update(state.previewModal.graphData);
             }
         }
     }
@@ -341,7 +341,7 @@ class LibraryController {
         if (!this.currentPreviewGraphUuid) return;
 
         // Navigate to assessment page with graph UUID as URL parameter
-        window.location.href = `/dashboard/assessment?graph=${this.currentPreviewGraphUuid}`;
+        window.location.href = `/academia/assessment?graph=${this.currentPreviewGraphUuid}`;
     }
 
     /**

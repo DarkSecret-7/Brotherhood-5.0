@@ -67,7 +67,7 @@ class ProfileController {
     async loadProfile() {
         try {
             // Controller → API → Transformer → State
-            const backendProfile = await dashboardApiService.getFullProfile();
+            const backendProfile = await usersApiService.getFullProfile();
             const frontendProfile = this.transformer.transformUserFromBackend(backendProfile);
             this.stateManager.setProfile(frontendProfile);
         } catch (error) {
@@ -101,7 +101,7 @@ class ProfileController {
         const backendData = this.transformer.transformUserToBackend(frontendData);
 
         try {
-            const updatedBackendProfile = await dashboardApiService.updateProfile(backendData);
+            const updatedBackendProfile = await usersApiService.updateProfile(backendData);
             const updatedFrontendProfile = this.transformer.transformUserFromBackend(updatedBackendProfile);
             this.stateManager.setProfile(updatedFrontendProfile);
             this.stateManager.toggleProfileEditMode(false);

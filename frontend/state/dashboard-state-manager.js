@@ -29,20 +29,6 @@ class DashboardStateManager {
             profileEditMode: false,
             profileDirty: false,
 
-            // Library
-            bookmarks: [], // Array of BookmarkRead objects
-            bookmarkedGraphMetadata: [], // Minimal metadata for suggestions
-            browseResults: [], // Ephemeral search results
-            searchQuery: '',
-            searchPagination: { skip: 0, limit: 20, hasMore: false },
-            selectedGraph: null, // Full graph data loaded on demand
-
-            // Assessment
-            assessmentGraph: null,
-            proofInputs: {}, // { nodeId: value }
-            currentCapability: null,
-            assessmentInProgress: false,
-
             // Dialog State
             dialog: {
                 isOpen: false,
@@ -52,20 +38,10 @@ class DashboardStateManager {
                 confirmText: 'OK',
                 cancelText: 'Cancel',
                 resolve: null
-            },
-
-            // Preview Modal
-            previewModal: {
-                isOpen: false,
-                isLoading: false,
-                graphData: null,
-                selectedNode: null,
-                selectedDomain: null
             }
         };
 
         this.listeners = [];
-        this.loadFromLocalStorage();
     }
 
     // --- State Access ---
@@ -78,7 +54,6 @@ class DashboardStateManager {
     setState(newState) {
         this.state = { ...this.state, ...newState };
         this.notify();
-        this.saveToLocalStorage();
     }
 
     // --- Observer Pattern ---
@@ -93,26 +68,6 @@ class DashboardStateManager {
         this.listeners.forEach(listener => listener(this.state));
     }
 
-    // --- Persistence ---
-    saveToLocalStorage() {
-        const dataToSave = {
-            bookmarkedGraphMetadata: this.state.bookmarkedGraphMetadata
-        };
-        localStorage.setItem('dashboard_state', JSON.stringify(dataToSave));
-    }
-
-    loadFromLocalStorage() {
-        const saved = localStorage.getItem('dashboard_state');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                this.state.bookmarkedGraphMetadata = parsed.bookmarkedGraphMetadata || [];
-            } catch (e) {
-                console.error('Failed to load dashboard state from localStorage', e);
-            }
-        }
-    }
-
     // --- Business Logic ---
     setProfile(profile) {
         this.setState({ profile, profileDirty: false });
@@ -120,152 +75,6 @@ class DashboardStateManager {
 
     toggleProfileEditMode(enabled) {
         this.setState({ profileEditMode: enabled });
-    }
-
-    setBookmarks(bookmarks) {
-        this.setState({ bookmarks });
-    }
-
-    isBookmarked(graphUuid) {
-        return this.state.bookmarks.some(b => b.graph_uuid === graphUuid);
-    }
-
-    // --- Preview Modal Management ---
-
-    /**
-     * Load graph data and open preview modal
-     * @param {string} graphUuid - Public UUID of the graph to preview
-     */
-    async loadAndOpenPreview(graphUuid) {
-        this.setState({
-            previewModal: {
-                ...this.state.previewModal,
-                isOpen: true,
-                isLoading: true,
-                graphData: null,
-                selectedNode: null,
-                selectedDomain: null
-            }
-        });
-
-        try {
-            const backendSnapshot = await snapshotsApiService.getPublicSnapshot(graphUuid);
-            const transformedSnapshot = galleryTransformer.transformSnapshotFromBackend(backendSnapshot);
-            
-            this.setState({
-                previewModal: {
-                    ...this.state.previewModal,
-                    isLoading: false,
-                    graphData: transformedSnapshot.graphData,
-                    graphName: transformedSnapshot.currentVersionLabel,
-                    graphUuid: transformedSnapshot.currentSnapshotUuid
-                }
-            });
-        } catch (error) {
-            console.error('Failed to load graph preview:', error);
-            this.setState({
-                previewModal: {
-                    ...this.state.previewModal,
-                    isLoading: false,
-                    graphData: null
-                }
-            });
-            this.showAlert('Failed to load graph preview. Please try again.', 'Error');
-        }
-    }
-
-    /**
-     * Close preview modal and clear graph data
-     */
-    closePreviewModal() {
-        this.setState({
-            previewModal: {
-                isOpen: false,
-                isLoading: false,
-                graphData: null,
-                selectedNode: null,
-                selectedDomain: null
-            }
-        });
-    }
-
-    /**
-     * Set selected node for preview details panel
-     * @param {number} nodeId - Node ID
-     */
-    setPreviewSelectedNode(nodeId) {
-        const graphData = this.state.previewModal.graphData;
-        if (!graphData || !graphData.nodes) {
-            this.setState({
-                previewModal: {
-                    ...this.state.previewModal,
-                    selectedNode: null,
-                    selectedDomain: null
-                }
-            });
-            return;
-        }
-
-        const node = graphData.nodes.find(n => n.id === nodeId);
-        if (node) {
-            this.setState({
-                previewModal: {
-                    ...this.state.previewModal,
-                    selectedNode: {
-                        id: node.id,
-                        title: node.title,
-                        description: node.description || ''
-                    },
-                    selectedDomain: null
-                }
-            });
-        }
-    }
-
-    /**
-     * Set selected domain for preview details panel
-     * @param {number} domainId - Domain ID
-     */
-    setPreviewSelectedDomain(domainId) {
-        const graphData = this.state.previewModal.graphData;
-        if (!graphData || !graphData.domains) {
-            this.setState({
-                previewModal: {
-                    ...this.state.previewModal,
-                    selectedNode: null,
-                    selectedDomain: null
-                }
-            });
-            return;
-        }
-
-        const domain = graphData.domains.find(d => d.id === domainId);
-        if (domain) {
-            this.setState({
-                previewModal: {
-                    ...this.state.previewModal,
-                    selectedNode: null,
-                    selectedDomain: {
-                        id: domain.id,
-                        title: domain.title,
-                        description: domain.description || ''
-                    }
-                }
-            });
-        }
-    }
-
-    /**
-     * Clear preview selection
-     */
-    clearPreviewSelection() {
-        this.setState({
-            previewModal: {
-                ...this.state.previewModal,
-                selectedNode: null,
-                selectedDomain: null
-            }
-        });
     }
 
     // --- Dialog Management ---
