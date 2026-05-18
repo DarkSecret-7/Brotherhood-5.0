@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="/frontend/css/academia_styles.css">
 </head>
 <body>
-    <div class="dashboard-container">
+    <div class="dashboard-container academia-index">
         <div class="header">
             <div style="display: flex; align-items: center;">
                 <div class="hamburger-menu">
@@ -34,17 +34,56 @@
                 </div>
                 <div style="margin-left: 30px;">
                     <h1 style="margin: 0;">Academia</h1>
-                    <div class="version-indicator">Introduction</div>
+                    <div class="version-indicator">Knowledge Hub</div>
                 </div>
             </div>
         </div>
 
         <main class="dashboard-main">
-            <div class="card">
+            <div class="academia-hero">
                 <h2>Welcome to Academia</h2>
-                <p>
-                    This section contains all your academic tools and resources. Browse public graphs, bookmark your favorite ones, learn at your own pace, and track your progress.
-                </p>
+                <p>Your personal knowledge hub for learning and tracking progress through interconnected concepts.</p>
+                <a href="/academia/library" class="btn btn-primary btn-lg">Explore the Library</a>
+            </div>
+
+            <div class="academia-features">
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Library</h3>
+                    <p>Browse and bookmark public knowledge graphs created by the community. Find graphs on topics you're interested in and start exploring.</p>
+                    <a href="/academia/library" class="btn btn-outline">Go to Library</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🎓</div>
+                    <h3>Learning</h3>
+                    <p>Access learning resources attached to each concept. Click on any node to see sources, articles, videos, and other materials to help you learn.</p>
+                    <a href="/academia/learning?graph=demo" class="btn btn-outline">Try Learning</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <h3>Self-Assessment</h3>
+                    <p>Track your learning progress by marking concepts as "Want to learn", "Learning", or "Learnt". Monitor your journey through knowledge and skills over time.</p>
+                    <a href="/academia/assessment" class="btn btn-outline">Start Assessment</a>
+                </div>
+            </div>
+
+            <div class="academia-info">
+                <div class="info-section">
+                    <h3>How Academia Works</h3>
+                    <p>Academia helps you navigate complex knowledge domains through interactive graphs. Each graph contains nodes representing concepts, connected by prerequisites that show what you need to learn first.</p>
+                </div>
+
+                <div class="info-section">
+                    <h3>Getting Started</h3>
+                    <ol class="info-list">
+                        <li><strong>Explore the Library</strong> — Find graphs on topics that interest you</li>
+                        <li><strong>Bookmark your favorites</strong> — Save graphs to access them quickly later</li>
+                        <li><strong>Learn with resources</strong> — Click nodes to see attached learning materials</li>
+                        <li><strong>Track your progress</strong> — Use Self-Assessment to monitor what you've learned</li>
+                    </ol>
+                </div>
             </div>
         </main>
     </div>
@@ -55,6 +94,7 @@
         <button class="side-panel-close" onclick="closeSidePanel()">&times;</button>
         <a href="/academia" class="side-panel-link active">Academia</a>
         <a href="/academia/library" class="side-panel-link">Library</a>
+        <a href="/academia/learning" class="side-panel-link">Learning</a>
         <a href="/academia/assessment" class="side-panel-link">Self-Assessment</a>
         <a href="/dashboard" class="side-panel-link">Dashboard</a>
         <a href="/lab/workspace" class="side-panel-link">Workspace</a>
@@ -62,7 +102,6 @@
         <a href="#" onclick="logout()" class="side-panel-link" style="color: #d93025;">Logout</a>
     </div>
 
-    <!-- Scripts -->
     <script src="/frontend/api/base-api-service.js"></script>
     <script src="/frontend/api/auth/auth-api-service.js"></script>
     <script src="/frontend/ui/nav/nav-controller.js"></script>

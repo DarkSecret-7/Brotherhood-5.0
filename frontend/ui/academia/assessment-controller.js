@@ -383,7 +383,9 @@ class AssessmentController {
 
         this.stateManager.showConfirm({
             title: 'Exit Assessment?',
-            message: `Are you sure you want to exit the assessment for "${graphName}"? Your assessment cache will be preserved.`
+            message: `Are you sure you want to exit the assessment for "${graphName}"? Your assessment cache will be preserved.`,
+            confirmText: 'Exit',
+            cancelText: 'Cancel'
         }).then(confirmed => {
             if (confirmed) {               
                 // Clear the current graph from state

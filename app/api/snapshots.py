@@ -51,7 +51,7 @@ def read_snapshots(
     - metadata_only=true: Returns only metadata (lightweight)
     """
 
-    if public_only:
+    if public_only and action == "read":
         snapshots = services.snapshots.SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
     else:
         if not current_user:
@@ -80,12 +80,11 @@ def get_snapshot(
 ):
     """
     Get single snapshot - unified endpoint
-    - action: "read" | "fetch" | "assess"
+    - action: "read" | "fetch" | "assess" | "learn"
     - public=true: Skip auth, return public snapshot
     - metadata_only=true: Return only metadata fields
     """
-
-    if public:
+    if public and action == "read":
         snapshot = services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid)
     else:
         if not current_user:
@@ -94,8 +93,8 @@ def get_snapshot(
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        user_id = current_user.id
-        snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
+    user_id = current_user.id
+    snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
 
     if metadata_only:
         return services.snapshots.SnapshotService._extract_metadata(db, snapshot_uuid)

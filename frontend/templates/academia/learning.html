@@ -1,0 +1,229 @@
+<!--
+  This file is part of The Brotherhood Project
+
+  Copyright (C) 2026  The Brotherhood Project
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning - Academia</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/frontend/css/academia_styles.css">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="header-flex">
+                <div class="hamburger-menu">
+                    <button class="hamburger-btn" onclick="openSidePanel()">☰</button>
+                </div>
+                <div class="header-content">
+                    <h1 class="header-title">Learning</h1>
+                    <div class="version-indicator">Academia</div>
+                </div>
+                <div id="graph-info-section" class="graph-info-section" style="display: none;">
+                    <div id="graph-name-display" class="graph-name-display" onclick="learningController.showGraphMetadata()" title="Click to view graph metadata">
+                        <span id="graph-name-text">Loading...</span>
+                    </div>
+                    <button id="btn-exit-graph" class="btn btn-outline graph-exit-btn" onclick="learningController.exitGraph()" title="Exit to Library">
+                        Exit
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <main class="dashboard-main">
+            <div id="no-graph-message" class="card message-card">
+                <h2>Select a Graph to Learn</h2>
+                <p>
+                    To start learning, please select a bookmarked graph from the Academia Library.
+                </p>
+                <a href="/academia/library" class="btn btn-primary">
+                    Go to Library
+                </a>
+            </div>
+
+            <div id="loading-message" class="card message-card" style="display: none;">
+                <h3>Loading Graph...</h3>
+                <p>Please wait while we prepare your learning resources.</p>
+            </div>
+
+            <div id="error-message" class="card message-card error-card" style="display: none;">
+                <h3>Error</h3>
+                <p id="error-text"></p>
+                <a href="/academia/library" class="btn btn-primary">Go to Library</a>
+            </div>
+
+            <div id="learning-graph-view" class="learning-graph-view">
+                <div id="graph-container-wrapper" class="graph-container-wrapper">
+                    <div id="graph-visualization-container"></div>
+                </div>
+
+                <div id="sources-panel" class="sidebar-panel" style="display: none;">
+                    <button class="close-sources-panel" id="close-sources-panel">&times;</button>
+                    <div class="sidebar-content">
+                        <div id="sources-header" class="sources-header" onclick="learningController.openNodeDetailsFromSources()" title="Click to view full node details">
+                            <h3 id="sources-node-title">Node Title</h3>
+                            <p id="sources-node-desc-preview" class="sources-node-desc-preview">Node description preview...</p>
+                        </div>
+
+                        <div id="sources-list" class="sources-list">
+                            <p class="no-sources-message">No sources attached to this node.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="node-details" class="sidebar-panel" style="display: none;">
+                    <button class="close-details" id="close-node-details">&times;</button>
+                    <div class="sidebar-content">
+                        <h3 id="node-detail-title">Node Title</h3>
+                        <div class="node-meta-badges">
+                            <div id="node-detail-assessable" class="assessable-badge">Assessable</div>
+                        </div>
+                        <div id="node-detail-desc" class="node-detail-description"></div>
+                        <div id="node-detail-prereq" class="node-detail-prerequisites"></div>
+                    </div>
+                </div>
+
+                <div id="domain-details" class="sidebar-panel" style="display: none;">
+                    <button class="close-details" id="close-domain-details">&times;</button>
+                    <div class="sidebar-content">
+                        <h3 id="domain-detail-title">Domain Title</h3>
+                        <div id="domain-detail-meta" class="domain-meta"></div>
+                        <div id="domain-detail-desc" class="domain-description"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="side-panel-overlay" class="side-panel-overlay"></div>
+    <div id="side-panel" class="side-panel">
+        <button class="side-panel-close" onclick="closeSidePanel()">&times;</button>
+        <a href="/academia" class="side-panel-link">Academia</a>
+        <a href="/academia/library" class="side-panel-link">Library</a>
+        <a href="/academia/learning" class="side-panel-link active">Learning</a>
+        <a href="/academia/assessment" class="side-panel-link">Self-Assessment</a>
+        <a href="/dashboard" class="side-panel-link">Dashboard</a>
+        <a href="/lab/workspace" class="side-panel-link">Workspace</a>
+        <a href="/landing" class="side-panel-link">Home</a>
+        <a href="#" onclick="logout()" class="side-panel-link logout-link">Logout</a>
+    </div>
+
+    <!-- Custom Dialog Modal -->
+    <div id="custom-dialog-overlay" class="dialog-overlay" style="display: none;">
+        <div id="custom-dialog" class="dialog-modal">
+            <div id="dialog-title" class="dialog-title"></div>
+            <div id="dialog-message" class="dialog-message"></div>
+            <div class="dialog-buttons">
+                <button id="dialog-cancel" class="btn btn-outline dialog-btn-cancel">Cancel</button>
+                <button id="dialog-confirm" class="btn btn-primary dialog-btn-confirm">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="graph-metadata-overlay" class="dialog-overlay" style="display: none;">
+        <div id="graph-metadata-modal" class="graph-metadata-modal">
+            <button class="close-metadata" id="close-graph-metadata">&times;</button>
+            <div class="graph-metadata-title">Graph Metadata</div>
+            <div class="graph-metadata-content">
+                <div class="metadata-section">
+                    <div class="metadata-label">Graph Name</div>
+                    <div id="metadata-graph-name" class="metadata-value"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Graph UUID</div>
+                    <div id="metadata-graph-uuid" class="metadata-value metadata-code"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Base Graph</div>
+                    <div id="metadata-base-graph" class="metadata-value"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Base Graph UUID</div>
+                    <div id="metadata-base-graph-uuid" class="metadata-value metadata-code"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Author</div>
+                    <div id="metadata-graph-author" class="metadata-value"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Created</div>
+                    <div id="metadata-graph-created" class="metadata-value"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Node Count</div>
+                    <div id="metadata-node-count" class="metadata-value"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Assessable Node Count</div>
+                    <div id="metadata-assessable-node-count" class="metadata-value"></div>
+                </div>
+                <div class="metadata-section">
+                    <div class="metadata-label">Domain Count</div>
+                    <div id="metadata-domain-count" class="metadata-value"></div>
+                </div>
+            </div>
+            <div class="graph-metadata-buttons">
+                <button class="btn btn-primary" onclick="learningController.closeGraphMetadata()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/frontend/api/base-api-service.js"></script>
+    <script src="/frontend/api/auth/auth-api-service.js"></script>
+    <script src="/frontend/api/users/users-api-service.js"></script>
+    <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
+
+    <script src="/frontend/utils/expression-utils.js"></script>
+    <script src="/frontend/utils/graph-utils.js"></script>
+    <script src="/frontend/utils/url-parser.js"></script>
+    <script src="/frontend/transformer/gallery/gallery-transformer.js"></script>
+
+    <script src="/frontend/state/learning-state-manager.js"></script>
+    <script src="/frontend/ui/nav/nav-controller.js"></script>
+    <script src="/frontend/components/graph-visualizer.js"></script>
+    <script src="/frontend/ui/academia/academia-graph-controller.js"></script>
+    <script src="/frontend/ui/academia/learning-controller.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!authApiService.isAuthenticated()) {
+                window.location.href = '/auth/login';
+                return;
+            }
+
+            window.learningStateManager = new LearningStateManager();
+            const galleryTransformer = new GalleryTransformer();
+
+            window.learningController = new LearningController(
+                learningStateManager,
+                galleryTransformer
+            );
+
+            await learningController.init();
+        });
+
+        function logout() {
+            authApiService.logout();
+            window.location.href = '/auth/login';
+        }
+    </script>
+</body>
+</html>

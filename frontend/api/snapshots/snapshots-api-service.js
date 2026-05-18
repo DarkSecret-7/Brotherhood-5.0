@@ -89,6 +89,14 @@ class SnapshotsApiService extends BaseApiService {
     }
 
     /**
+     * Get snapshot for learning (requires bookmark)
+     * @param {string} snapshotUuid
+     */
+    async getSnapshotForLearning(snapshotUuid) {
+        return await this.getSnapshot(snapshotUuid, { action: 'learn', public: true });
+    }
+
+    /**
      * Get snapshot for assessment (requires bookmark)
      * @param {string} snapshotUuid
      */

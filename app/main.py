@@ -26,7 +26,7 @@ import traceback
 from .database import engine, Base
 from .api import api_router, llm, assessments
 from .api.auth import get_current_user
-from . import models
+from . import models, utils
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -118,24 +118,52 @@ app.include_router(assessments.router, prefix="/api/v1")
 
 # Dashboard routes
 @app.get("/dashboard")
-async def dashboard_index():
+async def dashboard_index(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "index.html"))
 
 @app.get("/dashboard/profile")
 async def dashboard_profile(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+        
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "profile.html"))
 
 # Academia routes
 @app.get("/academia")
-async def academia_index():
+async def academia_index(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "index.html"))
 
 @app.get("/academia/library")
 async def dashboard_library(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+        
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "library.html"))
+
+@app.get("/academia/learning")
+async def dashboard_learning(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "learning.html"))
 
 @app.get("/academia/assessment")
 async def dashboard_assessment(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "assessment.html"))
 
 # Root endpoint - serve landing page directly
@@ -180,114 +208,29 @@ async def public_gallery():
 
 @app.get("/lab/workspace")
 async def lab_workspace(request: Request):
-    # Check for token in cookie
-    token = request.cookies.get("access_token")
-    if not token:
-        # Check if it's in the Authorization header (though browser won't send this for initial GET)
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            
-    if not token:
-        response = RedirectResponse(url="/auth/login")
-        # Ensure we clear the cookie if it was somehow invalid/missing
-        response.delete_cookie("access_token")
-        return response
-    
-    # Verify token here to prevent serving workspace to invalid tokens
-    try:
-        from .utils import SECRET_KEY, ALGORITHM
-        from jose import jwt
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
 
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "workspace.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
 
 # Database management page
 @app.get("/lab/database")
 async def lab_database(request: Request):
-    # Check for token in cookie
-    token = request.cookies.get("access_token")
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            
-    if not token:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
-    
-    try:
-        from .utils import SECRET_KEY, ALGORITHM
-        from jose import jwt
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
 
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "database.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
 
 # Curator guide page
 @app.get("/lab/curator-guide")
 async def lab_curator_guide(request: Request):
-    # Check for token in cookie
-    token = request.cookies.get("access_token")
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            
-    if not token:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
-    
-    try:
-        from .utils import SECRET_KEY, ALGORITHM
-        from jose import jwt
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
 
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "curator-guide.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
-
-# User profile page with UUID parameter
-@app.get("/profile/{user_uuid}")
-async def user_profile(request: Request, user_uuid: str):
-    # Check for token in cookie
-    token = request.cookies.get("access_token")
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            
-    if not token:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
-    
-    try:
-        from .utils import SECRET_KEY, ALGORITHM
-        from jose import jwt
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except:
-        response = RedirectResponse(url="/auth/login")
-        response.delete_cookie("access_token")
-        return response
-
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "user-profile.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
-
-# Curator guide
-@app.get("/docs/curator-guide")
-async def curator_guide():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs", "curator_guide.html"))
 
 @app.get("/auth/login")
 async def auth_login():

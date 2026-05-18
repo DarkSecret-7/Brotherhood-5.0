@@ -22,7 +22,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 import hashlib
 from uuid import UUID
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import json
 from fastapi.responses import StreamingResponse
@@ -67,6 +68,29 @@ def generate_hash(data: str) -> str:
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 # --- Authentication Utilities ---
+def check_token(request: Request):
+    """Check for valid token in request or redirect to login page"""
+    # Check for token in cookie
+    token = request.cookies.get("access_token")
+    if not token:
+        # Check if it's in the Authorization header (though browser won't send this for initial GET)
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+    if not token:
+        response = RedirectResponse(url="/auth/login")
+        # Ensure we clear the cookie if it was somehow invalid/missing
+        response.delete_cookie("access_token")
+        return response
+    
+    # Verify token here to prevent serving workspace to invalid tokens
+    try:
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except:
+        response = RedirectResponse(url="/auth/login")
+        response.delete_cookie("access_token")
+        return response
 
 def get_current_user_token_data(token: str):
     """Extract and validate token data from JWT token"""

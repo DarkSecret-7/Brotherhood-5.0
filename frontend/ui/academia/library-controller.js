@@ -196,7 +196,8 @@ class LibraryController {
                         <h3>${b.graph_meta.version_label}</h3>
                         <p>Bookmarked on: ${new Date(b.created_at).toLocaleDateString()}</p>
                         <div class="card-actions">
-                            <button class="btn btn-primary" onclick="window.location.href='/academia/assessment?graph=${b.graph_uuid}'">Assess</button>
+                            <button class="btn btn-primary" onclick="window.location.href='/academia/learning?graph=${b.graph_uuid}'">Learn</button>
+                            <button class="btn btn-secondary" onclick="window.location.href='/academia/assessment?graph=${b.graph_uuid}'">Assess</button>
                             <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${b.graph_uuid}')">Preview</button>
                             <button class="btn btn-danger" onclick="libraryController.toggleBookmark('${b.graph_uuid}')">Remove</button>
                         </div>
@@ -309,13 +310,16 @@ class LibraryController {
     bindPreviewModalEvents() {
         const bookmarkBtn = document.getElementById('preview-bookmark-btn');
         const assessBtn = document.getElementById('preview-assess-btn');
+        const learnBtn = document.getElementById('preview-learn-btn');
 
         if (bookmarkBtn) {
             bookmarkBtn.addEventListener('click', () => this.handlePreviewBookmark());
         }
-
         if (assessBtn) {
             assessBtn.addEventListener('click', () => this.handlePreviewAssess());
+        }
+        if (learnBtn) {
+            learnBtn.addEventListener('click', () => this.handlePreviewLearn());
         }
     }
 
@@ -344,14 +348,22 @@ class LibraryController {
         window.location.href = `/academia/assessment?graph=${this.currentPreviewGraphUuid}`;
     }
 
+    handlePreviewLearn() {
+        if (!this.currentPreviewGraphUuid) return;
+
+        // Navigate to assessment page with graph UUID as URL parameter
+        window.location.href = `/academia/assessment?graph=${this.currentPreviewGraphUuid}`;
+    }
+
     /**
      * Update preview modal button states based on bookmark status
      */
     updatePreviewButtons(graphUuid) {
         const bookmarkBtn = document.getElementById('preview-bookmark-btn');
+        const learnBtn = document.getElementById('preview-learn-btn');
         const assessBtn = document.getElementById('preview-assess-btn');
 
-        if (!bookmarkBtn || !assessBtn) return;
+        if (!bookmarkBtn || !assessBtn || !learnBtn) return;
 
         const isBookmarked = this.stateManager.isBookmarked(graphUuid);
 
@@ -359,10 +371,12 @@ class LibraryController {
             bookmarkBtn.textContent = 'Remove Bookmark';
             bookmarkBtn.className = 'btn btn-danger btn-sm';
             assessBtn.style.display = 'inline-block';
+            learnBtn.style.display = 'inline-block';
         } else {
             bookmarkBtn.textContent = 'Bookmark';
             bookmarkBtn.className = 'btn btn-primary btn-sm';
             assessBtn.style.display = 'none';
+            learnBtn.style.display = 'none';
         }
     }
 }
