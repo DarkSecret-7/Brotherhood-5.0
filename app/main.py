@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
         print(f"Database initialization failed: {e}")
     yield
 
-app = FastAPI(title="The Brotherhood Curator Lab Graph API", lifespan=lifespan)
+app = FastAPI(title="The Brotherhood Project Backend API", lifespan=lifespan)
 
 # Add CORS middleware for development
 print("Adding CORS middleware...")
@@ -171,7 +171,7 @@ async def dashboard_assessment(request: Request):
 async def root():
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "index.html"))
 
-# Landing page route
+# Landing page routes
 @app.get("/landing")
 async def landing():
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "index.html"))
@@ -201,10 +201,18 @@ async def landing_contact():
 async def landing_documents():
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "documents.html"))
 
-# Public gallery route
 @app.get("/landing/gallery")
 async def public_gallery():
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "public_gallery.html"))
+
+# Curator Lab routes
+@app.get("/lab")
+async def lab_index(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "index.html"))
 
 @app.get("/lab/workspace")
 async def lab_workspace(request: Request):
@@ -223,7 +231,6 @@ async def lab_database(request: Request):
 
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "database.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
 
-# Curator guide page
 @app.get("/lab/curator-guide")
 async def lab_curator_guide(request: Request):
     redirect_response = utils.check_token(request)

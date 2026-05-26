@@ -117,11 +117,11 @@
 
 .side-panel-link {
     display: block;
-    padding: 15px 25px;
+    padding: 10px 25px;
     color: #3c4043;
     text-decoration: none;
-    font-weight: 500;
-    font-size: 1.1em;
+    font-weight: 550;
+    font-size: 1.2em;
     border-bottom: 1px solid #f1f3f4;
     transition: background-color 0.2s;
 }
@@ -132,8 +132,35 @@
     color: #1a73e8;
 }
 
-.side-panel-link.logout-link {
-    color: #d93025;
+.side-panel-link-outer {
+    display: block;
+    padding: 8px 20px;
+    color: #7f91a8;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1em;
+}
+
+.side-panel-link-outer:hover{
+    background-color: #f8f9fa;
+    color: #353542;
+}
+
+.side-panel-link-outer span{
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.side-panel-link-outer:hover span{
+    color: #1a73e8;
+    opacity: 1;
+}
+
+.side-panel-break{
+    border: 0;
+    height: 1px;
+    background-image: linear-gradient(to right, rgba(232, 234, 237, 0.2), rgba(14, 34, 61, 0.8), rgba(232, 234, 237, 0.2));
+    margin: 20px 0;
 }
 
 .side-panel-close {

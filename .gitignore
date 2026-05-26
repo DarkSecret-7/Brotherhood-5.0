@@ -16,6 +16,8 @@ brotherhood.db
 .vscode/
 .idea/
 .windsurf/
+.trae/
+.github/
 AGENTS.md
 
 # Temporary docs
@@ -38,3 +40,4 @@ DATABASE_BACKUPS/
 
 # Development Artifacts
 teamplan/
+graphify-out/
