@@ -476,13 +476,6 @@
 
     <!-- Initialize application -->
     <script>
-        // Logout function
-        function logout() {
-            authApiService.logout().then(() => {
-                window.location.href = '/auth/login';
-            });
-        }
-
         // Wait for DOM to be loaded
         document.addEventListener('DOMContentLoaded', function() {          
             // Check authentication

@@ -95,6 +95,7 @@ class NavController {
     static initGlobalFunctions() {
         window.openSidePanel = () => window.navController?.openSidePanel();
         window.closeSidePanel = () => window.navController?.closeSidePanel();
+        window.logout = () => window.navController?.logout();
     }
     
     // Get or create singleton instance
@@ -103,6 +104,15 @@ class NavController {
             NavController.instance = new NavController();
         }
         return NavController.instance;
+    }
+    
+    // Logout function
+    logout() {
+        authApiService.logout().then(() => {
+            window.location.replace('/landing');
+            localStorage.clear();
+            sessionStorage.clear();
+        });
     }
 }
 

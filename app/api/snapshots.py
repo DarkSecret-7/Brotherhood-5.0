@@ -93,8 +93,8 @@ def get_snapshot(
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    user_id = current_user.id
-    snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
+        user_id = current_user.id
+        snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
 
     if metadata_only:
         return services.snapshots.SnapshotService._extract_metadata(db, snapshot_uuid)

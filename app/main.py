@@ -50,6 +50,12 @@ allowed_origins = [
     "http://127.0.0.1:8000"
 ]
 
+secure_headers = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0, private",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
 # Add Render URLs using built-in environment variables
 if os.getenv("RENDER"):
     # Render automatically provides these variables
@@ -123,7 +129,8 @@ async def dashboard_index(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "index.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "index.html"),
+        headers=secure_headers)
 
 @app.get("/dashboard/profile")
 async def dashboard_profile(request: Request):
@@ -131,7 +138,8 @@ async def dashboard_profile(request: Request):
     if redirect_response:
         return redirect_response
         
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "profile.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "profile.html"),
+        headers=secure_headers)
 
 # Academia routes
 @app.get("/academia")
@@ -140,7 +148,8 @@ async def academia_index(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "index.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "index.html"),
+        headers=secure_headers)
 
 @app.get("/academia/library")
 async def dashboard_library(request: Request):
@@ -148,7 +157,8 @@ async def dashboard_library(request: Request):
     if redirect_response:
         return redirect_response
         
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "library.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "library.html"),
+        headers=secure_headers)
 
 @app.get("/academia/learning")
 async def dashboard_learning(request: Request):
@@ -156,7 +166,8 @@ async def dashboard_learning(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "learning.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "learning.html"),
+        headers=secure_headers)
 
 @app.get("/academia/assessment")
 async def dashboard_assessment(request: Request):
@@ -164,7 +175,8 @@ async def dashboard_assessment(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "assessment.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "assessment.html"),
+        headers=secure_headers)
 
 # Root endpoint - serve landing page directly
 @app.get("/")
@@ -212,7 +224,8 @@ async def lab_index(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "index.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "index.html"),
+        headers=secure_headers)
 
 @app.get("/lab/workspace")
 async def lab_workspace(request: Request):
@@ -220,7 +233,8 @@ async def lab_workspace(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "workspace.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "workspace.html"),
+        headers=secure_headers)
 
 # Database management page
 @app.get("/lab/database")
@@ -229,7 +243,8 @@ async def lab_database(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "database.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "database.html"),
+        headers=secure_headers)
 
 @app.get("/lab/curator-guide")
 async def lab_curator_guide(request: Request):
@@ -237,20 +252,23 @@ async def lab_curator_guide(request: Request):
     if redirect_response:
         return redirect_response
 
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "curator-guide.html"), headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "lab", "curator-guide.html"),
+        headers=secure_headers)
 
 @app.get("/auth/login")
 async def auth_login():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "auth", "login.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "auth", "login.html"),
+        headers=secure_headers)
 
 @app.get("/auth/signup")
 async def auth_signup():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "auth", "signup.html"))
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "auth", "signup.html"),
+        headers=secure_headers)
 
 # Logout endpoint
 @app.post("/auth/logout")
 async def logout():
-    # In a real app, you'd clear the session/token here
+    # Complex implementations like server side session clearing are saved for the future
     return RedirectResponse(url="/auth/login")
 
 # Health check

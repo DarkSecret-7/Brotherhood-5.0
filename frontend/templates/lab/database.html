@@ -189,13 +189,6 @@
     <script src="/frontend/ui/lab/database-manager.js"></script>
     
     <script>
-        // Logout function
-        function logout() {
-            authApiService.logout().then(() => {
-                window.location.href = '/auth/login';
-            });
-        }
-
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             // Check authentication

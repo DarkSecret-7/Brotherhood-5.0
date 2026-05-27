@@ -26,6 +26,7 @@ from .. import services, schemas, database, utils, models
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 async def get_current_user(db: Session = Depends(database.get_db), token: str = Depends(oauth2_scheme)):
     """FastAPI dependency for getting current user"""
@@ -46,14 +47,11 @@ async def get_current_user(db: Session = Depends(database.get_db), token: str = 
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-async def get_current_user_optional(db: Session = Depends(database.get_db), token: str = Depends(oauth2_scheme)):
+async def get_current_user_optional(db: Session = Depends(database.get_db), token: str = Depends(optional_oauth2_scheme)):
     """FastAPI dependency for getting current user, returns None if not authenticated"""
     try:
         token_data = utils.get_current_user_token_data(token)
-        user = services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
-        if user is None:
-            return None
-        return user
+        return services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
     except Exception:
         return None
 

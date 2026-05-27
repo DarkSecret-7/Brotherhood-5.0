@@ -54,7 +54,7 @@ class BaseApiService {
             // Token expired or invalid
             localStorage.removeItem('access_token');
             document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-            window.location.href = '/login';
+            window.location.href = '/auth/login';
             throw new Error('Unauthorized');
         }
         
@@ -154,7 +154,7 @@ class BaseApiService {
         
         if (response.status === 401) {
             localStorage.removeItem('access_token');
-            window.location.href = '/login';
+            window.location.href = '/auth/login';
             throw new Error('Unauthorized');
         }
         
