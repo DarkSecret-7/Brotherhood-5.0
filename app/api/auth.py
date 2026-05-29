@@ -193,16 +193,7 @@ async def update_user_password(password_update: schemas.UserPasswordUpdate, curr
 
 @router.delete("/auth/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(database.get_db)):
-    deleted = services.users.UserService.delete_user(db, current_user.username)
+    deleted = services.users.UserService.delete_user(db, current_user.public_uuid)
     if not deleted:
         raise HTTPException(status_code=400, detail="Could not delete user")
     return
-
-# --- Utility Endpoints (for dev/setup) DO NOT USE IN PRODUCTION ---
-
-"""
-@router.post("/auth/invitations", response_model=schemas.InvitationRead)
-def create_invitation(invitation: schemas.InvitationCreate, db: Session = Depends(database.get_db)):
-    # This should ideally be protected, but for now we need a way to create the first invitation
-    return services.invitations.InvitationService.create_invitation(db, code=invitation.code)
-"""
