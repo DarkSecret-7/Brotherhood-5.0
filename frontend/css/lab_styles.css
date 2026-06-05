@@ -68,12 +68,12 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: #1a73e8
 .button-group { display: flex; gap: 10px; margin-top: 20px; }
 button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s; }
 .btn-primary { background: #1a73e8; color: white; }
-.btn-primary:hover { background: #1557b0; }
-.btn-primary:disabled { background: #dadce0; color: #9aa0a6; cursor: not-allowed; opacity: 0.7; }
+.btn-primary:enabled:hover { background: #1557b0; }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-small:disabled { background: #dadce0; color: #9aa0a6; cursor: not-allowed; opacity: 0.7; }
 .btn-secondary { background: #f1f3f4; color: #3c4043; }
-.btn-secondary:hover { background: #e8eaed; }
+.btn-secondary:enabled:hover { background: #e8eaed; }
 .btn-danger { background: #fce8e6; color: #d93025; }
-.btn-danger:hover { background: #fad2cf; }
+.btn-danger:enabled:hover { background: #fad2cf; }
 .btn-small { padding: 6px 12px; font-size: 0.8em; }
 
 .btn-goto {
@@ -976,4 +976,96 @@ textarea {
     margin-left: 20px;
     margin-top: 4px;
     position: relative;
+}
+
+/* Pending Proposals Styles */
+.proposal-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: 1px solid #e0e0e0;
+}
+
+.proposal-item:hover {
+    background: #e8f0fe;
+    border-color: #1a73e8;
+}
+
+.proposal-item.vote-approve {
+    border-left: 4px solid #34a853;
+    background: #e6f4ea;
+}
+
+.proposal-item.vote-reject {
+    border-left: 4px solid #ea4335;
+    background: #fce8e6;
+}
+
+.proposal-type {
+    font-weight: 600;
+    color: #202124;
+}
+
+.proposal-initiator {
+    color: #5f6368;
+    font-size: 0.9em;
+}
+
+.proposal-delete-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    color: #d93025;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.proposal-delete-btn:hover {
+    background: #fce8e6;
+}
+
+.proposal-vote-buttons {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.proposal-vote-btn {
+    padding: 4px 10px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+
+.proposal-vote-btn.approve {
+    color: #34a853;
+    background: #fff;
+}
+
+.proposal-vote-btn.approve:enabled:hover,
+.proposal-vote-btn.approve.active {
+    background: #e6f4ea;
+    border-color: #34a853;
+}
+
+.proposal-vote-btn.reject {
+    color: #ea4335;
+    background: #fff;
+}
+
+.proposal-vote-btn.reject:enabled:hover,
+.proposal-vote-btn.reject.active {
+    background: #fce8e6;
+    border-color: #ea4335;
 }

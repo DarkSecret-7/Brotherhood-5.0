@@ -30,12 +30,20 @@ class DatabaseStateManager {
             
             // Current action state
             currentGraphActionSnapshot: null,
-            
+
+            // Pending proposals for current graph
+            pendingProposals: [],
+            joinRequest: null,
+
+            // Current proposal detail
+            currentProposalDetail: null,
+
             // Modal states
             modals: {
                 graphAction: false,
                 globalImport: false,
-                dialog: false
+                dialog: false,
+                proposalDetail: false
             },
             
             // Dialog state
@@ -202,6 +210,92 @@ class DatabaseStateManager {
      */
     getCurrentGraphActionSnapshot() {
         return this.state.currentGraphActionSnapshot;
+    }
+
+    /**
+     * Set pending proposals for current graph
+     */
+    setPendingProposals(proposals) {
+        this.state.pendingProposals = Array.isArray(proposals) ? proposals : [];
+        this.notifyStateChange();
+    }
+
+    /**
+     * Get pending proposals
+     */
+    getPendingProposals() {
+        return this.state.pendingProposals;
+    }
+
+    /**
+     * Set current proposal detail
+     */
+    setCurrentProposalDetail(proposal) {
+        this.state.currentProposalDetail = proposal;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Get current proposal detail
+     */
+    getCurrentProposalDetail() {
+        return this.state.currentProposalDetail;
+    } 
+
+    /**
+     * Fetch proposals for a specific graph
+     * @param {string} graphUuid - The graph UUID
+     * @returns {Promise} Array of transformed proposals
+     */
+    async fetchProposalsForGraph(graphUuid) {
+        const currentUserUuid = localStorage.getItem('user_uuid');
+
+        try {
+            const backendProposals = await window.proposalsApiService.getProposalsForGraph(graphUuid, true);
+            const frontendProposals = window.proposalsTransformer.transformProposalListFromBackend(
+                backendProposals || [],
+                currentUserUuid
+            );
+            this.setPendingProposals(frontendProposals);
+            return frontendProposals;
+        } catch (error) {
+            console.error('Failed to fetch proposals:', error);
+            this.setPendingProposals([]);
+            throw error;
+        }
+    }
+
+    /**
+     * Set join request
+     */
+    setJoinRequest(joinRequest) {
+        this.state.joinRequest = joinRequest;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Get join request
+     */
+    getJoinRequest() {
+        return this.state.joinRequest;
+    }
+
+    /**
+     * Fetch Join Request for current graph
+     * @param {string} graphUuid - The graph UUID
+     * @returns {Promise} Resolves with join request data
+     */
+    async fetchJoinRequestForGraph(graphUuid) {
+        try {
+            const backendJoinRequest = await window.proposalsApiService.getJoinRequestForGraph(graphUuid);
+            const frontendJoinRequest = window.proposalsTransformer.transformJoinRequestFromBackend(backendJoinRequest);
+            this.setJoinRequest(frontendJoinRequest);
+            return frontendJoinRequest;
+        } catch (error) {
+            console.error('Failed to fetch join request:', error);
+            this.setJoinRequest(null);
+            throw error;
+        }
     }
 
     /**

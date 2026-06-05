@@ -822,7 +822,7 @@ class SnapshotService:
         
         # Convert nodes to read schemas
         nodes = []
-        for node in db_snapshot.nodes:
+        for node in sorted(db_snapshot.nodes, key=lambda n: n.local_id):
             # Convert database domain_id to local_id for frontend
             domain_local_id = None
             if node.domain_id is not None:
@@ -864,7 +864,7 @@ class SnapshotService:
         
         # Convert domains to read schemas
         domains = []
-        for domain in db_snapshot.domains:
+        for domain in sorted(db_snapshot.domains, key=lambda d: d.local_id):
             # Convert database parent_id (internal id) to local_id for frontend
             parent_local_id = None
             if domain.parent_id is not None:
@@ -882,12 +882,19 @@ class SnapshotService:
         
         # Convert redirects to read schemas
         redirects = []
-        for redirect in db_snapshot.redirects:
+        for redirect in sorted(db_snapshot.redirects, key=lambda r: r.created_at):
             redirects.append(schemas.NodeRedirectRead(
                 snapshot_uuid=db_snapshot.public_uuid,
                 old_local_id=redirect.old_local_id,
                 new_local_id=redirect.new_local_id
             ))
+
+        print(sorted(db_snapshot.authors_ref, key=lambda a: a.created_at))
+        authors = [schemas.UserRead(
+            user_uuid=author.public_uuid,
+            username=author.username)
+        for author in sorted(db_snapshot.authors_ref, key=lambda a: a.created_at)]      # Returns author list sorted by join time
+        print(authors)
         
         return schemas.GraphSnapshotRead(
             public_uuid=db_snapshot.public_uuid,
@@ -897,7 +904,7 @@ class SnapshotService:
             is_public=db_snapshot.is_public,
             created_at=db_snapshot.created_at,
             last_updated=db_snapshot.last_updated,
-            authors=[schemas.UserRead(user_uuid=author.public_uuid, username=author.username) for author in db_snapshot.authors_ref],
+            authors=authors,
             nodes=nodes,
             domains=domains,
             redirects=redirects,

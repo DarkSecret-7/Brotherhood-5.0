@@ -20,25 +20,45 @@ Pure CRUD operations for access control.
 No business logic - only raw database operations.
 """
 from sqlalchemy.orm import Session
+from uuid import UUID
 from .. import models
 
 def get_authorship_by_graph(db: Session, graph_id: int):
-    """Get all authorships for a graph"""
+    """Get all authorships for a graph by integer id"""
     return db.query(models.GraphAuthorship).filter(
         models.GraphAuthorship.graph_id == graph_id
     ).all()
 
+def get_authorship_by_graph_uuid(db: Session, graph_uuid: UUID):
+    """Get all authorships for a graph by UUID - faster direct query"""
+    return db.query(models.GraphAuthorship).filter(
+        models.GraphAuthorship.graph_uuid == graph_uuid
+    ).all()
+
 def get_authorship_by_graph_and_user(db: Session, graph_id: int, user_id: int):
-    """Get authorship record by graph and user"""
+    """Get authorship record by graph and user using integer ids"""
     return db.query(models.GraphAuthorship).filter(
         models.GraphAuthorship.graph_id == graph_id,
         models.GraphAuthorship.user_id == user_id
     ).first()
 
+def get_authorship_by_graph_uuid_and_user_uuid(db: Session, graph_uuid: UUID, user_uuid: UUID):
+    """Get authorship record by graph and user using UUIDs - faster direct query"""
+    return db.query(models.GraphAuthorship).filter(
+        models.GraphAuthorship.graph_uuid == graph_uuid,
+        models.GraphAuthorship.user_uuid == user_uuid
+    ).first()
+
 def get_authorships_by_user(db: Session, user_id: int):
-    """Get all authorships for a user"""
+    """Get all authorships for a user by integer id"""
     return db.query(models.GraphAuthorship).filter(
         models.GraphAuthorship.user_id == user_id
+    ).all()
+
+def get_authorships_by_user_uuid(db: Session, user_uuid: UUID):
+    """Get all authorships for a user by UUID - faster direct query"""
+    return db.query(models.GraphAuthorship).filter(
+        models.GraphAuthorship.user_uuid == user_uuid
     ).all()
 
 def create_authorship_record(db: Session, **kwargs):
@@ -49,8 +69,17 @@ def create_authorship_record(db: Session, **kwargs):
     return db_authorship
 
 def delete_authorship_record(db: Session, graph_id: int, user_id: int):
-    """Delete authorship record by graph and user"""
+    """Delete authorship record by graph and user using integer ids"""
     authorship = get_authorship_by_graph_and_user(db, graph_id, user_id)
+    if authorship:
+        db.delete(authorship)
+        db.commit()
+        return True
+    return False
+
+def delete_authorship_by_uuid(db: Session, graph_uuid: UUID, user_uuid: UUID):
+    """Delete authorship record by graph and user using UUIDs - faster direct query"""
+    authorship = get_authorship_by_graph_uuid_and_user_uuid(db, graph_uuid, user_uuid)
     if authorship:
         db.delete(authorship)
         db.commit()

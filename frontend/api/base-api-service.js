@@ -93,7 +93,7 @@ class BaseApiService {
     /**
      * POST request
      */
-    async post(endpoint, data) {
+    async post(endpoint, data={}) {
         const response = await this._fetch(endpoint, {
             method: 'POST',
             body: JSON.stringify(data)
@@ -116,7 +116,7 @@ class BaseApiService {
      * DELETE request
      */
     async delete(endpoint) {
-        await this._fetch(endpoint, { method: 'DELETE' });
+        return await this._fetch(endpoint, { method: 'DELETE' });
     }
 
     /**

@@ -176,7 +176,7 @@ class NodeRedirectBase(BaseModel):
     new_local_id: int
 
 class NodeRedirectRead(NodeRedirectBase):
-    created_at: datetime = None
+    created_at: Optional[datetime] = None
     snapshot_label: Optional[str] = None
     old_local_id_label: Optional[str] = None
     new_local_id_label: Optional[str] = None
@@ -305,7 +305,6 @@ class BookmarkRead(BookmarkBase):
     class Config:
         from_attributes = True
 
-
 # --- LLM Integration ---
 
 class LLMQuery(BaseModel):
@@ -353,20 +352,30 @@ class ProposalCreate(ProposalBase):
 class Consensus(BaseModel):
     yes_count: int
     no_count: int
+    abstain_count: int
     remaining_votes: int
 
 class ProposalRead(ProposalBase):
     public_hash: str
+    proposal_type: str
     proposal_time: Optional[datetime] = None
     proposal_status: Optional[str] = None
-    consensus: Optional[Consensus] = None          # computed field - [yes_count, no_count, remaining_votes]
-    votes: Optional[Dict[UUID, int]] = None              # computed field - 1 for yes, 0 for no per user
+
+    # Metadata Fields
+    graph_uuid: UUID
+    proposer_uuid: UUID
+    target_user_uuid: Optional[UUID] = None          # Target user for join/invite request, remains null otherwise
+    target_graph_uuid: Optional[UUID] = None         # Target graph for merge request, remains null otherwise
     
     # Readable Fields
     graph_label: Optional[str] = None
-    proposer_label: Optional[str] = None
-    target_user_label: Optional[str] = None
+    proposer_username: Optional[str] = None
+    target_username: Optional[str] = None
     target_graph_label: Optional[str] = None
+
+    # Computed fields
+    votes: Optional[Dict[UUID, int]] = None              # computed field - 1 for yes, 0 for no per user
+    consensus: Optional[Consensus] = None                # computed field - [yes_count, no_count, remaining_votes]
 
     class Config:
         from_attributes = True
@@ -387,8 +396,7 @@ class TokenData(BaseModel):     # DEPRECATED
 class ProposalConsentCreate(BaseModel):
     proposal_hash: str
     user_uuid: UUID
-    consent_date: Optional[datetime] = None
-    user_vote: int  # 1 for approve, -1 for reject
+    user_vote: int  # 1 for approve, -1 for reject, 0 for abstain
 
 class ProposalConsentRead(BaseModel):
     proposal_hash: str
@@ -398,6 +406,34 @@ class ProposalConsentRead(BaseModel):
     
     class Config:
         from_attributes = True
+
+# --- Authorship Invitation & Join Request Schemas ---
+
+class AuthorshipInvitationCreate(BaseModel):
+    graph_uuid: UUID
+    initiator_uuid: UUID
+    recipient_uuid: UUID
+
+class AuthorshipInvitationRead(BaseModel):
+    graph_uuid: UUID
+    initiator_uuid: UUID
+    recipient_uuid: UUID
+    created_at: datetime
+    answered: bool
+
+    class Config:
+        from_attributes = True
+
+class JoinRequestRead(BaseModel):       # A weaker Read schema that does not reveal details of join proposal
+    public_hash: str
+    graph_uuid: UUID
+    requestor_uuid: UUID
+    created_at: datetime
+    proposal_status: Optional[str] = None
+
+    # Optional QOL fields
+    graph_label: Optional[str] = None
+    requestor_username: Optional[str] = None
 
 # --- Authorship Schemas ---
 

@@ -20,6 +20,7 @@ Pure CRUD operations for GraphProposal model.
 No business logic - only raw database operations.
 """
 from sqlalchemy.orm import Session
+from uuid import UUID
 from .. import models
 
 def get_proposal_by_hash(db: Session, public_hash: str):
@@ -30,7 +31,8 @@ def get_user_proposals(db: Session, user_uuid: str, skip: int = 0, limit: int = 
     """Get proposals for a user (both sent and received)"""
     return db.query(models.GraphProposal).filter(
         (models.GraphProposal.proposer_uuid == user_uuid) | 
-        (models.GraphProposal.target_user_uuid == user_uuid)
+        (models.GraphProposal.target_user_uuid == user_uuid),
+        models.GraphProposal.proposal_status == "Pending"
     ).offset(skip).limit(limit).all()
 
 def create_proposal_record(db: Session, **kwargs):
@@ -52,6 +54,60 @@ def delete_proposal_by_hash(db: Session, public_hash: str):
     proposal = get_proposal_by_hash(db, public_hash)
     if proposal:
         db.delete(proposal)
+        db.commit()
+        return True
+    return False
+
+def get_proposals_by_graph_uuid(db: Session, graph_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100):
+    """Get proposals for a graph"""
+    return db.query(models.GraphProposal).filter(
+        models.GraphProposal.graph_uuid == graph_uuid,
+        models.GraphProposal.proposal_status == "Pending"
+    ).offset(skip).limit(limit).all()
+
+def get_proposal_by_kwargs(db: Session, **kwargs):
+    """Get proposal by keyword arguments"""
+    return db.query(models.GraphProposal).filter_by(**kwargs).first()
+
+def get_consents_by_proposal_hash(db: Session, proposal_hash: str):
+    """Get all consents for a proposal"""
+    return db.query(models.ProposalConsent).filter(
+        models.ProposalConsent.proposal_hash == proposal_hash
+    ).all()
+
+def get_consent_by_proposal_and_user(db: Session, proposal_hash: str, user_uuid: UUID):
+    """Get consent for a specific proposal and user"""
+    return db.query(models.ProposalConsent).filter(
+        models.ProposalConsent.proposal_hash == proposal_hash,
+        models.ProposalConsent.user_uuid == user_uuid
+    ).first()
+
+# Authorship invitations
+def get_authorship_invitation_by_id(db: Session, invitation_id: int):
+    """Get authorship invitation by id"""
+    return db.query(models.AuthorshipInvitation).filter(models.AuthorshipInvitation.id == invitation_id).first()
+
+def get_authorship_invitation_by_uuid(db: Session, invitation_uuid: int):
+    """Get authorship invitation by id"""
+    return db.query(models.AuthorshipInvitation).filter(models.AuthorshipInvitation.id == invitation_uuid).first()
+
+def create_authorship_invitation_record(db: Session, **kwargs):
+    """Create a new authorship invitation record with provided fields"""
+    db_invitation = models.AuthorshipInvitation(**kwargs)
+    db.add(db_invitation)
+    db.flush()
+    return db_invitation
+
+def update_authorship_invitation_record(db: Session, invitation_id: int, **kwargs):
+    """Update authorship invitation record with provided fields"""
+    db.query(models.AuthorshipInvitation).filter(models.AuthorshipInvitation.id == invitation_id).update(kwargs)
+    db.flush()
+
+def delete_authorship_invitation_by_id(db: Session, invitation_id: int):
+    """Delete authorship invitation by id"""
+    invitation = get_authorship_invitation_by_id(db, invitation_id)
+    if invitation:
+        db.delete(invitation)
         db.commit()
         return True
     return False

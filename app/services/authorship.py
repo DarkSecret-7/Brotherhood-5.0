@@ -28,16 +28,16 @@ class AuthorshipService:
 
     @staticmethod
     def get_snapshot_authors(db: Session, snapshot_uuid: UUID) -> List[models.GraphAuthorship]:
-        """Get all authors for a snapshot"""
-        snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
-        if not snapshot:
-            return []
-        return crud.access_control.get_authorship_by_graph(db, snapshot.id)
+        """Get all authors for a snapshot using UUID - faster direct query"""
+        return crud.access_control.get_authorship_by_graph_uuid(db, snapshot_uuid)
 
     @staticmethod
     def add_author(db: Session, snapshot_uuid: UUID, user_uuid: UUID, role: str = "Curator") -> Optional[models.GraphAuthorship]:
         """Add an author to a snapshot"""
-        # Get snapshot
+        existing = crud.access_control.get_authorship_by_graph_uuid_and_user_uuid(db, snapshot_uuid, user_uuid)
+        if existing:
+            raise ValueError("User is already an author")
+
         snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
         if not snapshot:
             raise ValueError("Snapshot not found")
@@ -46,17 +46,13 @@ class AuthorshipService:
         user = crud.users.get_user_by_uuid(db, user_uuid)
         if not user:
             raise ValueError("User not found")
-
-        # Check if user is already an author
-        existing = crud.access_control.get_authorship_by_graph_and_user(db, snapshot.id, user.id)
-        if existing:
-            raise ValueError("User is already an author")
-
-        # Create authorship
+        # Get authorship
         authorship = crud.access_control.create_authorship_record(
             db=db,
             graph_id=snapshot.id,
+            graph_uuid=snapshot_uuid,
             user_id=user.id,
+            user_uuid=user_uuid,
             role=role
         )
         db.commit()
@@ -66,28 +62,16 @@ class AuthorshipService:
     @staticmethod
     def remove_author(db: Session, snapshot_uuid: UUID, user_uuid: UUID) -> bool:
         """Remove an author from a snapshot"""
-        # Get snapshot
-        snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
-        if not snapshot:
-            raise ValueError("Snapshot not found")
-
-        # Get user
-        user = crud.users.get_user_by_uuid(db, user_uuid)
-        if not user:
-            raise ValueError("User not found")
-
-        # Don't allow removing the last author
-        authors = crud.access_control.get_authorship_by_graph(db, snapshot.id)
+        authors = crud.access_control.get_authorship_by_graph_uuid(db, snapshot_uuid)
         if len(authors) <= 1:
             raise ValueError("Cannot remove the last author")
 
-        # Check if user is an author
-        existing = crud.access_control.get_authorship_by_graph_and_user(db, snapshot.id, user.id)
+        existing = crud.access_control.get_authorship_by_graph_uuid_and_user_uuid(db, snapshot_uuid, user_uuid)
         if not existing:
             raise ValueError("User is not an author")
 
         # Delete authorship
-        return crud.access_control.delete_authorship_record(db, snapshot.id, user.id)
+        return crud.access_control.delete_authorship_by_uuid(db, snapshot_uuid, user_uuid)
 
     @staticmethod
     def check_authorization(db: Session, snapshot_uuid: UUID, user_id: int, action: str) -> bool:

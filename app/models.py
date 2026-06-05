@@ -37,7 +37,7 @@ class GraphSnapshot(Base):
 
     # Relationships
     base_snapshot = relationship("GraphSnapshot", remote_side=[id], backref="derived_snapshots")
-    authors_ref = relationship("User", secondary="graph_authorship", backref="created_snapshots")
+    authors_ref = relationship("User", secondary="graph_authorship", back_populates="authored_snapshots")
     nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan")
     domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan")
     redirects = relationship("NodeRedirect", back_populates="snapshot", cascade="all, delete-orphan")
@@ -56,13 +56,19 @@ class GraphAuthorship(Base):
     __tablename__ = "graph_authorship"
     __table_args__ = (
         UniqueConstraint("graph_id", "user_id", name="uq_graph_user"),
+        UniqueConstraint("graph_uuid", "user_uuid", name="uq_graph_uuid_user_uuid"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     graph_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="CASCADE"), index=True, nullable=False)
+    graph_uuid = Column(UUID(as_uuid=True), nullable=False, server_default=text("gen_random_uuid()"))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-    role = Column(String, nullable=True)  # e.g. "Admin", "Editor", "Viewer"
+    user_uuid = Column(UUID(as_uuid=True), nullable=False, server_default=text("gen_random_uuid()"))
+    role = Column(String, nullable=True)
+
+    # graph = relationship("GraphSnapshot", back_populates="authors_ref")
+    # user = relationship("User", back_populates="created_snapshots")
 
 class NodeRedirect(Base):
     __tablename__ = "node_redirects"
@@ -168,6 +174,7 @@ class User(Base):
 
     # Relationships
     bookmarks = relationship("Bookmark", back_populates="user")
+    authored_snapshots = relationship("GraphSnapshot", secondary="graph_authorship", back_populates="authors_ref")
 
 class Bookmark(Base):
     __tablename__ = "bookmarks"
@@ -254,3 +261,20 @@ class ProposalConsent(Base):
     # Relationships
     proposal = relationship("GraphProposal", backref="consents")
     user = relationship("User", backref="consents")
+
+class AuthorshipInvitation(Base):
+    __tablename__ = "authorship_invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    graph_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="CASCADE"), index=True, nullable=False)
+    graph_uuid = Column(UUID(as_uuid=True), nullable=False)
+    initiator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    initiator_uuid = Column(UUID(as_uuid=True), nullable=False)
+    recipient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    recipient_uuid = Column(UUID(as_uuid=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    answered = Column(Boolean, default=False, nullable=False)
+
+    graph = relationship("GraphSnapshot", backref="authorship_invitations")
+    initiator = relationship("User", foreign_keys=[initiator_id], backref="sent_invitations")
+    recipient = relationship("User", foreign_keys=[recipient_id], backref="received_invitations")
