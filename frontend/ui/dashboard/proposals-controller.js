@@ -24,7 +24,6 @@
 class ProposalsController {
     constructor(stateManager) {
         this.stateManager = stateManager;
-        this.currentProposalType = null; // Track which tab's proposal we're viewing
 
         // Bind handlers for state subscription
         this.handleStateChange = this.handleStateChange.bind(this);
@@ -98,17 +97,17 @@ class ProposalsController {
         }
 
         if (pendingList) {
-            pendingList.innerHTML = this.renderProposalItems(tabProposals.pending, currentProposalTab === 'received', true);
+            pendingList.innerHTML = this.renderProposalItems(tabProposals.pending, true);
         }
         if (notPendingList) {
-            notPendingList.innerHTML = this.renderProposalItems(tabProposals.notPending, currentProposalTab === 'received', false);
+            notPendingList.innerHTML = this.renderProposalItems(tabProposals.notPending, false);
         }
 
         // Render modal if open
         this.renderProposalModal();
     }
 
-    renderProposalItems(proposals, isInvitation = false, pendingList = true) {
+    renderProposalItems(proposals, pendingList = true) {
         const { currentProposalTab } = this.stateManager.state;
 
         if (!proposals || proposals.length === 0) {
@@ -132,21 +131,8 @@ class ProposalsController {
         }
 
         return proposals.map(p => {
-            if (isInvitation) {
-                return `
-                    <div class="proposal-item" onclick="proposalsController.openInvitationDetail('${p.graphUuid}')">
-                        <div class="proposal-info">
-                            <span class="proposal-type">Invitation</span>
-                            <span class="proposal-graph">${p.graphUuid || 'Unknown Graph'}</span>
-                        </div>
-                        <div class="proposal-status ${p.answered ? 'status-executed' : 'status-pending'}">
-                            ${p.answered ? 'Answered' : 'Pending'}
-                        </div>
-                    </div>
-                `;
-            }
             return `
-                <div class="proposal-item" onclick="proposalsController.openProposalDetail('${p.publicHash}', '${p.proposalType}')">
+                <div class="proposal-item" onclick="proposalsController.openProposalDetail('${p.publicHash}', '${currentProposalTab}')">
                     <div class="proposal-info">
                         <span class="proposal-type">${p.proposalType}</span>
                         <span class="proposal-graph">${p.graphLabel || 'Unknown Graph'}</span>
@@ -184,7 +170,7 @@ class ProposalsController {
         const consensusEl = document.getElementById('proposal-detail-consensus');
         if (proposal.consensus) {
             const c = proposal.consensus;
-            consensusEl.textContent = `${c.yesCount} yes, ${c.noCount} no, ${c.remainingVotes} remaining`;
+            consensusEl.textContent = `${c.yesCount} yes, ${c.noCount} no, ${c.remainingVotes} ${proposal.proposalStatus === 'Pending' ? ' remaining' : ' abstained'}`;
         } else {
             consensusEl.textContent = 'N/A';
         }
@@ -193,11 +179,22 @@ class ProposalsController {
         const voteSection = document.getElementById('proposal-detail-vote-section');
         const deleteSection = document.getElementById('proposal-detail-delete-section');
         const inviteSection = document.getElementById('proposal-detail-invite-section');
+        const invitationRespondSection = document.getElementById('proposal-detail-invitation-respond-section');
         const isPending = proposal.proposalStatus === 'Pending';
+        const isInvitation = !!proposal.isInvitation;
 
         voteSection.style.display = 'none';
         deleteSection.style.display = 'none';
         inviteSection.style.display = 'none';
+        invitationRespondSection.style.display = 'none';
+
+        if (isInvitation) {
+            // Show Accept/Decline buttons only while still Pending
+            if (isPending) {
+                invitationRespondSection.style.display = 'block';
+            }
+            return;
+        }
 
         // Show delete section for own pending proposals (isInitiator)
         if (isPending && proposal.isInitiator) {
@@ -254,28 +251,27 @@ class ProposalsController {
         }
     }
 
-    async openProposalDetail(proposalHash, proposalType) {
-        console.log(proposalHash, this.stateManager.state.proposals);
-        
-        this.currentProposalType = proposalType;
+    async openProposalDetail(proposalHash, currentProposalTab) {
         try {
-            const allProposals = this.stateManager.state.proposals['all'];
-            const proposal = allProposals.find(p => p.publicHash === proposalHash);
-            if (!proposal) {
-                this.stateManager.showAlert('Proposal not found');
-                return;
+            const currentUserUuid = window.authApiService?.getCurrentUserUuid();
+
+            if (currentProposalTab === 'authored') {
+                const fullProposal = await window.proposalsApiService.getProposal(proposalHash);
+                const transformed = window.proposalsTransformer.transformProposalFromBackend(fullProposal, currentUserUuid);
+                this.stateManager.setCurrentProposalDetail(transformed);
+            } else if (currentProposalTab === 'join') {
+                const fullProposal = await window.proposalsApiService.getJoinRequest(proposalHash);
+                const transformed = window.proposalsTransformer.transformJoinRequestFromBackend(fullProposal, currentUserUuid);
+                this.stateManager.setCurrentProposalDetail(transformed);
+            } else if (currentProposalTab === 'received') {
+                const fullInvitation = await window.proposalsApiService.getInvitation(proposalHash);
+                const transformed = window.proposalsTransformer.transformInvitationFromBackend(fullInvitation);
+                this.stateManager.setCurrentProposalDetail(transformed);
             }
-            this.stateManager.setCurrentProposalDetail(proposal);
         } catch (error) {
             console.error('Failed to load proposal details', error);
             this.stateManager.showAlert('Failed to load proposal details');
         }
-    }
-
-    openInvitationDetail(graphUuid) {
-        // Invitations are displayed in list format - clicking shows details
-        // Accept/decline functionality would be implemented here
-        this.stateManager.showAlert(`Invitation to graph: ${graphUuid}\n\nAccept/Decline functionality coming soon.`);
     }
 
     closeProposalDetailModal() {
@@ -306,6 +302,30 @@ class ProposalsController {
             this.closeProposalDetailModal();
         } catch (error) {
             alert('Failed to delete proposal: ' + error.message);
+        }
+    }
+
+    /**
+     * Respond to an authorship invitation (accept or reject).
+     */
+    async respondToInvitation(action) {
+        const invitation = this.stateManager.getCurrentProposalDetail();
+        if (!invitation || !invitation.isInvitation) return;
+
+        // Guard against responding to non-Pending invitations
+        if (invitation.invitationStatus && invitation.invitationStatus !== 'Pending') {
+            this.stateManager.showAlert(`Invitation is already ${invitation.invitationStatus.toLowerCase()}.`);
+            return;
+        }
+
+        const verb = action ? 'accept' : 'reject';
+        if (!confirm(`Are you sure you want to ${verb} this invitation?`)) return;
+
+        try {
+            await this.stateManager.respondToInvitation(invitation, action);
+            this.closeProposalDetailModal();
+        } catch (error) {
+            alert(`Failed to ${verb} invitation: ` + error.message);
         }
     }
 }

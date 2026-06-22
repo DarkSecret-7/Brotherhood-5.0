@@ -196,6 +196,14 @@
                     <p style="margin: 0; color: #5f6368;">This is an invite proposal sent to you.</p>
                 </div>
 
+                <div id="proposal-detail-invitation-respond-section" style="display: none; margin-bottom: 20px;">
+                    <p style="margin: 0 0 10px 0; color: #5f6368;">Respond to this invitation:</p>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button class="btn btn-success btn-small" onclick="proposalsController.respondToInvitation(true)">&#10003; Accept</button>
+                        <button class="btn btn-danger btn-small" onclick="proposalsController.respondToInvitation(false)">&#10007; Decline</button>
+                    </div>
+                </div>
+
                 <div class="button-group" style="justify-content: flex-end;">
                     <button class="btn btn-secondary" onclick="proposalsController.closeProposalDetailModal()">Close</button>
                 </div>
@@ -207,6 +215,7 @@
     <script src="/frontend/api/base-api-service.js"></script>
     <script src="/frontend/api/auth/auth-api-service.js"></script>
     <script src="/frontend/api/proposals/proposals-api-service.js"></script>
+    <script src="/frontend/api/snapshots/authorship-api-service.js"></script>
     <script src="/frontend/transformer/auth/auth-transformer.js"></script>
     <script src="/frontend/transformer/proposals/proposals-transformer.js"></script>
     <script src="/frontend/state/dashboard-state-manager.js"></script>

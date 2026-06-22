@@ -44,6 +44,21 @@ def get_received_invitations(skip: int = 0, limit: int = 100, db: Session = Depe
     """Get authorship invitations received by the current user"""
     return services.proposals.ProposalService.get_received_invitations(db, current_user.public_uuid, skip=skip, limit=limit)
 
+@router.get("/proposals/invitations/{invitation_hash}", response_model=schemas.AuthorshipInvitationRead)
+def get_received_invitation(invitation_hash: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    """Get a single authorship invitation by hash (recipient-only)."""
+    try:
+        return services.proposals.ProposalService.get_invitation_with_auth(
+            db, invitation_hash, current_user.public_uuid
+        )
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise HTTPException(status_code=404, detail=str(e))
+        if "not authorized" in error_msg:
+            raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
 # Generic parameterized routes AFTER specific routes
 @router.get("/proposals/{graph_uuid}/proposals", response_model=List[schemas.ProposalRead])
 def get_proposals_for_graph(graph_uuid: str, pending_only: bool = False, skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
@@ -62,24 +77,39 @@ def get_proposals_for_graph(graph_uuid: str, pending_only: bool = False, skip: i
 def get_proposal(proposal_hash: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     """Get a specific proposal (only for authors)"""
     try:
-        proposal = services.proposals.ProposalService.get_proposal_with_auth(
+        return services.proposals.ProposalService.get_proposal_with_auth(
             db, proposal_hash, current_user.public_uuid
         )
-        if not proposal:
-            raise HTTPException(status_code=404, detail="Proposal not found")
-        return proposal
     except ValueError as e:
         error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise HTTPException(status_code=404, detail=str(e))
+        if "not authorized" in error_msg:
+            raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/proposals/join_requests/{proposal_hash}", response_model=schemas.JoinRequestRead)
+def get_join_request(proposal_hash: str,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get a specific join request by hash"""
+    try:
+        return services.proposals.ProposalService.get_join_request_with_auth(
+            db, proposal_hash, current_user.public_uuid
+        )
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise HTTPException(status_code=404, detail=str(e))
         if "not authorized" in error_msg:
             raise HTTPException(status_code=403, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/proposals/{proposal_hash}/respond")
 def respond_to_proposal(
-    proposal_hash: str,
     response: schemas.ProposalConsentCreate,
     db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(get_current_user)
 ):
     """Respond to a proposal (approve/reject)"""
     try:
@@ -116,79 +146,21 @@ def delete_proposal(proposal_hash: str, db: Session = Depends(database.get_db), 
             raise HTTPException(status_code=400, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/proposals/{graph_uuid}/request", response_model=Union[schemas.JoinRequestRead, None])
-def get_join_request_for_graph(graph_uuid: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+@router.get("/proposals/{graph_uuid}/requests", response_model=List[schemas.JoinRequestRead])
+def get_join_requests_for_graph(graph_uuid: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     """
-    Only reveal join request to the requestor, if a request exists by the requestor
+    Only reveal join requests to the requestor, including past rejected/approved requests
     NEVER reveal complete proposal details to requestor who is not yet an author of the graph
     """
-    return services.proposals.ProposalService.get_join_request_for_graph(db, UUID(graph_uuid), current_user.public_uuid)
+    return services.proposals.ProposalService.get_join_requests_for_graph(db, UUID(graph_uuid), current_user.public_uuid)
 
 # IMPORTANT: PROPOSALS SHOULD NOT BE AN ENDPOINT DIRECTLY,
 # WHETHER WE USE PROPOSALS OR NOT, SHOULD BE JUDGED BY THE INDIVIDUAL SERVICES
-# PROPOSALS SHOULD BE STRICTLY READ-ONLY
-# KEEP THIS FOR NOW, IN THE FUTURE, WE WILL REVERSE THIS FLOW
-
-@router.post("/proposals/{graph_uuid}/join")
-def join_graph(graph_uuid: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
-    """Request to join a graph as an author"""
-    try:
-        result = services.proposals.ProposalService.join_graph(
-            db, UUID(graph_uuid), current_user.public_uuid
-        )
-        return result
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "already an author" in error_msg:
-            raise HTTPException(status_code=400, detail=str(e))
-        elif "no authors" in error_msg:
-            raise HTTPException(status_code=404, detail=str(e))
-        elif "pending" in error_msg:
-            raise HTTPException(status_code=202, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/proposals/{graph_uuid}/invite")
-def invite_to_graph(
-    graph_uuid: str,
-    target_user_uuid: Annotated[str, Body(..., embed=True)],
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """Invite a user to become an author of a graph"""
-    try:
-        result = services.proposals.ProposalService.invite_to_graph(
-            db, UUID(graph_uuid), current_user.public_uuid, UUID(target_user_uuid)
-        )
-        return result
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not an author" in error_msg:
-            raise HTTPException(status_code=403, detail=str(e))
-        elif "already an author" in error_msg:
-            raise HTTPException(status_code=400, detail=str(e))
-        elif "pending" in error_msg:
-            raise HTTPException(status_code=202, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/proposals/{graph_uuid}/remove")
-def remove_from_graph(
-    graph_uuid: str,
-    target_user_uuid: Annotated[str, Body(..., embed=True)],
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """Remove a user from a graph as an author"""
-    try:
-        result = services.proposals.ProposalService.remove_from_graph(
-            db, UUID(graph_uuid), current_user.public_uuid, UUID(target_user_uuid)
-        )
-        return result
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not an author" in error_msg:
-            raise HTTPException(status_code=403, detail=str(e))
-        elif "already an author" in error_msg:
-            raise HTTPException(status_code=400, detail=str(e))
-        elif "pending" in error_msg:
-            raise HTTPException(status_code=202, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+# PROPOSALS ARE STRICTLY READ-ONLY + VOTING
+# REFACTOR COMPLETE:
+#   - Step 1 (DONE): join moved to POST    /snapshots/{uuid}/authors/join       in app/api/authorship.py
+#   - Step 2 (DONE): invite moved to POST   /snapshots/{uuid}/authors/invite     in app/api/authorship.py
+#   - Step 3 (DONE): remove moved to DELETE /snapshots/{uuid}/authors/{user_uuid} in app/api/authorship.py
+#
+# Authorship lifecycle actions now live entirely under the /snapshots/{uuid}/authors/* surface.
+# This router is read-only (listing, fetching) plus voting (respond, delete-own-proposal).

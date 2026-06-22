@@ -26,6 +26,7 @@ class DatabaseManager {
     constructor(stateManager) {
         this.snapshotsApiService = window.snapshotsApiService;
         this.proposalsApiService = window.proposalsApiService;
+        this.authorshipApiService = window.authorshipApiService;
         this.stateManager = stateManager;
         this.initializeEventListeners();
         
@@ -288,7 +289,7 @@ class DatabaseManager {
 
     async fetchAndRenderJoinRequest(graphUuid) {
         try {
-            const joinRequest = await this.stateManager.fetchJoinRequestForGraph(graphUuid);
+            const joinRequest = await this.stateManager.fetchLatestJoinRequestForGraph(graphUuid);
             this.renderJoinRequest(joinRequest);
         } catch (err) {
             console.error('Failed to fetch join request:', err);
@@ -302,12 +303,18 @@ class DatabaseManager {
 
         console.log(joinRequest);
 
+        // Renders join request according to proposal status
         let html = '';
-        if (joinRequest) {
+        if (joinRequest && joinRequest.proposalStatus !== "approved") {
             html += '<p style="margin: 0 0 10px 0; color: #5f6368;">Join request sent.</p>';
             html += '<div id="collaboration-join-actions" style="display: flex; gap: 10px;">';
-            html += '<button class="btn btn-primary btn-small" disabled onclick="">Requested To Join</button>';
-            html += '<button class="btn btn-danger btn-small" onclick="databaseManager.deleteProposal(\'' + joinRequest.publicHash + '\')">Cancel Request</button>';
+            if (joinRequest.proposalStatus === "Pending") {
+                html += '<button class="btn btn-primary btn-small" disabled onclick="">Requested To Join</button>';
+                html += '<button class="btn btn-danger btn-small" onclick="databaseManager.triggerDeleteProposal(\'' + joinRequest.publicHash + '\')">Cancel Request</button>';
+            } else if (joinRequest.proposalStatus === "Rejected") {
+                html += '<button class="btn btn-danger btn-small" disabled onclick="">Request Rejected</button>';
+                html += '<button class="btn btn-primary btn-small" onclick="databaseManager.triggerJoinGraph()">Send Another Request</button>';
+            }
             html += '<button class="btn btn-secondary btn-small" onclick="databaseManager.openProposalDetailModal(\'' + joinRequest.publicHash + '\')">Details</button>';
             html += '</div>';
         }
@@ -355,7 +362,7 @@ class DatabaseManager {
             html += `<span class="proposal-initiator">by ${initiatorDisplay}</span>`;
 
             if (proposal.isInitiator) {
-                html += `<button class="proposal-delete-btn" onclick="event.stopPropagation(); databaseManager.deleteProposal('${proposal.publicHash}', true)">&times;</button>`;
+                html += `<button class="proposal-delete-btn" onclick="event.stopPropagation(); databaseManager.triggerDeleteProposal('${proposal.publicHash}', true)">&times;</button>`;
             } else if (!proposal.isTarget) {
                 const approveClass = proposal.userVote === 1 ? 'active' : '';
                 const rejectClass = proposal.userVote === -1 ? 'active' : '';
@@ -406,7 +413,7 @@ class DatabaseManager {
         if (proposal.isInitiator) {
             detailInviteSection.style.display = 'none';
             detailVoteSection.style.display = 'none';
-            detailDeleteSection.style.display = 'block';
+            detailDeleteSection.style.display = proposal.proposalStatus === "Pending" ? 'block' : 'none';
         } else if (!proposal.isTarget) {
             detailInviteSection.style.display = 'none';
             detailVoteSection.style.display = 'block';
@@ -437,6 +444,13 @@ class DatabaseManager {
         }
         this.stateManager.setModal('proposalDetail', false);
         this.stateManager.setCurrentProposalDetail(null);
+    }
+
+    async triggerDeleteProposal(proposalHash, authorship = false) {
+        // Wrapper for deleteProposal with confirmation
+        const confirm = await this.stateManager.customConfirm('Are you sure you want to delete this proposal?');
+        if (!confirm) return;
+        await this.deleteProposal(proposalHash, authorship);
     }
 
     async deleteProposal(proposalHash, authorship = false) {
@@ -485,7 +499,7 @@ class DatabaseManager {
                     this.openGraphActionModal(graphUuid);       // Wait for refresh to complete and then reopen
                 }
                 this.fetchAndRenderProposals(graphUuid);
-                this.fetchAndRenderJoinRequest(graphUuid);
+                // this.fetchAndRenderJoinRequest(graphUuid);   // Do NOT fetch join request because user is an author
                 
                 this.stateManager.customAlert(result.message);
             }
@@ -606,7 +620,7 @@ class DatabaseManager {
         const confirmed = await this.stateManager.customConfirm('Request to join this graph as a collaborator?');
         if (confirmed) {
             try {
-                const result = await this.proposalsApiService.joinGraph(snapshot.uuid);
+                const result = await this.authorshipApiService.joinGraph(snapshot.uuid);
                 if (result.success) {
                     this.stateManager.customAlert('Join request submitted successfully!');
                     this.fetchAndRenderJoinRequest(snapshot.uuid);
@@ -636,7 +650,7 @@ class DatabaseManager {
         const confirmed = await this.stateManager.customConfirm('Invite this user to collaborate on the graph?');
         if (confirmed) {
             try {
-                const result = await this.proposalsApiService.inviteToGraph(snapshot.uuid, targetUserUuid);
+                const result = await this.authorshipApiService.inviteToGraph(snapshot.uuid, targetUserUuid);
                 console.log(result);
                 if (result.success) {
                     if (result.direct) {

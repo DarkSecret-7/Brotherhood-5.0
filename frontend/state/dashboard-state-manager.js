@@ -47,7 +47,7 @@ class DashboardStateManager {
                 received: { pending: [], notPending: [] },
                 all: []
             },
-            currentProposalTab: 'authored',
+            currentProposalTab: 'authored',         // authored, join, or received
             currentProposalDetail: null,
             isLoadingProposals: false,
             proposalsError: null
@@ -257,9 +257,8 @@ class DashboardStateManager {
         this.setLoadingProposals(true);
         this.setProposalsError(null);
         try {
-            const currentUserUuid = window.authApiService?.getCurrentUserUuid();
             const backendInvitations = await window.proposalsApiService.getReceivedInvitations();
-            const frontendInvitations = window.proposalsTransformer.transformProposalListFromBackend(backendInvitations, currentUserUuid, true);
+            const frontendInvitations = window.proposalsTransformer.transformInvitationListFromBackend(backendInvitations, true);
             this.setProposals('received', frontendInvitations);
             return frontendInvitations;
         } catch (error) {
@@ -312,6 +311,26 @@ class DashboardStateManager {
             return true;
         } catch (error) {
             console.error('Failed to delete proposal:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Respond to an authorship invitation (accept or reject).
+     * @param {Object} invitation - Invitation object with graphUuid and publicHash
+     * @param {boolean} accept - true to accept, false to reject
+     */
+    async respondToInvitation(invitation, accept) {
+        try {
+            await window.authorshipApiService.respondToInvitation(
+                invitation.graphUuid,
+                invitation.publicHash,
+                accept
+            );
+            await this.loadAllProposals();
+            return true;
+        } catch (error) {
+            console.error('Failed to respond to invitation:', error);
             throw error;
         }
     }

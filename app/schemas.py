@@ -415,11 +415,12 @@ class AuthorshipInvitationCreate(BaseModel):
     role: Optional[str] = "Curator"
 
 class AuthorshipInvitationRead(BaseModel):
+    public_hash: str
     graph_uuid: UUID
     initiator_uuid: UUID
     recipient_uuid: UUID
     created_at: datetime
-    answered: bool
+    invitation_status: str          # 'Pending' | 'Accepted' | 'Rejected'
 
     # Optional QOL fields
     graph_label: Optional[str] = None

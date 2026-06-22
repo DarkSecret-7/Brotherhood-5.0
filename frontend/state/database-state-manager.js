@@ -31,9 +31,8 @@ class DatabaseStateManager {
             // Current action state
             currentGraphActionSnapshot: null,
 
-            // Pending proposals for current graph
-            pendingProposals: [],
-            joinRequest: null,
+            pendingProposals: [],               // Pending proposals for current graph
+            joinRequest: null,                  // Latest join request for current graph
 
             // Current proposal detail
             currentProposalDetail: null,
@@ -276,23 +275,27 @@ class DatabaseStateManager {
     /**
      * Get join request
      */
+    /**
+     * Get join requests
+     */
     getJoinRequest() {
-        return this.state.joinRequest;
+        return this.state.joinRequest || null;
     }
 
     /**
-     * Fetch Join Request for current graph
+     * Fetch Join Requests for current graph
      * @param {string} graphUuid - The graph UUID
-     * @returns {Promise} Resolves with join request data
+     * @returns {Promise} Resolves with a transformed latest join request or null if no join request
      */
-    async fetchJoinRequestForGraph(graphUuid) {
+    async fetchLatestJoinRequestForGraph(graphUuid) {
         try {
-            const backendJoinRequest = await window.proposalsApiService.getJoinRequestForGraph(graphUuid);
-            const frontendJoinRequest = window.proposalsTransformer.transformJoinRequestFromBackend(backendJoinRequest);
-            this.setJoinRequest(frontendJoinRequest);
-            return frontendJoinRequest;
+            const backendJoinRequests = await window.proposalsApiService.getJoinRequestsForGraph(graphUuid);
+            const frontendJoinRequests = window.proposalsTransformer.transformJoinRequestListFromBackend(backendJoinRequests || []);
+            const latestRequest = frontendJoinRequests.sort((a, b) => b.proposalTime - a.proposalTime)[0];
+            this.setJoinRequest(latestRequest || null);
+            return latestRequest || null;
         } catch (error) {
-            console.error('Failed to fetch join request:', error);
+            console.error('Failed to fetch join requests:', error);
             this.setJoinRequest(null);
             throw error;
         }

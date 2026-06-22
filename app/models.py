@@ -266,6 +266,7 @@ class AuthorshipInvitation(Base):
     __tablename__ = "authorship_invitations"
 
     id = Column(Integer, primary_key=True, index=True)
+    public_hash = Column(String(64), unique=True, index=True, nullable=False)
     graph_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="CASCADE"), index=True, nullable=False)
     graph_uuid = Column(UUID(as_uuid=True), nullable=False)
     initiator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
@@ -273,7 +274,7 @@ class AuthorshipInvitation(Base):
     recipient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     recipient_uuid = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    answered = Column(Boolean, default=False, nullable=False)
+    invitation_status = Column(String(32), nullable=False, server_default='Pending')                    # 'Pending' | 'Accepted' | 'Rejected'
 
     graph = relationship("GraphSnapshot", backref="authorship_invitations")
     initiator = relationship("User", foreign_keys=[initiator_id], backref="sent_invitations")

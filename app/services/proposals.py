@@ -83,7 +83,7 @@ class ProposalService:
     def get_consensus(db: Session, proposal: schemas.ProposalRead) -> tuple[schemas.Consensus, dict]:
         """Get consensus and consents for a proposal"""
         consents = crud.proposals.get_consents_by_proposal_hash(db, proposal.public_hash)
-        author_count = len(crud.access_control.get_authorship_by_graph(db, proposal.graph_id))
+        author_count = len(crud.access_control.get_authorship_by_graph_uuid(db, proposal.graph_uuid))
 
         votes = {}
         for c in consents:
@@ -115,11 +115,14 @@ class ProposalService:
 
         # Get datetime manually for hash generation
         proposal_time = datetime.now(timezone.utc)
-        string_data = proposal_data.proposal_type + str(proposal_data.graph_uuid) + str(proposal_data.proposer_uuid) + str(proposal_time)
+        string_data = (
+            f"proposal:{proposal_data.proposal_type}:{proposal_data.graph_uuid}:"
+            f"{proposal_data.proposer_uuid}:{proposal_time.isoformat()}"
+        )
         if proposal_data.target_graph_uuid:
-            string_data += str(proposal_data.target_graph_uuid)
+            string_data += f":{proposal_data.target_graph_uuid}"
         if proposal_data.target_user_uuid:
-            string_data += str(proposal_data.target_user_uuid)
+            string_data += f":{proposal_data.target_user_uuid}"
         public_hash = utils.generate_hash(string_data)
 
         # Get ids for graph, proposer, target user, and target graph
@@ -212,21 +215,21 @@ class ProposalService:
             raise ValueError("Proposal is no longer pending")
 
         # Only authors of the same graph who have not already responded, can respond
+        consensus = ProposalService.get_consensus(db, proposal)
         authors = services.authorship.AuthorshipService.get_snapshot_authors(db, proposal.graph_uuid)
         if response.user_uuid not in [author.user_uuid for author in authors]:
             raise ValueError("User is not an author of this graph")
-        if response.user_uuid in [consent.user_uuid for consent in proposal.consents]:
+        if response.user_uuid in consensus[1].keys():
             raise ValueError("User has already responded to this proposal")
 
         # Create consent record
         consent = ProposalService.create_consent(db, response)
 
         # Execute action depending on proposal_type and consensus
-        consensus = ProposalService.get_consensus(db, proposal)[0]      # Get only consensus
-        print(consensus, consensus.remaining_votes, consensus.yes_count, consensus.no_count)
-        if consensus.remaining_votes < 1:
+        print(consensus[0], consensus[0].remaining_votes, consensus[0].yes_count, consensus[0].no_count)
+        if consensus[0].remaining_votes < 1:
             # Only execute when no remaining votes and majority, otherwise mark as rejected, might expand logic later
-            if  consensus.yes_count > consensus.no_count:
+            if  consensus[0].yes_count > consensus[0].no_count:
                 try:
                     ProposalService.execute_proposal(db, proposal)
                     return {"success": True, "message": "Response Recorded and Proposal executed"}
@@ -247,7 +250,7 @@ class ProposalService:
             services.authorship.AuthorshipService.add_author(db, proposal.graph_uuid, proposal.proposer_uuid)
         
         if proposal.proposal_type == "Invite":
-            services.authorship.AuthorshipService.add_author(db, proposal.target_graph_uuid, proposal.target_user_uuid)
+            services.authorship.AuthorshipService.send_authorship_invitation(db, proposal.graph_uuid, proposal.proposer_uuid, proposal.target_user_uuid)
 
         if proposal.proposal_type == "Remove":
             services.authorship.AuthorshipService.remove_author(db, proposal.graph_uuid, proposal.target_user_uuid)
@@ -278,6 +281,25 @@ class ProposalService:
         return consensus, votes
 
     @staticmethod
+    def get_join_request_with_auth(db: Session, proposal_hash: str, user_uuid: UUID) -> schemas.JoinRequestRead:
+        """
+        Get a specific join request by hash with authentication
+        """
+        proposal = ProposalService.get_proposal_with_auth(db, proposal_hash, user_uuid)
+        
+        # Change shape to JoinRequestRead format and explicitly strip consensus
+        join_request = schemas.JoinRequestRead(
+            public_hash=proposal.public_hash,
+            graph_uuid=proposal.graph_uuid,
+            requestor_uuid=proposal.proposer_uuid,
+            created_at=proposal.proposal_time,
+            proposal_status=proposal.proposal_status,
+            graph_label=proposal.graph_label,
+            requestor_username=proposal.proposer_username,
+        )
+        return join_request
+
+    @staticmethod
     def get_join_requests_by_user(db: Session, requestor_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.JoinRequestRead]:
         """
         Get all join requests for a specific user
@@ -300,152 +322,21 @@ class ProposalService:
             requestor_username=r.proposer.username,
         ) for r in requests]
 
-    @staticmethod
-    def join_graph(db: Session, graph_uuid: UUID, user_uuid: UUID) -> dict:
-        """
-        Request to join a graph as an author.
-        Creates a Join proposal targeting the graph's authors.
-        """
-        authors = services.authorship.AuthorshipService.get_snapshot_authors(db, graph_uuid)
-
-        author_uuids = [author.user_uuid for author in authors]
-        if user_uuid in author_uuids:
-            raise ValueError("User is already an author of this graph")
-
-        if len(authors) == 0:
-            raise ValueError("Graph has no authors")
-
-        # Check for existing Join proposal
-        existing_proposal = crud.proposals.get_proposal_by_kwargs(db, proposal_status="Pending", proposal_type="Join", proposer_uuid=user_uuid, graph_uuid=graph_uuid, target_user_uuid=None, target_graph_uuid=None)
-        if existing_proposal:
-            raise ValueError("A proposal to request joining graph is already pending")
-
-        proposal_data = schemas.ProposalCreate(
-            proposal_type="Join",
-            graph_uuid=graph_uuid,
-            proposer_uuid=user_uuid
-        )
-
-        proposal = ProposalService.create_proposal(db, proposal_data)
-
-        return {"success": True, "proposal_hash": proposal.public_hash}
+    # Refactored 1/3: join moved to POST /snapshots/{uuid}/authors/join in app/api/authorship.py
+    # Refactored 2/3: invite moved to POST /snapshots/{uuid}/authors/invite in app/api/authorship.py
+    # Refactored 3/3: remove moved to DELETE /snapshots/{uuid}/authors/{user_uuid} in app/api/authorship.py
 
     @staticmethod
-    def invite_to_graph(db: Session, graph_uuid: UUID, inviter_uuid: UUID, target_user_uuid: UUID) -> dict:
+    def get_join_requests_for_graph(db: Session, graph_uuid: UUID, requestor_uuid: UUID) -> List[schemas.JoinRequestRead]:
         """
-        Invite a user to become an author of a graph.
-        If the inviter is the sole author, execute directly.
-        If there are multiple authors, create an Invite proposal.
+        Get all past join requests a specific user has made to a specific graph
+        Past rejected requests are also included
         """
-        authors = services.authorship.AuthorshipService.get_snapshot_authors(db, graph_uuid)
-
-        author_uuids = [author.user_uuid for author in authors]
-        if inviter_uuid not in author_uuids:
-            raise ValueError("User is not an author of this graph")
-
-        if target_user_uuid in author_uuids:
-            raise ValueError("Target user is already an author of this graph")
-
-        if len(authors) == 0:
-            raise ValueError("Graph has no authors")
-
-        # Check if target user has a pending invitation to this graph
-        filters = {"graph_uuid": graph_uuid, "recipient_uuid": target_user_uuid, "answered": False}
-        existing_invitation = crud.proposals.get_authorship_invitations_by_kwargs(db, **filters)
-        if existing_invitation:
-            raise ValueError("Target user is already invited to this graph")
-
-        # Check for existing Invite proposal
-        existing_proposal = crud.proposals.get_proposal_by_kwargs(db, proposal_status="Pending", proposal_type="Invite", proposer_uuid=inviter_uuid, graph_uuid=graph_uuid, target_user_uuid=target_user_uuid, target_graph_uuid=None)
-        if existing_proposal:
-            raise ValueError("A proposal to invite target user is already pending")
-
-        print(authors, len(authors))
-        if len(authors) == 1:
-            # Skip proposal creation if only one author
-            print("Only one author, skipping proposal creation")
-
-            snapshot = crud.snapshots.get_snapshot_by_uuid(db, graph_uuid)
-            inviter = crud.users.get_user_by_uuid(db, inviter_uuid)
-            target_user = crud.users.get_user_by_uuid(db, target_user_uuid)
-
-            crud.proposals.create_authorship_invitation_record(
-                db=db,
-                graph_id=snapshot.id,
-                graph_uuid=graph_uuid,
-                initiator_id=inviter.id,
-                initiator_uuid=inviter_uuid,
-                recipient_id=target_user.id,
-                recipient_uuid=target_user_uuid,
-                answered=False
-            )
-            db.commit()
-            return {"success": True, "direct": True}
-
-        proposal_data = schemas.ProposalCreate(
-            proposal_type="Invite",
-            graph_uuid=graph_uuid,
-            proposer_uuid=inviter_uuid,
-            target_user_uuid=target_user_uuid
-        )
-
-        proposal = ProposalService.create_proposal(db, proposal_data)
-
-        return {"success": True, "direct": False, "proposal_hash": proposal.public_hash}
-
-    @staticmethod
-    def remove_from_graph(db: Session, graph_uuid: UUID, proposer_uuid: UUID, target_author_uuid: UUID) -> dict:
-        """
-        Remove an author from a graph.
-        If the proposer is the sole relevant party, execute directly.
-        If there are other relevant parties, create a Remove proposal.
-        """
-        if proposer_uuid == target_author_uuid:
-            raise ValueError("Cannot remove self")
-
-        authors = services.authorship.AuthorshipService.get_snapshot_authors(db, graph_uuid)
-
-        author_uuids = [author.user_uuid for author in authors]
-        if proposer_uuid not in author_uuids:
-            raise ValueError("User is not an author of this graph")
-
-        if target_author_uuid not in author_uuids:
-            raise ValueError("Target author is not an author of this graph")
-
-        if len(authors) == 1:
-            raise ValueError("Graph has only one author, cannot remove")
-
-        if len(authors) == 2:
-            # Skip proposal creation if only two authors
-            services.authorship.AuthorshipService.remove_author(db, graph_uuid, target_author_uuid)
-            return {"success": True, "direct": True}
-
-        # Check for existing Remove proposal
-        existing_proposal = crud.proposals.get_proposal_by_kwargs(db, proposal_status="Pending", proposal_type="Remove", proposer_uuid=proposer_uuid, graph_uuid=graph_uuid, target_user_uuid=target_author_uuid, target_graph_uuid=None)
-        if existing_proposal:
-            raise ValueError("A proposal to remove target author is already pending")
-
-        proposal_data = schemas.ProposalCreate(
-            proposal_type="Remove",
-            graph_uuid=graph_uuid,
-            proposer_uuid=proposer_uuid,
-            target_user_uuid=target_author_uuid
-        )
-
-        proposal = ProposalService.create_proposal(db, proposal_data)
-
-        return {"success": True, "direct": False, "proposal_hash": proposal.public_hash}
-
-    @staticmethod
-    def get_join_request_for_graph(db: Session, graph_uuid: UUID, requestor_uuid: UUID) -> Union[schemas.JoinRequestRead, None]:
-        """
-        Get join request for a specific graph by a specific user
-        """
-        join_request = crud.proposals.get_proposal_by_kwargs(db, proposal_type="Join", proposer_uuid=requestor_uuid, graph_uuid=graph_uuid, target_user_uuid=None, target_graph_uuid=None)
-        if not join_request:
-            return None
-
-        return schemas.JoinRequestRead(
+        join_requests = crud.proposals.get_proposals_by_kwargs(db, proposal_type="Join", proposer_uuid=requestor_uuid, graph_uuid=graph_uuid, target_user_uuid=None, target_graph_uuid=None)
+        if not join_requests:
+            return []
+        
+        return [schemas.JoinRequestRead(
             public_hash=join_request.public_hash,
             graph_uuid=join_request.graph_uuid,
             requestor_uuid=join_request.proposer_uuid,
@@ -453,7 +344,7 @@ class ProposalService:
             proposal_status=join_request.proposal_status,
             graph_label=join_request.graph.version_label,
             requestor_username=join_request.proposer.username,
-        )
+        ) for join_request in join_requests]
 
     @staticmethod
     def get_proposals_for_authored_graphs(db: Session, user_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.ProposalRead]:
@@ -485,31 +376,56 @@ class ProposalService:
             return []
         
         return [schemas.AuthorshipInvitationRead(
+            public_hash=inv.public_hash,
             graph_uuid=inv.graph_uuid,
             initiator_uuid=inv.initiator_uuid,
             recipient_uuid=inv.recipient_uuid,
             created_at=inv.created_at,
-            answered=inv.answered,
+            invitation_status=inv.invitation_status,
             graph_label=inv.graph.version_label,
             initiator_username=inv.initiator.username,
             recipient_username=inv.recipient.username,
         ) for inv in db_invitations]
 
     @staticmethod
+    def get_invitation_with_auth(db: Session, invitation_hash: str, user_uuid: UUID) -> schemas.AuthorshipInvitationRead:
+        """
+        Get a single AuthorshipInvitation by hash with recipient-only auth check.
+        Slim schema: no consensus (does not apply to direct invitations).
+        """
+        inv = crud.proposals.get_authorship_invitation_by_kwargs(db, public_hash=invitation_hash)
+        if not inv:
+            raise ValueError("Invitation not found")
+        if inv.recipient_uuid != user_uuid:
+            raise ValueError("Not authorized to view this invitation")
+        return schemas.AuthorshipInvitationRead(
+            public_hash=inv.public_hash,
+            graph_uuid=inv.graph_uuid,
+            initiator_uuid=inv.initiator_uuid,
+            recipient_uuid=inv.recipient_uuid,
+            created_at=inv.created_at,
+            invitation_status=inv.invitation_status,
+            graph_label=inv.graph.version_label,
+            initiator_username=inv.initiator.username,
+            recipient_username=inv.recipient.username,
+        )
+
+    @staticmethod
     def get_proposal_with_auth(db: Session, proposal_hash: str, user_uuid: UUID) -> schemas.ProposalRead:
         """Get proposal by hash with authorization check for graph authors"""
         db_proposal = crud.proposals.get_proposal_by_hash(db, proposal_hash)
         if not db_proposal:
-            return None
+            return ValueError("Proposal not found")
         
         # Check if user is an author of the graph
         authors = crud.access_control.get_authorship_by_graph_uuid(db, db_proposal.graph_uuid)
         author_uuids = [a.user_uuid for a in authors]
         
-        if user_uuid not in author_uuids:
+        if user_uuid not in author_uuids and user_uuid != db_proposal.proposer_uuid:
             raise ValueError("Not authorized to view this proposal")
         
-        return ProposalService._convert_to_read_schema(db, db_proposal, include_votes=True)
+        # Only include votes and consensus for authors
+        return ProposalService._convert_to_read_schema(db, db_proposal, include_votes=user_uuid in author_uuids)
 
     @staticmethod
     def get_proposals_for_graph_with_auth(db: Session, graph_uuid: UUID, user_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.ProposalRead]:

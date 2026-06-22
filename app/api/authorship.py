@@ -17,71 +17,127 @@
 
 """
 Authorship management endpoints
-TEMPORARY: NEEDS TO BE FIXED
-CONTAINS DEPRECATED ENDPOINTS
-All authorship editing now happens through proposals endpoints
+Step 1 of refactor (DONE): join migrated from app/api/proposals.py to POST /snapshots/{uuid}/authors/join
+Step 2 of refactor (DONE): invite migrated from app/api/proposals.py to POST /snapshots/{uuid}/authors/invite
+Step 3 of refactor (DONE): remove migrated from app/api/proposals.py to DELETE /snapshots/{uuid}/authors/{user_uuid}
+
+Direct add/remove of authors via HTTP is intentionally not exposed — authors can
+only be added or removed through proposal consensus (or, for sole-author snapshots,
+through the direct invitation path inside AuthorshipService).
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Annotated
 from .. import services, schemas, models, database
 from uuid import UUID
 from .auth import get_current_user
 
 router = APIRouter()
 
-# @router.post("/snapshots/{snapshot_uuid}/authors", response_model=schemas.GraphAuthorshipRead)
-def add_author(
+@router.post("/snapshots/{snapshot_uuid}/authors/join")
+def request_to_join_graph(
     snapshot_uuid: UUID,
-    authorship: schemas.GraphAuthorshipCreate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Add an author to a snapshot"""
-    # Check authorization
-    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.public_uuid, "update"):
-        raise HTTPException(status_code=403, detail="Not authorized to modify authors")
-
+    """Request to join a snapshot as an author. Always creates a Join proposal."""
     try:
-        result = services.authorship.AuthorshipService.add_author(
-            db, snapshot_uuid, authorship.user_uuid, authorship.role or "Curator"
+        result = services.authorship.AuthorshipService.request_to_join(
+            db, snapshot_uuid, current_user.public_uuid
         )
-
-        # Get user details for response
-        user = services.users.UserService.get_user(db, authorship.user_uuid)
-
-        return schemas.GraphAuthorshipRead(
-            graph_uuid=snapshot_uuid,
-            user_uuid=authorship.user_uuid,
-            username=user.username if user.username else "Unknown",
-            role=result.role,
-            created_at=result.created_at
-        )
+        return result
     except ValueError as e:
-        if "not found" in str(e).lower():
+        error_msg = str(e).lower()
+        if "already an author" in error_msg:
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "no authors" in error_msg or "not found" in error_msg:
             raise HTTPException(status_code=404, detail=str(e))
+        elif "pending invite proposal" in error_msg or "pending invitation" in error_msg:
+            raise HTTPException(status_code=409, detail=str(e))
+        elif "pending" in error_msg:
+            raise HTTPException(status_code=202, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
-# @router.delete("/snapshots/{snapshot_uuid}/authors/{user_uuid}")
-def remove_author(
+@router.post("/snapshots/{snapshot_uuid}/authors/invite")
+def invite_author_to_graph(
+    snapshot_uuid: UUID,
+    target_user_uuid: Annotated[str, Body(..., embed=True)],
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Invite a user to become an author of a snapshot. Sole author → direct invite; multiple authors → Invite proposal."""
+    try:
+        result = services.authorship.AuthorshipService.invite_author(
+            db, snapshot_uuid, current_user.public_uuid, UUID(target_user_uuid)
+        )
+        return result
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not an author" in error_msg:
+            raise HTTPException(status_code=403, detail=str(e))
+        elif "already an author" in error_msg or "already invited" in error_msg:
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "no authors" in error_msg:
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "pending join request" in error_msg:
+            raise HTTPException(status_code=409, detail=str(e))
+        elif "pending" in error_msg:
+            raise HTTPException(status_code=202, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/snapshots/{snapshot_uuid}/authors/{user_uuid}")
+def remove_author_from_graph(
     snapshot_uuid: UUID,
     user_uuid: UUID,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Remove an author from a snapshot"""
-    # Check authorization
-    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.public_uuid, "update"):
-        raise HTTPException(status_code=403, detail="Not authorized to modify authors")
-
+    """Remove a coauthor from a snapshot. Two authors → direct; three or more → Remove proposal."""
     try:
-        success = services.authorship.AuthorshipService.remove_author(db, snapshot_uuid, user_uuid)
-        if not success:
-            raise HTTPException(status_code=404, detail="Authorship not found")
-        return {"message": "Author removed"}
+        result = services.authorship.AuthorshipService.remove_coauthor(
+            db, snapshot_uuid, current_user.public_uuid, user_uuid
+        )
+        return result
     except ValueError as e:
-        if "not found" in str(e).lower():
+        error_msg = str(e).lower()
+        if "not an author" in error_msg:
+            raise HTTPException(status_code=403, detail=str(e))
+        elif "cannot remove self" in error_msg:
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "only one author" in error_msg:
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "pending" in error_msg:
+            raise HTTPException(status_code=202, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/snapshots/{snapshot_uuid}/authors/invitations/{invitation_hash}/respond")
+def respond_to_authorship_invitation(
+    snapshot_uuid: UUID,
+    invitation_hash: str,
+    accept: Annotated[bool, Body(..., embed=True)],
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Recipient accepts or rejects an authorship invitation.
+
+    Accept → AuthorshipService.add_author + invitation_status='Accepted'.
+    Reject → invitation_status='Rejected'. No authorship change.
+    """
+    try:
+        result = services.authorship.AuthorshipService.respond_to_invitation(
+            db, snapshot_uuid, invitation_hash, current_user.public_uuid, accept
+        )
+        return result
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
             raise HTTPException(status_code=404, detail=str(e))
+        elif "not authorized" in error_msg or "not belong" in error_msg:
+            raise HTTPException(status_code=403, detail=str(e))
+        elif "no longer pending" in error_msg:
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "already an author" in error_msg:
+            raise HTTPException(status_code=400, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/snapshots/{snapshot_uuid}/authors", response_model=List[schemas.GraphAuthorshipRead])

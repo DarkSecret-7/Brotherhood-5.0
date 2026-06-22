@@ -111,19 +111,33 @@ class ProposalsTransformer {
         else return joinRequests;
     }
 
+    /**
+     * Transform a backend AuthorshipInvitation into a proposal-like shape so
+     * the unified modal can render it alongside real proposals.
+     * isInvitation is set to true so the modal can hide proposal-only
+     * sections (vote, delete, invite hint) and show the response section.
+     * invitationStatus mirrors the backend 'Pending' | 'Accepted' | 'Rejected'.
+     */
     transformInvitationFromBackend(backendInvitation) {
         if (!backendInvitation) return null;
-        
         return {
+            // Unified-modal fields
             publicHash: backendInvitation.public_hash,
+            proposalType: 'Invitation',
             graphUuid: backendInvitation.graph_uuid,
-            initiatorUuid: backendInvitation.initiator_uuid,
-            recipientUuid: backendInvitation.recipient_uuid,
-            created_at: backendInvitation.created_at ? new Date(backendInvitation.created_at) : null,
-            answered: backendInvitation.answered,
-            graph_label: backendInvitation.graph_label || '',
-            initiator_username: backendInvitation.initiator_username || '',
-            recipient_username: backendInvitation.recipient_username || '',
+            graphLabel: backendInvitation.graph_label || '',
+            proposerUuid: backendInvitation.initiator_uuid,
+            proposerUsername: backendInvitation.initiator_username || '',
+            targetUserUuid: backendInvitation.recipient_uuid,
+            targetUsername: backendInvitation.recipient_username || '',
+            proposalTime: backendInvitation.created_at ? new Date(backendInvitation.created_at) : null,
+            proposalStatus: backendInvitation.invitation_status || 'Pending',
+            isInitiator: false,
+            isTarget: true,
+            // Invitation-specific flag for modal rendering
+            // TEMPORARY, should remove later
+            isInvitation: true,
+            invitationStatus: backendInvitation.invitation_status || 'Pending',
         };
     }
 

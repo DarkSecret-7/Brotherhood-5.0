@@ -19,7 +19,8 @@
 
 /**
  * Proposals API Service
- * Handles join and invite proposal operations
+ * Strictly read-only + voting surface: listing, fetching and responding to proposals.
+ * Lifecycle actions (join, invite, remove) live on AuthorshipApiService.
  */
 class ProposalsApiService extends BaseApiService {
 
@@ -57,6 +58,27 @@ class ProposalsApiService extends BaseApiService {
     }
 
     /**
+     * Get a specific join request by hash
+     * @param {string} proposalHash
+     * @returns {Object} Join request object
+     */
+    async getJoinRequest(proposalHash) {
+        return await this.get(`/proposals/join_requests/${proposalHash}`);
+    }
+
+    /**
+     * Get a specific authorship invitation by hash (recipient-only).
+     * Slim schema: no consensus (does not apply to direct invitations).
+     * @param {string} invitationHash
+     * @returns {Object} Invitation object
+     */
+    async getInvitation(invitationHash) {
+        return await this.get(`/proposals/invitations/${invitationHash}`);
+    }
+
+
+
+    /**
      * Get proposals for a specific graph (only for authors)
      * @param {string} graphUuid - The graph UUID
      * @returns {Array} Array of proposal objects
@@ -66,35 +88,12 @@ class ProposalsApiService extends BaseApiService {
     }
 
     /**
-     * Get join request for a specific graph
+     * Get all pending and nonpending join requests for a specific graph
      * @param {string} graphUuid - The graph UUID
      * @returns {Object} - { join_request?: object }
      */
-    async getJoinRequestForGraph(graphUuid) {
-        return await this.get(`/proposals/${graphUuid}/request`);
-    }
-
-    /**
-     * Request to join a graph as an author
-     * @param {string} graphUuid - The graph UUID
-     * @returns {Object} - { success: boolean, proposal_hash?: string }
-     */
-    async joinGraph(graphUuid) {
-        return await this.post(`/proposals/${graphUuid}/join`);
-    }
-
-    /**
-     * Invite a user to become an author of a graph
-     * @param {string} graphUuid - The graph UUID
-     * @param {string} targetUserUuid - The target user UUID to invite
-     * @returns {Object} - { success: boolean, direct?: boolean, proposal_hash?: string }
-     */
-    async inviteToGraph(graphUuid, targetUserUuid) {
-        console.log(graphUuid, typeof graphUuid, targetUserUuid, typeof targetUserUuid);
-        
-        return await this.post(`/proposals/${graphUuid}/invite`, {
-            target_user_uuid: targetUserUuid
-        });
+    async getJoinRequestsForGraph(graphUuid) {
+        return await this.get(`/proposals/${graphUuid}/requests`);
     }
 
     async deleteProposal(proposalHash) {
@@ -103,12 +102,6 @@ class ProposalsApiService extends BaseApiService {
 
     async respondToProposal(proposalHash, response) {
         return await this.post(`/proposals/${proposalHash}/respond`, response);
-    }
-
-    async removeAuthorFromGraph(graphUuid, targetUserUuid) {
-        return await this.post(`/proposals/${graphUuid}/remove`, {
-            target_user_uuid: targetUserUuid
-        });
     }
 }
 
