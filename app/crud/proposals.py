@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,14 +27,6 @@ def get_proposal_by_hash(db: Session, public_hash: str):
     """Get proposal by public_hash"""
     return db.query(models.GraphProposal).filter(models.GraphProposal.public_hash == public_hash).first()
 
-def get_user_proposals(db: Session, user_uuid: str, skip: int = 0, limit: int = 100):
-    """Get proposals for a user (both sent and received)"""
-    return db.query(models.GraphProposal).filter(
-        (models.GraphProposal.proposer_uuid == user_uuid) | 
-        (models.GraphProposal.target_user_uuid == user_uuid),
-        models.GraphProposal.proposal_status == "Pending"
-    ).offset(skip).limit(limit).all()
-
 def create_proposal_record(db: Session, **kwargs):
     """Create a new proposal record with provided fields"""
     db_proposal = models.GraphProposal(**kwargs)
@@ -58,38 +50,36 @@ def delete_proposal_by_hash(db: Session, public_hash: str):
         return True
     return False
 
-def get_proposals_by_graph_uuid(db: Session, graph_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100):
-    """Get proposals for a graph"""
-    return db.query(models.GraphProposal).filter(
-        models.GraphProposal.graph_uuid == graph_uuid,
-        models.GraphProposal.proposal_status == "Pending"
-    ).offset(skip).limit(limit).all()
-
 def get_proposal_by_kwargs(db: Session, **kwargs):
-    """Get proposal by keyword arguments"""
+    """Get a single proposal by keyword arguments"""
     return db.query(models.GraphProposal).filter_by(**kwargs).first()
 
+def get_proposals_by_kwargs(db: Session, skip: int = 0, limit: int = 100, **kwargs):
+    """Get all proposals by keyword arguments"""
+    return db.query(models.GraphProposal).filter_by(**kwargs).offset(skip).limit(limit).all()
+
+def get_consent_by_kwargs(db: Session, **kwargs):
+    """Get a single consent by keyword arguments"""
+    return db.query(models.ProposalConsent).filter_by(**kwargs).first()
+    
 def get_consents_by_proposal_hash(db: Session, proposal_hash: str):
     """Get all consents for a proposal"""
     return db.query(models.ProposalConsent).filter(
         models.ProposalConsent.proposal_hash == proposal_hash
     ).all()
 
-def get_consent_by_proposal_and_user(db: Session, proposal_hash: str, user_uuid: UUID):
-    """Get consent for a specific proposal and user"""
-    return db.query(models.ProposalConsent).filter(
-        models.ProposalConsent.proposal_hash == proposal_hash,
-        models.ProposalConsent.user_uuid == user_uuid
-    ).first()
+def get_consents_by_kwargs(db: Session, skip: int = 0, limit: int = 100, **kwargs):
+    """Get all consents by keyword arguments"""
+    return db.query(models.ProposalConsent).filter_by(**kwargs).offset(skip).limit(limit).all()
 
 # Authorship invitations
-def get_authorship_invitation_by_id(db: Session, invitation_id: int):
-    """Get authorship invitation by id"""
-    return db.query(models.AuthorshipInvitation).filter(models.AuthorshipInvitation.id == invitation_id).first()
+def get_authorship_invitation_by_kwargs(db: Session, **kwargs):
+    """Get a single authorship invitation by keyword arguments"""
+    return db.query(models.AuthorshipInvitation).filter_by(**kwargs).first()
 
-def get_authorship_invitation_by_uuid(db: Session, invitation_uuid: int):
-    """Get authorship invitation by id"""
-    return db.query(models.AuthorshipInvitation).filter(models.AuthorshipInvitation.id == invitation_uuid).first()
+def get_authorship_invitations_by_kwargs(db: Session, skip: int = 0, limit: int = 100, **kwargs):
+    """Get all authorship invitations by keyword arguments"""
+    return db.query(models.AuthorshipInvitation).filter_by(**kwargs).offset(skip).limit(limit).all()
 
 def create_authorship_invitation_record(db: Session, **kwargs):
     """Create a new authorship invitation record with provided fields"""
@@ -102,12 +92,3 @@ def update_authorship_invitation_record(db: Session, invitation_id: int, **kwarg
     """Update authorship invitation record with provided fields"""
     db.query(models.AuthorshipInvitation).filter(models.AuthorshipInvitation.id == invitation_id).update(kwargs)
     db.flush()
-
-def delete_authorship_invitation_by_id(db: Session, invitation_id: int):
-    """Delete authorship invitation by id"""
-    invitation = get_authorship_invitation_by_id(db, invitation_id)
-    if invitation:
-        db.delete(invitation)
-        db.commit()
-        return True
-    return False

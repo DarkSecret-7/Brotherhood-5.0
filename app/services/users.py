@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,9 +24,37 @@ from uuid import UUID
 from .. import crud, schemas, models, utils
 
 class UserService:
-    
+
     @staticmethod
-    def create_user(db: Session, user: schemas.UserCreate) -> models.User:
+    def _convert_to_read_schema(db_user: models.User) -> schemas.UserRead:
+        """Convert database model to read schema"""
+        return schemas.UserRead(
+            user_uuid=db_user.public_uuid,
+            username=db_user.username,
+            is_active=db_user.is_active,
+            created_at=db_user.created_at
+        )
+
+    @staticmethod
+    def _convert_to_profile_schema(db_user: models.User) -> schemas.UserProfileRead:
+        """Convert database model to full profile read schema"""
+        return schemas.UserProfileRead(
+            user_uuid=db_user.public_uuid,
+            username=db_user.username,
+            is_active=db_user.is_active,
+            created_at=db_user.created_at,
+            email=db_user.email,
+            phone=db_user.phone,
+            dob=db_user.dob,
+            bio=db_user.bio,
+            location=db_user.location,
+            social_github=db_user.social_github,
+            social_linkedin=db_user.social_linkedin,
+            profile_image=db_user.profile_image
+        )
+
+    @staticmethod
+    def create_user(db: Session, user: schemas.UserCreate) -> schemas.UserRead:
         """Create a new user with business logic"""
         # Hash password - business logic
         hashed_password = utils.get_password_hash(user.password)
@@ -39,25 +67,34 @@ class UserService:
         
         db.commit()
         db.refresh(db_user)
-        return db_user
+        return UserService._convert_to_read_schema(db_user)
 
     @staticmethod
-    def get_user(db: Session, user_uuid: UUID) -> models.User:
+    def get_user(db: Session, user_uuid: UUID) -> schemas.UserRead:
         """Get user by UUID"""
-        return crud.users.get_user_by_uuid(db, user_uuid)
+        db_user = crud.users.get_user_by_uuid(db, user_uuid)
+        if not db_user:
+            return None
+        return UserService._convert_to_read_schema(db_user)
 
     @staticmethod
-    def get_user_by_id(db: Session, user_id: int) -> models.User:
-        """Get user by ID"""
-        return crud.users.get_user_by_id(db, user_id)
+    def get_user_by_uuid(db: Session, user_uuid: UUID) -> schemas.UserRead:
+        """Get user by UUID (internal helper)"""
+        db_user = crud.users.get_user_by_uuid(db, user_uuid)
+        if not db_user:
+            return None
+        return UserService._convert_to_read_schema(db_user)
 
     @staticmethod
-    def get_user_by_username(db: Session, username: str) -> models.User:
+    def get_user_by_username(db: Session, username: str) -> schemas.UserRead:
         """Get user by username"""
-        return crud.users.get_user_by_username(db, username)
+        db_user = crud.users.get_user_by_username(db, username)
+        if not db_user:
+            return None
+        return UserService._convert_to_read_schema(db_user)
 
     @staticmethod
-    def update_user(db: Session, db_user: models.User, user_update: schemas.UserProfileUpdate) -> models.User:
+    def update_user(db: Session, db_user: models.User, user_update: schemas.UserProfileUpdate) -> schemas.UserRead:
         """Update user with business logic"""
         update_data = user_update.model_dump(exclude_unset=True)
         
@@ -74,7 +111,15 @@ class UserService:
         
         db.commit()
         db.refresh(db_user)
-        return db_user
+        return UserService._convert_to_read_schema(db_user)
+
+    @staticmethod
+    def get_user_profile(db: Session, user_uuid: UUID) -> schemas.UserProfileRead:
+        """Get full user profile"""
+        db_user = crud.users.get_user_by_uuid(db, user_uuid)
+        if not db_user:
+            return None
+        return UserService._convert_to_profile_schema(db_user)
 
     @staticmethod
     def delete_user(db: Session, user_uuid: UUID) -> bool:

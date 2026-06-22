@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,7 +38,20 @@ class DashboardStateManager {
                 confirmText: 'OK',
                 cancelText: 'Cancel',
                 resolve: null
-            }
+            },
+
+            // Proposals State
+            proposals: {
+                authored: { pending: [], notPending: [] },
+                join: { pending: [], notPending: [] },
+                received: { pending: [], notPending: [] },
+                all: []
+            },
+            currentProposalTab: 'authored',
+            currentProposalDetail: null,
+            isLoadingProposals: false,
+            proposalsError: null
+            
         };
 
         this.listeners = [];
@@ -142,6 +155,164 @@ class DashboardStateManager {
         this.notify();
         if (resolve) {
             resolve(result);
+        }
+    }
+
+    // --- Proposals Methods ---
+
+    /**
+     * Set proposals for a specific tab
+     */
+    setProposals(tab, categorized) {
+        this.state.proposals[tab] = categorized;
+        this.state.proposals['all'] = [...this.state.proposals['all'], ...categorized.pending, ...categorized.notPending];
+        this.notify();
+    }
+
+    /**
+     * Get proposals for a specific tab
+     */
+    getProposals(tab) {
+        return this.state.proposals[tab];
+    }
+
+    /**
+     * Set current proposal detail
+     */
+    setCurrentProposalDetail(proposal) {
+        console.log(proposal);
+        
+        this.state.currentProposalDetail = proposal;
+        this.notify();
+    }
+
+    /**
+     * Get current proposal detail
+     */
+    getCurrentProposalDetail() {
+        return this.state.currentProposalDetail;
+    }
+
+    /**
+     * Set proposals loading state
+     */
+    setLoadingProposals(loading) {
+        this.state.isLoadingProposals = loading;
+        this.notify();
+    }
+
+    /**
+     * Set proposals error
+     */
+    setProposalsError(error) {
+        this.state.proposalsError = error;
+        this.notify();
+    }
+
+    /**
+     * Load join requests (Join proposals sent by user)
+     */
+    async loadJoinRequests() {
+        this.setLoadingProposals(true);
+        this.setProposalsError(null);
+        try {
+            const backendRequests = await window.proposalsApiService.getJoinRequests();
+            const frontendRequests = window.proposalsTransformer.transformJoinRequestListFromBackend(backendRequests, true);
+            this.setProposals('join', frontendRequests);
+            return frontendRequests;
+        } catch (error) {
+            console.error('Failed to load join requests:', error);
+            this.setProposalsError('Failed to load join requests');
+            throw error;
+        } finally {
+            this.setLoadingProposals(false);
+        }
+    }
+
+    /**
+     * Load authored proposals (proposals on graphs user is author of)
+     */
+    async loadAuthoredProposals() {
+        this.setLoadingProposals(true);
+        this.setProposalsError(null);
+        try {
+            const currentUserUuid = window.authApiService?.getCurrentUserUuid();
+            const backendProposals = await window.proposalsApiService.getAuthoredProposals();
+            const frontendProposals = window.proposalsTransformer.transformProposalListFromBackend(backendProposals, currentUserUuid, true);
+            this.setProposals('authored', frontendProposals);
+            return frontendProposals;
+        } catch (error) {
+            console.error('Failed to load authored proposals:', error);
+            this.setProposalsError('Failed to load authored proposals');
+            throw error;
+        } finally {
+            this.setLoadingProposals(false);
+        }
+    }
+
+    /**
+     * Load received invitations (authorship invitations sent to user)
+     */
+    async loadReceivedInvitations() {
+        this.setLoadingProposals(true);
+        this.setProposalsError(null);
+        try {
+            const currentUserUuid = window.authApiService?.getCurrentUserUuid();
+            const backendInvitations = await window.proposalsApiService.getReceivedInvitations();
+            const frontendInvitations = window.proposalsTransformer.transformProposalListFromBackend(backendInvitations, currentUserUuid, true);
+            this.setProposals('received', frontendInvitations);
+            return frontendInvitations;
+        } catch (error) {
+            console.error('Failed to load received invitations:', error);
+            this.setProposalsError('Failed to load received invitations');
+            throw error;
+        } finally {
+            this.setLoadingProposals(false);
+        }
+    }
+
+    /**
+     * Load all proposals
+     */
+    async loadAllProposals() {
+        await Promise.all([
+            this.loadAuthoredProposals(),
+            this.loadJoinRequests(),
+            this.loadReceivedInvitations()
+        ]);
+    }
+
+    /**
+     * Vote on a proposal
+     */
+    async voteProposal(proposalHash, vote) {
+        try {
+            await window.proposalsApiService.respondToProposal(proposalHash, {
+                proposal_hash: proposalHash,
+                user_uuid: window.authApiService?.getCurrentUserUuid(),
+                user_vote: vote
+            });
+            // Reload all proposals after voting
+            await this.loadAllProposals();
+            return true;
+        } catch (error) {
+            console.error('Failed to vote:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a proposal
+     */
+    async deleteProposal(proposalHash) {
+        try {
+            await window.proposalsApiService.deleteProposal(proposalHash);
+            // Reload all proposals after deleting
+            await this.loadAllProposals();
+            return true;
+        } catch (error) {
+            console.error('Failed to delete proposal:', error);
+            throw error;
         }
     }
 }

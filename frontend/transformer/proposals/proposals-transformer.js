@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,10 +34,10 @@ class ProposalsTransformer {
             targetGraphUuid: backendProposal.target_graph_uuid,
             proposalTime: backendProposal.proposal_time ? new Date(backendProposal.proposal_time) : null,
             proposalStatus: backendProposal.proposal_status,
-            graphLabel: backendProposal.graph_label || null,
-            proposerUsername: backendProposal.proposer_username || null,
-            targetUsername: backendProposal.target_username || null,
-            targetGraphLabel: backendProposal.target_graph_label || null,
+            graphLabel: backendProposal.graph_label || '',
+            proposerUsername: backendProposal.proposer_username || '',
+            targetUsername: backendProposal.target_username || '',
+            targetGraphLabel: backendProposal.target_graph_label || '',
             isInitiator: backendProposal.proposer_uuid === currentUserUuid,
             isTarget: backendProposal.target_user_uuid === currentUserUuid
         };
@@ -64,9 +64,21 @@ class ProposalsTransformer {
         return frontendProposal;
     }
 
-    transformProposalListFromBackend(backendProposals, currentUserUuid) {
+    /**
+     * Categorize proposals into pending and not pending
+     */
+    categorizeProposals(proposals) {
+        const pending = proposals.filter(p => p.proposalStatus === 'Pending');
+        const notPending = proposals.filter(p => p.proposalStatus !== 'Pending');
+        return { pending, notPending };
+    }
+
+    transformProposalListFromBackend(backendProposals, currentUserUuid, categorized = false) {
         if (!Array.isArray(backendProposals)) return [];
-        return backendProposals.map(proposal => this.transformProposalFromBackend(proposal, currentUserUuid));
+        const proposals = backendProposals.map(proposal => this.transformProposalFromBackend(proposal, currentUserUuid));
+        
+        if (categorized) return this.categorizeProposals(proposals);     // Returns an object with pending and noPending sorted
+        else return proposals;
     }
 
     transformJoinRequestFromBackend(backendJoinRequest) {
@@ -82,13 +94,45 @@ class ProposalsTransformer {
             proposerUuid: backendJoinRequest.requestor_uuid,
             proposalTime: backendJoinRequest.created_at ? new Date(backendJoinRequest.created_at) : null,
             proposalStatus: backendJoinRequest.proposal_status || 'Unavailable',
-            graphLabel: backendJoinRequest.graph_label || null,
-            proposerUsername: backendJoinRequest.requestor_username || null,
-            targetUsername: null,
-            targetGraphLabel: null,
+            graphLabel: backendJoinRequest.graph_label || '',
+            proposerUsername: backendJoinRequest.requestor_username || '',
+            targetUsername: '',
+            targetGraphLabel: '',
             isInitiator: true,
             isTarget: false
         };
+    }
+
+    transformJoinRequestListFromBackend(backendJoinRequests, categorized = false) {
+        if (!Array.isArray(backendJoinRequests)) return [];
+        const joinRequests = backendJoinRequests.map(joinRequest => this.transformJoinRequestFromBackend(joinRequest));
+        
+        if (categorized) return this.categorizeProposals(joinRequests);     // Returns an object with pending and noPending sorted
+        else return joinRequests;
+    }
+
+    transformInvitationFromBackend(backendInvitation) {
+        if (!backendInvitation) return null;
+        
+        return {
+            publicHash: backendInvitation.public_hash,
+            graphUuid: backendInvitation.graph_uuid,
+            initiatorUuid: backendInvitation.initiator_uuid,
+            recipientUuid: backendInvitation.recipient_uuid,
+            created_at: backendInvitation.created_at ? new Date(backendInvitation.created_at) : null,
+            answered: backendInvitation.answered,
+            graph_label: backendInvitation.graph_label || '',
+            initiator_username: backendInvitation.initiator_username || '',
+            recipient_username: backendInvitation.recipient_username || '',
+        };
+    }
+
+    transformInvitationListFromBackend(backendInvitations, categorized = false) {
+        if (!Array.isArray(backendInvitations)) return [];
+        const invitations = backendInvitations.map(invitation => this.transformInvitationFromBackend(invitation));
+        
+        if (categorized) return this.categorizeProposals(invitations);     // Returns an object with pending and noPending sorted
+        else return invitations;
     }
 
     transformProposalConsentFromBackend(backendProposalConsent) {

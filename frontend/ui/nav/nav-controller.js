@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

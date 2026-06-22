@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from .. import services, schemas, database, utils, models
+from .. import services, schemas, database, utils, models, crud
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -32,7 +32,7 @@ async def get_current_user(db: Session = Depends(database.get_db), token: str = 
     """FastAPI dependency for getting current user"""
     try:
         token_data = utils.get_current_user_token_data(token)
-        user = services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
+        user = crud.users.get_user_by_uuid(db, user_uuid=token_data.user_uuid)
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,14 +51,14 @@ async def get_current_user_optional(db: Session = Depends(database.get_db), toke
     """FastAPI dependency for getting current user, returns None if not authenticated"""
     try:
         token_data = utils.get_current_user_token_data(token)
-        return services.users.UserService.get_user(db, user_uuid=token_data.user_uuid)
+        return crud.users.get_user_by_uuid(db, user_uuid=token_data.user_uuid)
     except Exception:
         return None
 
 @router.post("/auth/signup", response_model=schemas.UserRead)
 def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     # Check if user already exists
-    db_user = services.users.UserService.get_user_by_username(db, username=user.username)
+    db_user = crud.users.get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
     
@@ -84,7 +84,7 @@ def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
 @router.post("/auth/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     try:
-        user = services.users.UserService.get_user_by_username(db, username=form_data.username)
+        user = crud.users.get_user_by_username(db, username=form_data.username)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

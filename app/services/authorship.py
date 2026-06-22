@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,17 +22,34 @@ Orchestrates CRUD operations and handles business rules.
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
-from .. import crud, models
+from .. import crud, schemas, models
 
 class AuthorshipService:
 
     @staticmethod
-    def get_snapshot_authors(db: Session, snapshot_uuid: UUID) -> List[models.GraphAuthorship]:
-        """Get all authors for a snapshot using UUID - faster direct query"""
-        return crud.access_control.get_authorship_by_graph_uuid(db, snapshot_uuid)
+    def _convert_to_read_schema(db_authorship: models.GraphAuthorship, username: str = None) -> schemas.GraphAuthorshipRead:
+        """Convert database model to read schema"""
+        return schemas.GraphAuthorshipRead(
+            graph_uuid=db_authorship.graph_uuid,
+            user_uuid=db_authorship.user_uuid,
+            role=db_authorship.role,
+            username=username,
+            created_at=db_authorship.created_at
+        )
 
     @staticmethod
-    def add_author(db: Session, snapshot_uuid: UUID, user_uuid: UUID, role: str = "Curator") -> Optional[models.GraphAuthorship]:
+    def get_snapshot_authors(db: Session, snapshot_uuid: UUID) -> List[schemas.GraphAuthorshipRead]:
+        """Get all authors for a snapshot using UUID"""
+        db_authors = crud.access_control.get_authorship_by_graph_uuid(db, snapshot_uuid)
+        result = []
+        for auth in db_authors:
+            user = crud.users.get_user_by_uuid(db, auth.user_uuid)
+            username = user.username if user else None
+            result.append(AuthorshipService._convert_to_read_schema(auth, username))
+        return result
+
+    @staticmethod
+    def add_author(db: Session, snapshot_uuid: UUID, user_uuid: UUID, role: str = "Curator") -> schemas.GraphAuthorshipRead:
         """Add an author to a snapshot"""
         existing = crud.access_control.get_authorship_by_graph_uuid_and_user_uuid(db, snapshot_uuid, user_uuid)
         if existing:
@@ -46,8 +63,8 @@ class AuthorshipService:
         user = crud.users.get_user_by_uuid(db, user_uuid)
         if not user:
             raise ValueError("User not found")
-        # Get authorship
-        authorship = crud.access_control.create_authorship_record(
+
+        db_authorship = crud.access_control.create_authorship_record(
             db=db,
             graph_id=snapshot.id,
             graph_uuid=snapshot_uuid,
@@ -56,8 +73,8 @@ class AuthorshipService:
             role=role
         )
         db.commit()
-        db.refresh(authorship)
-        return authorship
+        db.refresh(db_authorship)
+        return AuthorshipService._convert_to_read_schema(db_authorship, user.username)
 
     @staticmethod
     def remove_author(db: Session, snapshot_uuid: UUID, user_uuid: UUID) -> bool:
@@ -74,7 +91,7 @@ class AuthorshipService:
         return crud.access_control.delete_authorship_by_uuid(db, snapshot_uuid, user_uuid)
 
     @staticmethod
-    def check_authorization(db: Session, snapshot_uuid: UUID, user_id: int, action: str) -> bool:
+    def check_authorization(db: Session, snapshot_uuid: UUID, user_uuid: UUID, action: str) -> bool:
         """Check if user is authorized to perform action on snapshot"""
         from .snapshots import SnapshotService
-        return SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, action)
+        return SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_uuid, action)

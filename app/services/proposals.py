@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,8 +39,11 @@ class ProposalService:
 
     @staticmethod
     def get_user_proposals(db: Session, user_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.ProposalRead]:
-        """Get proposals for a user (both sent and received)"""
-        db_proposals = crud.proposals.get_user_proposals(db, user_uuid, pending_only, skip=skip, limit=limit)
+        """Get proposals for a user (only sent)"""
+        filters = {"proposer_uuid": user_uuid}
+        if pending_only:
+            filters["proposal_status"] = "Pending"
+        db_proposals = crud.proposals.get_proposals_by_kwargs(db, skip=skip, limit=limit, **filters)
         return [ProposalService._convert_to_read_schema(db, p, include_votes=True) for p in db_proposals]
 
     @staticmethod
@@ -100,11 +103,14 @@ class ProposalService:
     @staticmethod
     def get_proposals_for_graph(db: Session, graph_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.ProposalRead]:
         """Get proposals for a specific graph with consensus and user consent"""
-        db_proposals = crud.proposals.get_proposals_by_graph_uuid(db, graph_uuid, pending_only, skip=skip, limit=limit)
+        filters = {"graph_uuid": graph_uuid}
+        if pending_only:
+            filters["proposal_status"] = "Pending"
+        db_proposals = crud.proposals.get_proposals_by_kwargs(db, skip=skip, limit=limit, **filters)
         return [ProposalService._convert_to_read_schema(db, proposal, include_votes=True) for proposal in db_proposals]
 
     @staticmethod
-    def create_proposal(db: Session, proposal_data: schemas.ProposalCreate) -> models.GraphProposal:
+    def create_proposal(db: Session, proposal_data: schemas.ProposalCreate) -> schemas.ProposalRead:
         """Create proposal with business logic"""
 
         # Get datetime manually for hash generation
@@ -139,20 +145,20 @@ class ProposalService:
         
         db.commit()
         db.refresh(db_proposal)
-        return db_proposal
+        return ProposalService._convert_to_read_schema(db, db_proposal, include_votes=False)
 
     @staticmethod
-    def update_proposal_status(db: Session, proposal_hash: str, status: str) -> models.GraphProposal:
+    def update_proposal_status(db: Session, proposal_hash: str, status: str) -> schemas.ProposalRead:
         """Update proposal status with business logic"""
-        proposal = crud.proposals.get_proposal_by_hash(db, proposal_hash)
-        if not proposal:
+        db_proposal = crud.proposals.get_proposal_by_hash(db, proposal_hash)
+        if not db_proposal:
             raise ValueError("Proposal not found")
             
-        crud.proposals.update_proposal_record(db, proposal.id, proposal_status=status)
+        crud.proposals.update_proposal_record(db, db_proposal.id, proposal_status=status)
         
         db.commit()
-        db.refresh(proposal)
-        return proposal
+        db.refresh(db_proposal)
+        return ProposalService._convert_to_read_schema(db, db_proposal, include_votes=True)
 
     @staticmethod
     def delete_proposal(db: Session, public_hash: str) -> bool:
@@ -160,15 +166,27 @@ class ProposalService:
         return crud.proposals.delete_proposal_by_hash(db, public_hash)
 
     @staticmethod
-    def create_consent(db: Session, consent_data: schemas.ProposalConsentCreate) -> models.ProposalConsent:
+    def _convert_consent_to_read_schema(db_consent: models.ProposalConsent) -> schemas.ProposalConsentRead:
+        """Convert database model to consent read schema"""
+        return schemas.ProposalConsentRead(
+            proposal_hash=db_consent.proposal_hash,
+            user_uuid=db_consent.user_uuid,
+            consent_date=db_consent.consent_date,
+            user_vote=db_consent.user_vote
+        )
+
+    @staticmethod
+    def create_consent(db: Session, consent_data: schemas.ProposalConsentCreate) -> schemas.ProposalConsentRead:
         """Create a consent record for a proposal"""
-        # Get relevant details
-        proposal_id = crud.proposals.get_proposal_by_hash(db, consent_data.proposal_hash).id
+        db_proposal = crud.proposals.get_proposal_by_hash(db, consent_data.proposal_hash)
+        if not db_proposal:
+            raise ValueError("Proposal not found")
+            
         user_id = crud.users.get_user_by_uuid(db, consent_data.user_uuid).id
 
         # Create consent record via CRUD
         db_consent = models.ProposalConsent(
-            proposal_id=proposal_id,
+            proposal_id=db_proposal.id,
             proposal_hash=consent_data.proposal_hash,
             user_id=user_id,
             user_uuid=consent_data.user_uuid,
@@ -176,7 +194,9 @@ class ProposalService:
         )
         db.add(db_consent)
         db.flush()
-        return db_consent
+        db.commit()
+        db.refresh(db_consent)
+        return ProposalService._convert_consent_to_read_schema(db_consent)
 
     @staticmethod
     def respond_to_proposal(db: Session, response: schemas.ProposalConsentCreate) -> dict:
@@ -258,6 +278,29 @@ class ProposalService:
         return consensus, votes
 
     @staticmethod
+    def get_join_requests_by_user(db: Session, requestor_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.JoinRequestRead]:
+        """
+        Get all join requests for a specific user
+        """
+        filters = {"proposer_uuid": requestor_uuid, "proposal_type": "Join"}
+        if pending_only:
+            filters["proposal_status"] = "Pending"
+        requests = crud.proposals.get_proposals_by_kwargs(db, skip=skip, limit=limit, **filters)
+        
+        if not requests:
+            return []
+
+        return [schemas.JoinRequestRead(
+            public_hash=r.public_hash,
+            graph_uuid=r.graph_uuid,
+            requestor_uuid=r.proposer_uuid,
+            created_at=r.proposal_time,
+            proposal_status=r.proposal_status,
+            graph_label=r.graph.version_label,
+            requestor_username=r.proposer.username,
+        ) for r in requests]
+
+    @staticmethod
     def join_graph(db: Session, graph_uuid: UUID, user_uuid: UUID) -> dict:
         """
         Request to join a graph as an author.
@@ -306,19 +349,27 @@ class ProposalService:
         if len(authors) == 0:
             raise ValueError("Graph has no authors")
 
+        # Check if target user has a pending invitation to this graph
+        filters = {"graph_uuid": graph_uuid, "recipient_uuid": target_user_uuid, "answered": False}
+        existing_invitation = crud.proposals.get_authorship_invitations_by_kwargs(db, **filters)
+        if existing_invitation:
+            raise ValueError("Target user is already invited to this graph")
+
         # Check for existing Invite proposal
         existing_proposal = crud.proposals.get_proposal_by_kwargs(db, proposal_status="Pending", proposal_type="Invite", proposer_uuid=inviter_uuid, graph_uuid=graph_uuid, target_user_uuid=target_user_uuid, target_graph_uuid=None)
         if existing_proposal:
             raise ValueError("A proposal to invite target user is already pending")
 
+        print(authors, len(authors))
         if len(authors) == 1:
             # Skip proposal creation if only one author
+            print("Only one author, skipping proposal creation")
 
             snapshot = crud.snapshots.get_snapshot_by_uuid(db, graph_uuid)
             inviter = crud.users.get_user_by_uuid(db, inviter_uuid)
             target_user = crud.users.get_user_by_uuid(db, target_user_uuid)
 
-            invitation = crud.invitations.create_authorship_invitation_record(
+            crud.proposals.create_authorship_invitation_record(
                 db=db,
                 graph_id=snapshot.id,
                 graph_uuid=graph_uuid,
@@ -403,3 +454,86 @@ class ProposalService:
             graph_label=join_request.graph.version_label,
             requestor_username=join_request.proposer.username,
         )
+
+    @staticmethod
+    def get_proposals_for_authored_graphs(db: Session, user_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.ProposalRead]:
+        """Get all proposals for graphs where user is an author"""
+        # Get all graphs user is author of
+        authorships = crud.access_control.get_authorships_by_user_uuid(db, user_uuid)
+        graph_uuids = list(set(a.graph_uuid for a in authorships))
+
+        all_proposals = []
+        for graph_uuid in graph_uuids:
+            filters = {"graph_uuid": graph_uuid}
+            if pending_only:
+                filters["proposal_status"] = "Pending"
+            db_proposals = crud.proposals.get_proposals_by_kwargs(db, skip=skip, limit=limit, **filters)
+            for p in db_proposals:
+                all_proposals.append(ProposalService._convert_to_read_schema(db, p, include_votes=True))
+
+        return all_proposals
+
+    @staticmethod
+    def get_received_invitations(db: Session, user_uuid: UUID, skip: int = 0, limit: int = 100) -> List[schemas.AuthorshipInvitationRead]:
+        """Get authorship invitations received by a user"""
+        filters = {"recipient_uuid": user_uuid}
+        db_invitations = crud.proposals.get_authorship_invitations_by_kwargs(
+            db, skip=skip, limit=limit, **filters
+        )
+        
+        if not db_invitations:
+            return []
+        
+        return [schemas.AuthorshipInvitationRead(
+            graph_uuid=inv.graph_uuid,
+            initiator_uuid=inv.initiator_uuid,
+            recipient_uuid=inv.recipient_uuid,
+            created_at=inv.created_at,
+            answered=inv.answered,
+            graph_label=inv.graph.version_label,
+            initiator_username=inv.initiator.username,
+            recipient_username=inv.recipient.username,
+        ) for inv in db_invitations]
+
+    @staticmethod
+    def get_proposal_with_auth(db: Session, proposal_hash: str, user_uuid: UUID) -> schemas.ProposalRead:
+        """Get proposal by hash with authorization check for graph authors"""
+        db_proposal = crud.proposals.get_proposal_by_hash(db, proposal_hash)
+        if not db_proposal:
+            return None
+        
+        # Check if user is an author of the graph
+        authors = crud.access_control.get_authorship_by_graph_uuid(db, db_proposal.graph_uuid)
+        author_uuids = [a.user_uuid for a in authors]
+        
+        if user_uuid not in author_uuids:
+            raise ValueError("Not authorized to view this proposal")
+        
+        return ProposalService._convert_to_read_schema(db, db_proposal, include_votes=True)
+
+    @staticmethod
+    def get_proposals_for_graph_with_auth(db: Session, graph_uuid: UUID, user_uuid: UUID, pending_only: bool = False, skip: int = 0, limit: int = 100) -> List[schemas.ProposalRead]:
+        """Get proposals for a graph with authorization check"""
+        # Check if user is an author of the graph
+        authors = crud.access_control.get_authorship_by_graph_uuid(db, graph_uuid)
+        author_uuids = [a.user_uuid for a in authors]
+        
+        if user_uuid not in author_uuids:
+            raise ValueError("Not authorized to view proposals for this graph")
+        
+        return ProposalService.get_proposals_for_graph(db, graph_uuid, pending_only, skip, limit)
+
+    @staticmethod
+    def delete_proposal_with_auth(db: Session, proposal_hash: str, user_uuid: UUID) -> bool:
+        """Delete proposal with authorization check - only proposer can delete pending proposals"""
+        db_proposal = crud.proposals.get_proposal_by_hash(db, proposal_hash)
+        if not db_proposal:
+            raise ValueError("Proposal not found")
+        
+        if db_proposal.proposer_uuid != user_uuid:
+            raise ValueError("Only the proposer can delete a proposal")
+        
+        if db_proposal.proposal_status != "Pending":
+            raise ValueError("Cannot delete a proposal that is no longer pending")
+        
+        return ProposalService.delete_proposal(db, proposal_hash)

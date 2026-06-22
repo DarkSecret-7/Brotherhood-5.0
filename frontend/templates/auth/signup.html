@@ -1,7 +1,7 @@
 <!--
   This file is part of The Brotherhood Project
 
-  Copyright (C) 2026  The Brotherhood Project
+  Copyright (C) 2026  The Brotherhood Project Developers
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,30 +23,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - The Brotherhood Curator Lab</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/frontend/css/common.css">
     <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
     <style>
         .signup-container {
             max-width: 450px;
-            margin: 50px auto;
+            margin: 80px auto;
             padding: 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .signup-header {
             text-align: center;
             margin-bottom: 30px;
         }
         .signup-header h1 {
-            color: #1a73e8;
+            color: var(--dashboard-primary);
             margin-bottom: 10px;
         }
         .signup-header p {
-            color: #5f6368;
+            color: var(--dashboard-secondary);
             margin: 0;
-        }
-        .form-group {
-            margin-bottom: 20px;
         }
         .form-row {
             display: flex;
@@ -54,25 +49,6 @@
         }
         .form-row .form-group {
             flex: 1;
-        }
-        .btn-signup {
-            width: 100%;
-            padding: 12px;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn-signup:hover {
-            background: #1557b0;
-        }
-        .btn-signup:disabled {
-            background: #ccc;
-            cursor: not-allowed;
         }
         .error-message {
             background: #f8d7da;
@@ -95,7 +71,7 @@
             margin-top: 20px;
         }
         .login-link a {
-            color: #1a73e8;
+            color: var(--dashboard-primary);
             text-decoration: none;
             font-weight: 600;
         }
@@ -104,7 +80,7 @@
         }
         .password-requirements {
             font-size: 0.85em;
-            color: #5f6368;
+            color: var(--dashboard-secondary);
             margin-top: 5px;
         }
         .invitation-info {
@@ -119,7 +95,7 @@
     </style>
 </head>
 <body>
-    <div class="signup-container">
+    <div class="card signup-container">
         <div class="signup-header">
             <h1>The Brotherhood</h1>
             <p>Create Your Account</p>
@@ -156,7 +132,7 @@
                 <input type="password" id="confirm-password" name="confirmPassword" required placeholder="Confirm your password">
             </div>
             
-            <button type="submit" id="signup-btn" class="btn-signup">Create Account</button>
+            <button type="submit" id="signup-btn" class="btn btn-primary btn-full">Create Account</button>
         </form>
         
         <div class="login-link">

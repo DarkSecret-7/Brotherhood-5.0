@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,26 @@ except ImportError:
 class AssessmentService:
 
     @staticmethod
+    def _convert_to_read_schema(db_capability: models.Capability) -> schemas.CapabilityRead:
+        """Convert database model to read schema"""
+        return schemas.CapabilityRead(
+            public_hash=db_capability.public_hash,
+            snapshot_uuid=db_capability.graph_uuid,
+            user_uuid=db_capability.user_uuid,
+            assessment_name=db_capability.assessment_name,
+            assessment_type=db_capability.assessment_type,
+            assessment_version=db_capability.assessment_version,
+            assessment_date=db_capability.assessment_date,
+            assessed_nodes=[
+                schemas.Assessment(
+                    snapshot_uuid=a["snapshot_uuid"],
+                    node_id=a["node_id"],
+                    evaluation=a["evaluation"]
+                ) for a in db_capability.assessed_nodes
+            ]
+        )
+
+    @staticmethod
     def perform_self_assessment(db: Session, request: schemas.SelfAssessmentRequest, user: models.User) -> schemas.CapabilityRead:
         # Get graph from database
         graph = crud.snapshots.get_snapshot_by_uuid(db, request.graph_uuid)
@@ -66,8 +86,8 @@ class AssessmentService:
             ) for n in capability_obj.assessed_nodes
         ]
         
-        # 4. Create new capability record
-        current_capability = AssessmentService.create_capability(
+        # 4. Create new capability record and return as schema
+        return AssessmentService.create_capability(
             db,
             capability_data=schemas.CapabilityCreate(
                 user_uuid=user.public_uuid,
@@ -78,21 +98,9 @@ class AssessmentService:
                 assessed_nodes=assessed_nodes
             )
         )
-        
-        # 5. Return as CapabilityRead schema
-        return schemas.CapabilityRead(
-            public_hash=current_capability.public_hash,
-            snapshot_uuid=current_capability.graph.public_uuid,
-            user_uuid=current_capability.user.public_uuid,
-            assessment_name=current_capability.assessment_name,
-            assessment_type=current_capability.assessment_type,
-            assessment_version=current_capability.assessment_version,
-            assessment_date=current_capability.assessment_date,
-            assessed_nodes=current_capability.assessed_nodes
-        )
 
     @staticmethod
-    def create_capability(db: Session, capability_data: schemas.CapabilityCreate) -> models.Capability:
+    def create_capability(db: Session, capability_data: schemas.CapabilityCreate) -> schemas.CapabilityRead:
         """Create capability with business logic"""
         # Convert Assessment objects to dictionaries and UUIDs to strings for JSON serialization
         assessed_nodes_data = []
@@ -133,7 +141,7 @@ class AssessmentService:
         
         db.commit()
         db.refresh(db_capability)
-        return db_capability
+        return AssessmentService._convert_to_read_schema(db_capability)
 
     @staticmethod
     def delete_capability(db: Session, capability_data: schemas.CapabilityRead) -> bool:
@@ -149,9 +157,12 @@ class AssessmentService:
         crud.assessments.delete_capabilities_by_user_and_graph(db, user_id, graph_id, assessment_name)
 
     @staticmethod
-    def get_capability(db: Session, public_hash: str) -> models.Capability:
+    def get_capability(db: Session, public_hash: str) -> schemas.CapabilityRead:
         """Get capability by hash"""
-        return crud.assessments.get_capability_by_hash(db, public_hash)
+        db_capability = crud.assessments.get_capability_by_hash(db, public_hash)
+        if not db_capability:
+            return None
+        return AssessmentService._convert_to_read_schema(db_capability)
 
     @staticmethod
     def get_latest_capability(db: Session, user_uuid: UUID, graph_uuid: UUID, assessment_name: str) -> Optional[schemas.CapabilityRead]:
@@ -160,18 +171,9 @@ class AssessmentService:
         user_id = crud.users.get_user_by_uuid(db, user_uuid).id
         graph_id = crud.snapshots.get_snapshot_by_uuid(db, graph_uuid).id
 
-        capability = crud.assessments.get_latest_capability_by_user_and_graph(db, user_id, graph_id, assessment_name)
+        db_capability = crud.assessments.get_latest_capability_by_user_and_graph(db, user_id, graph_id, assessment_name)
 
-        if not capability:
+        if not db_capability:
             return None
 
-        return schemas.CapabilityRead(
-            public_hash=capability.public_hash,
-            snapshot_uuid=capability.graph.public_uuid,
-            user_uuid=capability.user.public_uuid,
-            assessment_name=capability.assessment_name,
-            assessment_type=capability.assessment_type,
-            assessment_version=capability.assessment_version,
-            assessment_date=capability.assessment_date,
-            assessed_nodes=capability.assessed_nodes
-        )
+        return AssessmentService._convert_to_read_schema(db_capability)

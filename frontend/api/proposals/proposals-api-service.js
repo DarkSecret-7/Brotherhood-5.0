@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,39 @@
  * Handles join and invite proposal operations
  */
 class ProposalsApiService extends BaseApiService {
+
+    /**
+     * Get proposals for graphs where user is an author
+     * @returns {Array} Array of proposal objects
+     */
+    async getAuthoredProposals(pending_only = false, skip = 0, limit = 100) {
+        return await this.get(`/proposals/authored?pending_only=${pending_only}&skip=${skip}&limit=${limit}`);
+    }
+    
+    /**
+     * Get proposals sent by the current user
+     * @returns {Array} Array of proposal objects
+     */
+    async getJoinRequests(skip = 0, limit = 100) {
+        return await this.get(`/proposals/join_requests?skip=${skip}&limit=${limit}`);
+    }
+
+    /**
+     * Get authorship invitations received by the current user
+     * @returns {Array} Array of invitation objects
+     */
+    async getReceivedInvitations(skip = 0, limit = 100) {
+        return await this.get(`/proposals/invitations/received?skip=${skip}&limit=${limit}`);
+    }
+
+    /**
+     * Get a specific proposal by hash
+     * @param {string} proposalHash
+     * @returns {Object} Proposal object
+     */
+    async getProposal(proposalHash) {
+        return await this.get(`/proposals/${proposalHash}`);
+    }
 
     /**
      * Get proposals for a specific graph (only for authors)
@@ -57,6 +90,8 @@ class ProposalsApiService extends BaseApiService {
      * @returns {Object} - { success: boolean, direct?: boolean, proposal_hash?: string }
      */
     async inviteToGraph(graphUuid, targetUserUuid) {
+        console.log(graphUuid, typeof graphUuid, targetUserUuid, typeof targetUserUuid);
+        
         return await this.post(`/proposals/${graphUuid}/invite`, {
             target_user_uuid: targetUserUuid
         });

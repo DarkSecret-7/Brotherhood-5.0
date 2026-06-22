@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 """
 Authorship management endpoints
 TEMPORARY: NEEDS TO BE FIXED
+CONTAINS DEPRECATED ENDPOINTS
+All authorship editing now happens through proposals endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -28,7 +30,7 @@ from .auth import get_current_user
 
 router = APIRouter()
 
-@router.post("/snapshots/{snapshot_uuid}/authors", response_model=schemas.GraphAuthorshipRead)
+# @router.post("/snapshots/{snapshot_uuid}/authors", response_model=schemas.GraphAuthorshipRead)
 def add_author(
     snapshot_uuid: UUID,
     authorship: schemas.GraphAuthorshipCreate,
@@ -37,7 +39,7 @@ def add_author(
 ):
     """Add an author to a snapshot"""
     # Check authorization
-    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.id, "update"):
+    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.public_uuid, "update"):
         raise HTTPException(status_code=403, detail="Not authorized to modify authors")
 
     try:
@@ -60,7 +62,7 @@ def add_author(
             raise HTTPException(status_code=404, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/snapshots/{snapshot_uuid}/authors/{user_uuid}")
+# @router.delete("/snapshots/{snapshot_uuid}/authors/{user_uuid}")
 def remove_author(
     snapshot_uuid: UUID,
     user_uuid: UUID,
@@ -69,7 +71,7 @@ def remove_author(
 ):
     """Remove an author from a snapshot"""
     # Check authorization
-    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.id, "update"):
+    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.public_uuid, "update"):
         raise HTTPException(status_code=403, detail="Not authorized to modify authors")
 
     try:
@@ -90,7 +92,7 @@ def get_authors(
 ):
     """Get all authors of a snapshot"""
     # Check authorization
-    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.id, "read"):
+    if not services.authorship.AuthorshipService.check_authorization(db, snapshot_uuid, current_user.public_uuid, "read"):
         raise HTTPException(status_code=403, detail="Not authorized to view this snapshot")
 
     # Get authors
@@ -99,7 +101,7 @@ def get_authors(
 
     for authorship in authorship_rows:
         # Get user details
-        user = services.users.UserService.get_user_by_id(db, authorship.user_id)
+        user = services.users.UserService.get_user_by_uuid(db, authorship.user_uuid)
         if user:
             authors.append(schemas.GraphAuthorshipRead(
                 graph_uuid=snapshot_uuid,

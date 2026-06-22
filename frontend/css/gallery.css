@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ body {
 .sidebar {
     position: relative;
     width: 320px;
+    max-width: 75vw;
     background: #f8f9fa;
     border-right: 1px solid #e8eaed;
     display: flex;
@@ -94,14 +95,14 @@ body {
 }
 
 .sidebar.collapsed {
-    margin-left: -320px;
+    margin-left: max(-320px, -75vw);
 }
 
 .toggle-sidebar-btn {
     position: absolute;
     top: 16px;
     right: -50px;
-    z-index: 100;
+    z-index: 10000;
     background: #ffffff;
     border: 1px solid #dadce0;
     border-radius: 4px;
@@ -440,6 +441,8 @@ body {
 
 /* Responsive design */
 @media (max-width: 768px) {
+    /* This is making the sidebar button disappear, so it is commented out
+    
     .sidebar {
         width: 280px;
     }
@@ -448,6 +451,8 @@ body {
         width: 0;
         margin-left: -280px;
     }
+    
+    */
     
     .node-details-panel {
         width: 280px;
@@ -470,6 +475,8 @@ body {
 }
 
 @media (max-width: 480px) {
+    /* This is making the sidebar button disappear, so it is commented out
+
     .sidebar {
         width: 100%;
         position: absolute;
@@ -482,6 +489,8 @@ body {
         margin-left: -100%;
     }
 
+    */
+    
     .node-details-panel,
     #domain-details {
         width: calc(100% - 20px);

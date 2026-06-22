@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ Orchestrates CRUD operations and handles business rules.
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from uuid import UUID
-from typing import List
+from typing import List, Union
 from .. import crud, schemas, models
 
 class SnapshotService:
@@ -149,13 +149,13 @@ class SnapshotService:
         return SnapshotService._convert_to_read_schema(snapshot)
 
     @staticmethod
-    def get_user_accessible_snapshots(db: Session, user_id: int, action: str = "read", skip: int = 0, limit: int = 100) -> List[schemas.GraphSnapshotRead]:
+    def get_user_accessible_snapshots(db: Session, user_uuid: UUID, action: str = "read", skip: int = 0, limit: int = 100) -> List[schemas.GraphSnapshotRead]:
         """Get snapshots user has access to with business logic"""
         snapshots = crud.snapshots.get_snapshots_paginated(db, skip=skip, limit=limit)
         # Filter to only show snapshots user has access to based on action
         accessible_snapshots = []
         for snapshot in snapshots:
-            if SnapshotService.check_snapshot_authorization(db, snapshot.public_uuid, user_id, action):
+            if SnapshotService.check_snapshot_authorization(db, snapshot.public_uuid, user_uuid, action):
                 accessible_snapshots.append(SnapshotService._convert_to_read_schema(snapshot))
         return accessible_snapshots
 
@@ -164,6 +164,57 @@ class SnapshotService:
         """Get public snapshots with business logic"""
         snapshots = crud.snapshots.get_public_snapshots(db, skip=skip, limit=limit)
         return [SnapshotService._convert_to_read_schema(snapshot) for snapshot in snapshots]
+
+    @staticmethod
+    def get_snapshots(
+        db: Session,
+        user_uuid: UUID = None,
+        public_only: bool = False,
+        action: str = "read",
+        metadata_only: bool = True,
+        skip: int = 0,
+        limit: int = 100
+    ) -> Union[List[schemas.GraphSnapshotMeta], List[schemas.GraphSnapshotRead]]:
+        """
+        Unified method to get snapshots with proper business logic.
+        Handles public vs user-accessible and metadata vs full data.
+        """
+        if public_only and action == "read":
+            snapshots = SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
+        elif user_uuid:
+            snapshots = SnapshotService.get_user_accessible_snapshots(db, user_uuid, action=action, skip=skip, limit=limit)
+        else:
+            raise ValueError("User authentication required for non-public snapshots")
+        
+        if metadata_only:
+            return [SnapshotService._extract_metadata(db, s.public_uuid) for s in snapshots]
+        
+        return snapshots
+
+    @staticmethod
+    def get_snapshot(
+        db: Session,
+        snapshot_uuid: UUID,
+        user_uuid: UUID = None,
+        public: bool = False,
+        action: str = "read",
+        metadata_only: bool = False
+    ) -> Union[schemas.GraphSnapshotMeta, schemas.GraphSnapshotRead]:
+        """
+        Unified method to get a single snapshot with proper business logic.
+        Handles public vs authorized and metadata vs full data.
+        """
+        if public and action == "read":
+            snapshot = SnapshotService.get_public_snapshot(db, snapshot_uuid)
+        elif user_uuid:
+            snapshot = SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_uuid, action)
+        else:
+            raise ValueError("User authentication required for non-public snapshots")
+        
+        if metadata_only:
+            return SnapshotService._extract_metadata(db, snapshot_uuid)
+        
+        return snapshot
 
     @staticmethod
     def delete_snapshot(db: Session, snapshot_uuid: UUID) -> bool:
@@ -404,7 +455,7 @@ class SnapshotService:
             return result
 
     @staticmethod
-    def get_snapshot_with_action(db: Session, snapshot_uuid: UUID, user_id: int, action: str) -> schemas.GraphSnapshotRead:
+    def get_snapshot_with_action(db: Session, snapshot_uuid: UUID, user_uuid: UUID, action: str) -> schemas.GraphSnapshotRead:
         """Get snapshot with authorization based on action
         
         Actions:
@@ -414,7 +465,7 @@ class SnapshotService:
         - "assess": Assessment access (requires bookmark)
         - "learn": Learning access (requires bookmark)
         """
-        if not SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, action):
+        if not SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_uuid, action):
             raise ValueError(f"Not authorized to '{action}' this snapshot")
         
         snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
@@ -424,7 +475,7 @@ class SnapshotService:
         return SnapshotService._convert_to_read_schema(snapshot)
 
     @staticmethod
-    def check_snapshot_authorization(db: Session, snapshot_uuid: UUID, user_id: int, action: str) -> bool:
+    def check_snapshot_authorization(db: Session, snapshot_uuid: UUID, user_uuid: UUID, action: str) -> bool:
         """Check if user is authorized to perform action on snapshot
         
         Actions:
@@ -443,21 +494,27 @@ class SnapshotService:
         # If action is read, always allow
         if action == "read":
             return True
-            
+        
+        # Convert user_uuid to user_id for CRUD calls
+        user = crud.users.get_user_by_uuid(db, user_uuid)
+        if not user:
+            return False
+        user_id = user.id
+        
         # "fetch" action - read for editing (only for registered users)
         if action == "fetch":
             # Must be a registered user (user_id > 0)
             return user_id is not None and user_id > 0
-            
+        
         # "assess" and "learn" action - requires bookmark
         if action in ["assess", "learn"]:
             # Must be a registered user with bookmark
-            if user_id is None or user_id <= 0:
+            if user_id <= 0:
                 return False
             # Check if user has bookmarked this graph
             bookmark = crud.bookmarks.get_bookmark(db, user_id=user_id, graph_id=snapshot.id)
             return bookmark is not None
-            
+        
         # "write" and "delete" actions - require authorship
         if action in ["write", "delete"]:
             # If there is no author (open-access), allow
@@ -466,8 +523,7 @@ class SnapshotService:
                 return True
             authorship = crud.access_control.get_authorship_by_graph_and_user(db, snapshot.id, user_id)
             return authorship is not None
-            
-        # Unknown action
+        
         return False
 
     @staticmethod

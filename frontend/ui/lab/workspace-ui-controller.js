@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -459,7 +459,7 @@ class LabUIController {
         }
                
         const moveButton = hasSelections && validityCheck ? 
-            `<button class="btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})">Move</button>` : '';
+            `<button class="btn btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})">Move</button>` : '';
         
         // Get children dynamically using references
         const children = this.getDomainChildren(domain.id);
@@ -481,12 +481,12 @@ class LabUIController {
                         ${domain.description ? `<span class="tree-item-description">${this.escapeHtml(domain.description)}</span>` : ''}
                     </div>
                         ${domain.parentId && !isDeleted ? 
-                            `<button class="btn-warning btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
+                            `<button class="btn btn-warning btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
                         ${!isDeleted && hasSelections ? 
-                            `<button class="btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">Move</button>` : ''}
-                        ${!isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>` : ''}
-                        ${!isDeleted ? `<button class="btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">Delete</button>` : ''}
-                        ${isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.restoreDomain(${domain.id})">Restore</button>` : ''}
+                            `<button class="btn btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">Move</button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">Delete</button>` : ''}
+                        ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreDomain(${domain.id})">Restore</button>` : ''}
                     </div>
                 </div>
                 <div class="tree-item-children" style="display: ${isCollapsed ? 'none' : 'block'};">
@@ -534,10 +534,10 @@ class LabUIController {
                     </div>
                     <div class="tree-item-actions" onclick="event.stopPropagation()">
                         ${node.domainId && !isDeleted ? 
-                            `<button class="btn-warning btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">Eject</button>` : ''}
-                        ${!isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">Edit</button>` : ''}
-                        ${!isDeleted ? `<button class="btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">Delete</button>` : ''}
-                        ${isDeleted ? `<button class="btn-secondary btn-small" onclick="workspaceOpsController.restoreNode(${node.id})">Restore</button>` : ''}
+                            `<button class="btn btn-warning btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">Eject</button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">Edit</button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">Delete</button>` : ''}
+                        ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreNode(${node.id})">Restore</button>` : ''}
                     </div>
                 </div>
                 <div class="tree-item-details">
@@ -1323,7 +1323,7 @@ class LabUIController {
                 <input type="checkbox" id="llm-select-all" onchange="labUIController.toggleSelectAllLLM(this)">
                 <label for="llm-select-all" class="llm-toolbar-label">Select All</label>
             </div>
-            <button class="btn-primary btn-small" onclick="window.llmOpsController.importLLMSelected()">Import Selected</button>
+            <button class="btn btn-primary btn-small" onclick="window.llmOpsController.importLLMSelected()">Import Selected</button>
         `;
         container.appendChild(toolbar);
 
@@ -1339,7 +1339,7 @@ class LabUIController {
                     <div style="flex: 1;">
                         <h4 class="llm-suggestion-title">${this.escapeHtml(suggestion.title)}</h4>
                         <p class="llm-suggestion-description">${this.escapeHtml(suggestion.description)}</p>
-                        <button class="btn-secondary btn-small" onclick="window.llmOpsController.importSingleLLMNode('${this.escapeHtml(suggestion.title).replace(/'/g, "\\'")}', '${this.escapeHtml(suggestion.description).replace(/'/g, "\\'")}')">Use This Single</button>
+                        <button class="btn btn-secondary btn-small" onclick="window.llmOpsController.importSingleLLMNode('${this.escapeHtml(suggestion.title).replace(/'/g, "\\'")}', '${this.escapeHtml(suggestion.description).replace(/'/g, "\\'")}')">Use This Single</button>
                         <div style="display:none;" class="suggestion-data">
                             <span class="s-title">${this.escapeHtml(suggestion.title)}</span>
                             <span class="s-desc">${this.escapeHtml(suggestion.description)}</span>
@@ -1408,8 +1408,8 @@ class LabUIController {
                     ${source.author ? `<span style="color: #666;"> - ${source.author}</span>` : ''}
                 </div>
                 ${source.url ? `<a href="${source.url}" target="_blank" class="source-link-btn">🔗</a>` : ''}
-                <button class="btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
-                <button class="btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
+                <button class="btn btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
+                <button class="btn btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
             `;
             container.appendChild(sourceDiv);
         });

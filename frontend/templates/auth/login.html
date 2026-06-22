@@ -1,7 +1,7 @@
 <!--
   This file is part of The Brotherhood Project
 
-  Copyright (C) 2026  The Brotherhood Project
+  Copyright (C) 2026  The Brotherhood Project Developers
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,49 +23,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - The Brotherhood Curator Lab</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/frontend/css/common.css">
     <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
     <style>
         .login-container {
             max-width: 400px;
-            margin: 50px auto;
+            margin: 80px auto;
             padding: 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .login-header {
             text-align: center;
             margin-bottom: 30px;
         }
         .login-header h1 {
-            color: #1a73e8;
+            color: var(--dashboard-primary);
             margin-bottom: 10px;
         }
         .login-header p {
-            color: #5f6368;
+            color: var(--dashboard-secondary);
             margin: 0;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .btn-login {
-            width: 100%;
-            padding: 12px;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn-login:hover {
-            background: #1557b0;
-        }
-        .btn-login:disabled {
-            background: #ccc;
-            cursor: not-allowed;
         }
         .error-message {
             background: #f8d7da;
@@ -88,7 +64,7 @@
             margin-top: 20px;
         }
         .signup-link a {
-            color: #1a73e8;
+            color: var(--dashboard-primary);
             text-decoration: none;
             font-weight: 600;
         }
@@ -98,7 +74,7 @@
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="card login-container">
         <div class="login-header">
             <h1>The Brotherhood</h1>
             <p>Curator Lab Login</p>
@@ -117,7 +93,7 @@
                 <input type="password" id="password" name="password" required placeholder="Enter your password">
             </div>
             
-            <button type="submit" id="login-btn" class="btn-login">Login</button>
+            <button type="submit" id="login-btn" class="btn btn-primary btn-full">Login</button>
         </form>
         
         <div class="signup-link">

@@ -1,7 +1,7 @@
 /*
  * This file is part of The Brotherhood Project
  *
- * Copyright (C) 2026  The Brotherhood Project
+ * Copyright (C) 2026  The Brotherhood Project Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -211,7 +211,7 @@ class DatabaseManager {
                 '<td>' + (s.baseGraphLabel || 'None') + '</td>' +
                 '<td>' +
                     '<div style="display: flex; gap: 5px;">' +
-                        '<button class="btn-secondary btn-small" onclick="databaseManager.fetchSnapshotToWorkspace(event, \'' + s.uuid + '\')">Fetch</button>' +
+                        '<button class="btn btn-primary btn-small" onclick="databaseManager.fetchSnapshotToWorkspace(event, \'' + s.uuid + '\')">Fetch</button>' +
                     '</div>' +
                 '</td>' +
             '</tr>';
@@ -276,9 +276,11 @@ class DatabaseManager {
             this.fetchAndRenderJoinRequest(snapshot.uuid);
         }
         
-        // Reset file input
+        // Reset file input and invite user input field
         const fileInput = document.getElementById('import-file-input');
+        const inviteUserInput = document.getElementById('invite-user-uuid-input');
         if (fileInput) fileInput.value = '';
+        if (inviteUserInput) inviteUserInput.value = '';
         
         this.stateManager.setModal('graphAction', true);
         document.getElementById('graphActionModal').style.display = 'flex';
@@ -304,15 +306,15 @@ class DatabaseManager {
         if (joinRequest) {
             html += '<p style="margin: 0 0 10px 0; color: #5f6368;">Join request sent.</p>';
             html += '<div id="collaboration-join-actions" style="display: flex; gap: 10px;">';
-            html += '<button class="btn-primary btn-small" disabled onclick="">Requested To Join</button>';
-            html += '<button class="btn-danger btn-small" onclick="databaseManager.deleteProposal(\'' + joinRequest.publicHash + '\')">Cancel Request</button>';
-            html += '<button class="btn-secondary btn-small" onclick="databaseManager.openProposalDetailModal(\'' + joinRequest.publicHash + '\')">Details</button>';
+            html += '<button class="btn btn-primary btn-small" disabled onclick="">Requested To Join</button>';
+            html += '<button class="btn btn-danger btn-small" onclick="databaseManager.deleteProposal(\'' + joinRequest.publicHash + '\')">Cancel Request</button>';
+            html += '<button class="btn btn-secondary btn-small" onclick="databaseManager.openProposalDetailModal(\'' + joinRequest.publicHash + '\')">Details</button>';
             html += '</div>';
         }
         else {
             html += '<p style="margin: 0 0 10px 0; color: #5f6368;">Request to join this graph as a collaborator.</p>';
             html += '<div id="collaboration-join-actions" style="display: flex; gap: 10px;">';
-            html += '<button class="btn-primary btn-small" onclick="databaseManager.triggerJoinGraph()">Join Graph</button>';
+            html += '<button class="btn btn-primary btn-small" onclick="databaseManager.triggerJoinGraph()">Join Graph</button>';
             html += '</div>';
         }
 
@@ -412,8 +414,8 @@ class DatabaseManager {
 
             const approveBtn = document.getElementById('proposal-detail-approve-btn');
             const rejectBtn = document.getElementById('proposal-detail-reject-btn');
-            approveBtn.className = 'btn-primary btn-small' + (proposal.userVote === 1 ? ' active' : '');
-            rejectBtn.className = 'btn-danger btn-small' + (proposal.userVote === -1 ? ' active' : '');
+            approveBtn.className = 'btn btn-primary btn-small' + (proposal.userVote === 1 ? ' active' : '');
+            rejectBtn.className = 'btn btn-danger btn-small' + (proposal.userVote === -1 ? ' active' : '');
             if (proposal.userVote === 1 || proposal.userVote === -1) {
                 approveBtn.disabled = true;
                 rejectBtn.disabled = true;
@@ -635,13 +637,15 @@ class DatabaseManager {
         if (confirmed) {
             try {
                 const result = await this.proposalsApiService.inviteToGraph(snapshot.uuid, targetUserUuid);
+                console.log(result);
                 if (result.success) {
                     if (result.direct) {
-                        this.stateManager.customAlert('User added as collaborator successfully!');
+                        this.stateManager.customAlert('Collaboration invitation sent successfully');
                     } else {
-                        this.stateManager.customAlert('Invite request submitted successfully!');
+                        this.stateManager.customAlert('Invite proposal created successfully!');
                     }
                     document.getElementById('invite-user-uuid-input').value = '';
+                    this.fetchAndRenderProposals(snapshot.uuid);
                 }
             } catch (err) {
                 this.stateManager.customAlert('Error: ' + err.message);

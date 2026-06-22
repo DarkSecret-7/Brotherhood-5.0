@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -330,7 +330,6 @@ class InvitationCreate(InvitationBase):
     pass
 
 class InvitationRead(InvitationBase):
-    id: int
     is_used: bool
     created_at: datetime
     
@@ -413,6 +412,7 @@ class AuthorshipInvitationCreate(BaseModel):
     graph_uuid: UUID
     initiator_uuid: UUID
     recipient_uuid: UUID
+    role: Optional[str] = "Curator"
 
 class AuthorshipInvitationRead(BaseModel):
     graph_uuid: UUID
@@ -420,6 +420,11 @@ class AuthorshipInvitationRead(BaseModel):
     recipient_uuid: UUID
     created_at: datetime
     answered: bool
+
+    # Optional QOL fields
+    graph_label: Optional[str] = None
+    initiator_username: Optional[str] = None
+    recipient_username: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -446,8 +451,8 @@ class GraphAuthorshipCreate(GraphAuthorshipBase):
     pass
 
 class GraphAuthorshipRead(GraphAuthorshipBase):
-    username: str
-    created_at: datetime
+    username: Optional[str] = None
+    created_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True

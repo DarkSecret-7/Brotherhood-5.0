@@ -1,7 +1,7 @@
 <!--
   This file is part of The Brotherhood Project
 
-  Copyright (C) 2026  The Brotherhood Project
+  Copyright (C) 2026  The Brotherhood Project Developers
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Curator Guide - The Brotherhood Curator Lab</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/frontend/css/common.css">
     <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
     <style>
         .doc-content { line-height: 1.6; }
@@ -46,162 +47,164 @@
         </div>
     </div>
 
-    <div class="card doc-content">
-        <h1>Welcome to The Brotherhood Curator Lab! 🌟</h1>
-        <p>This guide will help you get started with building and curating the knowledge graph. Think of this tool as a digital whiteboard where you can map out ideas, connect them, and organize them into a structured learning path.</p>
+    <div class="lab-main">
+        <div class="card doc-content">
+            <h1>Welcome to The Brotherhood Curator Lab! 🌟</h1>
+            <p>This guide will help you get started with building and curating the knowledge graph. Think of this tool as a digital whiteboard where you can map out ideas, connect them, and organize them into a structured learning path.</p>
 
-        <h2>1. The Workspace: Your Digital Drafting Table 🎨</h2>
-        <p>When you log in, you land on the <strong>Node Draft</strong> tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!</p>
-        <ul>
-            <li><strong>Draft Nodes List</strong>: This is where your new ideas (Nodes) and groups (Domains) will appear as you create them.</li>
-            <li><strong>Persistent Toolbar</strong>: Located below the tabs, it shows the active version you are working on and provides a <strong>"Clear Workspace"</strong> button to reset your draft.</li>
-            <li><strong>Graph Visualizer</strong>: Click the tab to see a picture of your connections. Use this often to see how your ideas link together!</li>
-        </ul>
+            <h2>1. The Workspace: Your Digital Drafting Table 🎨</h2>
+            <p>When you log in, you land on the <strong>Node Draft</strong> tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!</p>
+            <ul>
+                <li><strong>Draft Nodes List</strong>: This is where your new ideas (Nodes) and groups (Domains) will appear as you create them.</li>
+                <li><strong>Persistent Toolbar</strong>: Located below the tabs, it shows the active version you are working on and provides a <strong>"Clear Workspace"</strong> button to reset your draft.</li>
+                <li><strong>Graph Visualizer</strong>: Click the tab to see a picture of your connections. Use this often to see how your ideas link together!</li>
+            </ul>
 
-        <h2>2. Building Blocks: Domains & Nodes 🧱</h2>
-        
-        <h3>Domains (The Big Buckets) 📂</h3>
-        <p>Domains are like chapters in a book or folders on your computer. They help keep things organized.</p>
-        <ul>
-            <li><strong>To Add a Domain</strong>: Click the blue <strong>Add Domain</strong> button at the top.</li>
-            <li><strong>Give it a Name</strong>: Like "History", "Science", or "Chapter 1".</li>
-            <li><strong>Give it an ID</strong>: A simple number (e.g., 100, 200) to keep it sorted.</li>
-        </ul>
+            <h2>2. Building Blocks: Domains & Nodes 🧱</h2>
+            
+            <h3>Domains (The Big Buckets) 📂</h3>
+            <p>Domains are like chapters in a book or folders on your computer. They help keep things organized.</p>
+            <ul>
+                <li><strong>To Add a Domain</strong>: Click the blue <strong>Add Domain</strong> button at the top.</li>
+                <li><strong>Give it a Name</strong>: Like "History", "Science", or "Chapter 1".</li>
+                <li><strong>Give it an ID</strong>: A simple number (e.g., 100, 200) to keep it sorted.</li>
+            </ul>
 
-        <h3>Nodes (The Ideas) 💡</h3>
-        <p>Nodes are the specific topics, facts, or concepts within those domains.</p>
-        <ul>
-            <li><strong>Scroll down to "Add New Node"</strong>.</li>
-            <li><strong>Local ID</strong>: Pick a unique number for this node (e.g., 1, 2, 3).</li>
-            <li><strong>Title</strong>: What is this concept called?</li>
-            <li><strong>Description</strong>: A short explanation.</li>
-            <li><strong>Under Domain ID</strong>: Type the ID of the Domain this node belongs to (e.g., 100).</li>
-            <li><strong>Sources</strong>: Where can one learn about this? Click <strong>Add Source</strong> to link it to a resource.</li>
-            <li><strong>Click "Add to Draft"</strong>: Watch it appear in your list above!</li>
-        </ul>
+            <h3>Nodes (The Ideas) 💡</h3>
+            <p>Nodes are the specific topics, facts, or concepts within those domains.</p>
+            <ul>
+                <li><strong>Scroll down to "Add New Node"</strong>.</li>
+                <li><strong>Local ID</strong>: Pick a unique number for this node (e.g., 1, 2, 3).</li>
+                <li><strong>Title</strong>: What is this concept called?</li>
+                <li><strong>Description</strong>: A short explanation.</li>
+                <li><strong>Under Domain ID</strong>: Type the ID of the Domain this node belongs to (e.g., 100).</li>
+                <li><strong>Sources</strong>: Where can one learn about this? Click <strong>Add Source</strong> to link it to a resource.</li>
+                <li><strong>Click "Add to Draft"</strong>: Watch it appear in your list above!</li>
+            </ul>
 
-        <h3>📚 Sources &amp; Bibliography</h3>
-        <p>Each node can have multiple sources linked to it. Sources are stored in a shared bibliography:</p>
-        <ul>
-            <li><strong>Title</strong>: Name of the resource (e.g., "Introduction to Python")</li>
-            <li><strong>Author</strong>: Who created the resource</li>
-            <li><strong>Type</strong>: PDF, Video, or Other</li>
-            <li><strong>Year</strong>: Publication year (optional)</li>
-            <li><strong>URL</strong>: Link to the resource (optional)</li>
-            <li><strong>Fragment</strong>: For specific sections (e.g., "Chapter 3" or "00:05:30-00:10:00")</li>
-        </ul>
-        <p>Sources are reused across nodes - if multiple nodes reference the same book, they share the same bibliography entry.</p>
+            <h3>📚 Sources &amp; Bibliography</h3>
+            <p>Each node can have multiple sources linked to it. Sources are stored in a shared bibliography:</p>
+            <ul>
+                <li><strong>Title</strong>: Name of the resource (e.g., "Introduction to Python")</li>
+                <li><strong>Author</strong>: Who created the resource</li>
+                <li><strong>Type</strong>: PDF, Video, or Other</li>
+                <li><strong>Year</strong>: Publication year (optional)</li>
+                <li><strong>URL</strong>: Link to the resource (optional)</li>
+                <li><strong>Fragment</strong>: For specific sections (e.g., "Chapter 3" or "00:05:30-00:10:00")</li>
+            </ul>
+            <p>Sources are reused across nodes - if multiple nodes reference the same book, they share the same bibliography entry.</p>
 
-        <h2>3. Connecting the Dots (Prerequisites) 🔗</h2>
-        <p>This is the most powerful part! You can define what needs to be learned <em>before</em> something else.</p>
-        <ul>
-            <li><strong>Prerequisite Expression</strong>: In the "Add New Node" section, you can say "To learn Node 3, you must know Node 1 and Node 2".</li>
-            <li><strong>How to write it</strong>:
-                <ul>
-                    <li>Simple: <code>1</code> (Means you need Node 1 first).</li>
-                    <li>Combined: <code>1 AND 2</code> (Need both).</li>
-                    <li>Options: <code>1 OR 2</code> (Need either one).</li>
-                    <li>Complex: <code>(1 AND 2) OR 3</code>.</li>
-                    <li><strong style="color: #d93025;">CRITICAL</strong>: You must <strong>click outside the box</strong> (unfocus) for the system to process and simplify your expression!</li>
-                </ul>
-            </li>
-        </ul>
+            <h2>3. Connecting the Dots (Prerequisites) 🔗</h2>
+            <p>This is the most powerful part! You can define what needs to be learned <em>before</em> something else.</p>
+            <ul>
+                <li><strong>Prerequisite Expression</strong>: In the "Add New Node" section, you can say "To learn Node 3, you must know Node 1 and Node 2".</li>
+                <li><strong>How to write it</strong>:
+                    <ul>
+                        <li>Simple: <code>1</code> (Means you need Node 1 first).</li>
+                        <li>Combined: <code>1 AND 2</code> (Need both).</li>
+                        <li>Options: <code>1 OR 2</code> (Need either one).</li>
+                        <li>Complex: <code>(1 AND 2) OR 3</code>.</li>
+                        <li><strong style="color: #d93025;">CRITICAL</strong>: You must <strong>click outside the box</strong> (unfocus) for the system to process and simplify your expression!</li>
+                    </ul>
+                </li>
+            </ul>
 
-        <h2>4. Graph Visualization (Under Development) 👁️</h2>
-        <p>The graph visualization feature is currently under active development and may not be fully functional.</p>
+            <h2>4. Graph Visualization (Under Development) 👁️</h2>
+            <p>The graph visualization feature is currently under active development and may not be fully functional.</p>
 
-        <h3>Current Architecture</h3>
-        <ul>
-            <li><strong>Core Visualizer</strong>: <code>frontend/components/graph-visualizer.js</code> (vis.js-based)</li>
-            <li><strong>Workspace Controller</strong>: <code>frontend/ui/lab/graph-controller.js</code></li>
-            <li><strong>Gallery Processor</strong>: <code>frontend/components/gallery-graph-processor.js</code></li>
-        </ul>
+            <h3>Current Architecture</h3>
+            <ul>
+                <li><strong>Core Visualizer</strong>: <code>frontend/components/graph-visualizer.js</code> (vis.js-based)</li>
+                <li><strong>Workspace Controller</strong>: <code>frontend/ui/lab/graph-controller.js</code></li>
+                <li><strong>Gallery Processor</strong>: <code>frontend/components/gallery-graph-processor.js</code></li>
+            </ul>
 
-        <h3>Planned Features</h3>
-        <ul>
-            <li>Drag-and-drop node positioning</li>
-            <li>Domain grouping visualization with convex hulls</li>
-            <li>Interactive prerequisite pathway exploration</li>
-        </ul>
+            <h3>Planned Features</h3>
+            <ul>
+                <li>Drag-and-drop node positioning</li>
+                <li>Domain grouping visualization with convex hulls</li>
+                <li>Interactive prerequisite pathway exploration</li>
+            </ul>
 
-        <h2>5. Saving & Publishing 💾</h2>
-        <p>Once you're happy with your draft:</p>
-        <ol>
-            <li>Switch to the <strong>Save Version</strong> tab.</li>
-            <li><strong>Your Layout Matters</strong>: The system saves the exact position of every node. Make sure your graph looks good before saving!</li>
-            <li><strong>Overwrite Toggle</strong>:
-                <ul>
-                    <li><strong>Unchecked</strong>: Creates a brand new graph. Redirection for assessable nodes is <strong>optional</strong> but recommended.</li>
-                    <li><strong>Checked</strong>: Updates the existing graph (use this if you're editing). Redirection for any changed or removed assessable nodes is <strong>mandatory</strong> to ensure capability trail stability.</li>
-                </ul>
-            </li>
-        </ol>
+            <h2>5. Saving & Publishing 💾</h2>
+            <p>Once you're happy with your draft:</p>
+            <ol>
+                <li>Switch to the <strong>Save Version</strong> tab.</li>
+                <li><strong>Your Layout Matters</strong>: The system saves the exact position of every node. Make sure your graph looks good before saving!</li>
+                <li><strong>Overwrite Toggle</strong>:
+                    <ul>
+                        <li><strong>Unchecked</strong>: Creates a brand new graph. Redirection for assessable nodes is <strong>optional</strong> but recommended.</li>
+                        <li><strong>Checked</strong>: Updates the existing graph (use this if you're editing). Redirection for any changed or removed assessable nodes is <strong>mandatory</strong> to ensure capability trail stability.</li>
+                    </ul>
+                </li>
+            </ol>
 
-        <h3>🔒 Assessable Nodes & Stability</h3>
-        <p>Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a <strong>Redirect ID</strong>. This tells the system where the "capability" formerly represented by that node has moved to.</p>
-        <ul>
-            <li><strong>Mandatory Overwrite Protection</strong>: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.</li>
-            <li><strong>Version Control</strong>: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved. Each redirect records when the change occurred, preserving the complete history of capability transformations.</li>
-        </ul>
+            <h3>🔒 Assessable Nodes & Stability</h3>
+            <p>Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a <strong>Redirect ID</strong>. This tells the system where the "capability" formerly represented by that node has moved to.</p>
+            <ul>
+                <li><strong>Mandatory Overwrite Protection</strong>: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.</li>
+                <li><strong>Version Control</strong>: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved. Each redirect records when the change occurred, preserving the complete history of capability transformations.</li>
+            </ul>
 
-        <h3>🔒 Ownership & Remixing</h3>
-        <ul>
-            <li><strong>Updating Your Work</strong>: If you are the original creator of the graph, you will see the <strong>Overwrite base graph</strong> checkbox. Check this if you want to update your existing version.</li>
-            <li><strong>Remixing Others' Work</strong>: If you are building on top of someone else's graph, the <strong>Overwrite</strong> option will be hidden. This protects their original work! You can still make changes and save, but it will automatically be saved as a <strong>new</strong> graph (your own copy).</li>
-        </ul>
+            <h3>🔒 Ownership & Remixing</h3>
+            <ul>
+                <li><strong>Updating Your Work</strong>: If you are the original creator of the graph, you will see the <strong>Overwrite base graph</strong> checkbox. Check this if you want to update your existing version.</li>
+                <li><strong>Remixing Others' Work</strong>: If you are building on top of someone else's graph, the <strong>Overwrite</strong> option will be hidden. This protects their original work! You can still make changes and save, but it will automatically be saved as a <strong>new</strong> graph (your own copy).</li>
+            </ul>
 
-        <h3>👥 Managing Graph Authors</h3>
-        <p>Graphs support multiple authors with role-based permissions:</p>
-        <ul>
-            <li><strong>Roles</strong>: Authors can be assigned roles - <strong>Curator</strong> (full control), <strong>Editor</strong> (can modify content), <strong>Viewer</strong> (read-only).</li>
-            <li><strong>Adding Authors</strong>: Existing authors can add new authors via the API (UI feature coming soon).</li>
-            <li><strong>Last Author Protection</strong>: The system prevents removing the last remaining author to ensure graphs always have ownership.</li>
-        </ul>
+            <h3>👥 Managing Graph Authors</h3>
+            <p>Graphs support multiple authors with role-based permissions:</p>
+            <ul>
+                <li><strong>Roles</strong>: Authors can be assigned roles - <strong>Curator</strong> (full control), <strong>Editor</strong> (can modify content), <strong>Viewer</strong> (read-only).</li>
+                <li><strong>Adding Authors</strong>: Existing authors can add new authors via the API (UI feature coming soon).</li>
+                <li><strong>Last Author Protection</strong>: The system prevents removing the last remaining author to ensure graphs always have ownership.</li>
+            </ul>
 
-        <h2>6. Standalone Workspace: No Database Required 💻</h2>
-        <p>The workspace can function as a <strong>standalone web app</strong> without any database connection - perfect for creating personal graphs privately!</p>
+            <h2>6. Standalone Workspace: No Database Required 💻</h2>
+            <p>The workspace can function as a <strong>standalone web app</strong> without any database connection - perfect for creating personal graphs privately!</p>
 
-        <h3>How It Works</h3>
-        <ul>
-            <li><strong>Local Storage</strong>: Your graph data is saved to your browser's local storage.</li>
-            <li><strong>No Database Needed</strong>: Create, edit, and visualize graphs entirely offline.</li>
-        </ul>
+            <h3>How It Works</h3>
+            <ul>
+                <li><strong>Local Storage</strong>: Your graph data is saved to your browser's local storage.</li>
+                <li><strong>No Database Needed</strong>: Create, edit, and visualize graphs entirely offline.</li>
+            </ul>
 
-        <h3>Import/Export Directly in Workspace</h3>
-        <ul>
-            <li><strong>Export</strong>: Click <strong>"Export Graph (.knw)"</strong> at the top of the workspace to download your graph as a file.</li>
-            <li><strong>Import</strong>: Click <strong>"Import Graph (.knw)"</strong> to load a previously exported graph into your workspace.</li>
-            <li><strong>Share</strong>: Send the <code>.knw</code> file to others - they can import it into their own standalone workspace.</li>
-        </ul>
+            <h3>Import/Export Directly in Workspace</h3>
+            <ul>
+                <li><strong>Export</strong>: Click <strong>"Export Graph (.knw)"</strong> at the top of the workspace to download your graph as a file.</li>
+                <li><strong>Import</strong>: Click <strong>"Import Graph (.knw)"</strong> to load a previously exported graph into your workspace.</li>
+                <li><strong>Share</strong>: Send the <code>.knw</code> file to others - they can import it into their own standalone workspace.</li>
+            </ul>
 
-        <h3>When to Use Standalone Mode</h3>
-        <ul>
-            <li>Creating personal knowledge graphs you don't want to publish</li>
-            <li>Drafting graphs offline before uploading to the database</li>
-            <li>Sharing graphs with friends without them needing accounts</li>
-            <li>Privacy-sensitive content that stays local-only</li>
-        </ul>
+            <h3>When to Use Standalone Mode</h3>
+            <ul>
+                <li>Creating personal knowledge graphs you don't want to publish</li>
+                <li>Drafting graphs offline before uploading to the database</li>
+                <li>Sharing graphs with friends without them needing accounts</li>
+                <li>Privacy-sensitive content that stays local-only</li>
+            </ul>
 
-        <h2>7. AI Assistance 🤖</h2>
-        <p>Stuck on what to add next? Let the AI help you!</p>
-        <ul>
-            <li><strong>Click "✨ AI Suggest"</strong>: Located at the top of the workspace.</li>
-            <li><strong>Enter a Topic</strong>: Ask for "steps to learn Python" or "key events in WWII".</li>
-            <li><strong>Get Suggestions</strong>: The AI analyzes your current graph to provide relevant, modular additions.</li>
-            <li><strong>Select &amp; Import</strong>: Check the boxes for the nodes you like and click <strong>"Import Selected"</strong>. They will be automatically added to your draft with the correct IDs!</li>
-        </ul>
+            <h2>7. AI Assistance 🤖</h2>
+            <p>Stuck on what to add next? Let the AI help you!</p>
+            <ul>
+                <li><strong>Click "✨ AI Suggest"</strong>: Located at the top of the workspace.</li>
+                <li><strong>Enter a Topic</strong>: Ask for "steps to learn Python" or "key events in WWII".</li>
+                <li><strong>Get Suggestions</strong>: The AI analyzes your current graph to provide relevant, modular additions.</li>
+                <li><strong>Select &amp; Import</strong>: Check the boxes for the nodes you like and click <strong>"Import Selected"</strong>. They will be automatically added to your draft with the correct IDs!</li>
+            </ul>
 
-        <h3>🎯 Selection-Aware Context</h3>
-        <p>When you have nodes selected in the workspace, the AI will use <strong>only those selected nodes</strong> as context for suggestions. This is useful for:</p>
-        <ul>
-            <li><strong>Focused Expansion</strong>: Get suggestions specifically related to a subset of your graph.</li>
-            <li><strong>Domain-Specific Ideas</strong>: Select nodes from a domain to get relevant additions.</li>
-            <li><strong>Reduced Noise</strong>: Narrow context for more targeted suggestions.</li>
-        </ul>
-        <p>A blue reminder banner appears when selections are active, showing how many nodes will be used as context.</p>
+            <h3>🎯 Selection-Aware Context</h3>
+            <p>When you have nodes selected in the workspace, the AI will use <strong>only those selected nodes</strong> as context for suggestions. This is useful for:</p>
+            <ul>
+                <li><strong>Focused Expansion</strong>: Get suggestions specifically related to a subset of your graph.</li>
+                <li><strong>Domain-Specific Ideas</strong>: Select nodes from a domain to get relevant additions.</li>
+                <li><strong>Reduced Noise</strong>: Narrow context for more targeted suggestions.</li>
+            </ul>
+            <p>A blue reminder banner appears when selections are active, showing how many nodes will be used as context.</p>
 
-        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
-        <p><strong>Happy Curating!</strong> 🚀</p>
+            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+            <p><strong>Happy Curating!</strong> 🚀</p>
+        </div>
     </div>
     <div id="side-panel-overlay" class="side-panel-overlay"></div>
     <div id="side-panel" class="side-panel">
@@ -238,7 +241,7 @@
         });
     </script>
     <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
     </footer>
 </body>
 </html>

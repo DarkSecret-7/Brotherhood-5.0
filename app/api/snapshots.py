@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,24 +50,27 @@ def read_snapshots(
     - action: "read" | "fetch" | "assess" - authorization level required
     - metadata_only=true: Returns only metadata (lightweight)
     """
-
-    if public_only and action == "read":
-        snapshots = services.snapshots.SnapshotService.get_public_snapshots(db, skip=skip, limit=limit)
-    else:
-        if not current_user:
+    user_uuid = current_user.public_uuid if current_user else None
+    
+    try:
+        return services.snapshots.SnapshotService.get_snapshots(
+            db=db,
+            user_uuid=user_uuid,
+            public_only=public_only,
+            action=action,
+            metadata_only=metadata_only,
+            skip=skip,
+            limit=limit
+        )
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "authentication required" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        user_id = current_user.id
-        snapshots = services.snapshots.SnapshotService.get_user_accessible_snapshots(db, user_id, action=action, skip=skip, limit=limit)
-
-    if metadata_only:
-        # Return only metadata fields
-        return [services.snapshots.SnapshotService._extract_metadata(db, s.public_uuid) for s in snapshots]
-
-    return snapshots
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/snapshots/{snapshot_uuid}", response_model=Union[schemas.GraphSnapshotRead, schemas.GraphSnapshotMeta])
 def get_snapshot(
@@ -84,22 +87,26 @@ def get_snapshot(
     - public=true: Skip auth, return public snapshot
     - metadata_only=true: Return only metadata fields
     """
-    if public and action == "read":
-        snapshot = services.snapshots.SnapshotService.get_public_snapshot(db, snapshot_uuid)
-    else:
-        if not current_user:
+    user_uuid = current_user.public_uuid if current_user else None
+    
+    try:
+        return services.snapshots.SnapshotService.get_snapshot(
+            db=db,
+            snapshot_uuid=snapshot_uuid,
+            user_uuid=user_uuid,
+            public=public,
+            action=action,
+            metadata_only=metadata_only
+        )
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "authentication required" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        user_id = current_user.id
-        snapshot = services.snapshots.SnapshotService.get_snapshot_with_action(db, snapshot_uuid, user_id, action)
-
-    if metadata_only:
-        return services.snapshots.SnapshotService._extract_metadata(db, snapshot_uuid)
-
-    return snapshot
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.patch("/snapshots/{snapshot_uuid}", response_model=schemas.GraphSnapshotRead)
 def update_snapshot(
@@ -109,9 +116,9 @@ def update_snapshot(
     current_user: models.User = Depends(get_current_user)
 ):
     """Update snapshot - requires 'write' action authorization"""
-    user_id = current_user.id if current_user else None
+    user_uuid = current_user.public_uuid if current_user else None
     # Check write authorization before updating
-    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "write"):
+    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_uuid, "write"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this snapshot")
     
     return services.snapshots.SnapshotService.update_snapshot(db, snapshot_uuid, update_data)
@@ -119,9 +126,9 @@ def update_snapshot(
 @router.delete("/snapshots/{snapshot_uuid}")
 def delete_snapshot(snapshot_uuid: UUID, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     """Delete snapshot - requires 'delete' action authorization"""
-    user_id = current_user.id if current_user else None
+    user_uuid = current_user.public_uuid if current_user else None
     # Check delete authorization before deleting
-    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "delete"):
+    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_uuid, "delete"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this snapshot")
     
     success = services.snapshots.SnapshotService.delete_snapshot(db, snapshot_uuid)
@@ -138,10 +145,10 @@ def export_snapshot(
     current_user: models.User = Depends(get_current_user)
 ):
     """Export snapshot as .knw file - requires 'read' action authorization"""
-    user_id = current_user.id if current_user else None
+    user_uuid = current_user.public_uuid if current_user else None
     
     # Check read authorization
-    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_id, "read"):
+    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_uuid, "read"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to export this snapshot")
     
     try:

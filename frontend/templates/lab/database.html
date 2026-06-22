@@ -1,7 +1,7 @@
 <!--
   This file is part of The Brotherhood Project
 
-  Copyright (C) 2026  The Brotherhood Project
+  Copyright (C) 2026  The Brotherhood Project Developers
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Brotherhood Curator Lab - Database Management</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/frontend/css/common.css">
     <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
 </head>
 <body>
@@ -38,13 +39,13 @@
         </div>
     </div>
 
-    <div class="view-section active" style="display: block; padding: 20px;">
+    <div class="lab-main">
         <div class="card">
             <div class="section-header">
                 <h2>Saved Graphs</h2>
                 <div style="display: flex; gap: 10px;">
-                    <button id="global-import-btn" class="btn-primary btn-small">Import Graph (.knw)</button>
-                    <button id="refresh-btn" class="btn-secondary btn-small">Refresh List</button>
+                    <button id="global-import-btn" class="btn btn-primary btn-small">Import Graph (.knw)</button>
+                    <button id="refresh-btn" class="btn btn-secondary btn-small">Refresh List</button>
                 </div>
             </div>
             
@@ -56,7 +57,7 @@
 
     <!-- Graph Action Modal -->
     <div id="graphActionModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content">
             <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 15px; padding-bottom: 15px;">
                 <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
                     <h2 style="margin: 0; font-size: 1.8em; color: #202124;">Manage Graph</h2>
@@ -99,7 +100,7 @@
                     </label>
                 </div>
 
-                <button id="graph-action-save-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1em; margin-bottom: 20px;" onclick="databaseManager.saveGraphChanges()">Save Changes</button>
+                <button id="graph-action-save-btn" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 1em; margin-bottom: 20px;" onclick="databaseManager.saveGraphChanges()">Save Changes</button>
 
                 <div id="collaboration-section" style="margin-bottom: 20px;">
                     <h3 style="margin-bottom: 10px; color: #1a73e8;">Collaboration</h3>
@@ -107,13 +108,13 @@
                         <p style="margin: 0 0 10px 0; color: #5f6368;">Invite another user to collaborate on this graph.</p>
                         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                             <input type="text" id="invite-user-uuid-input" style="flex: 1; padding: 10px; font-size: 0.9em; border: 1px solid #dadce0; border-radius: 4px;" placeholder="Enter user UUID">
-                            <button class="btn-primary btn-small" onclick="databaseManager.triggerInviteUser()">Invite</button>
+                            <button class="btn btn-primary btn-small" onclick="databaseManager.triggerInviteUser()">Invite</button>
                         </div>
                     </div>
                     <div id="collaboration-join" style="display: none;">
                         <p style="margin: 0 0 10px 0; color: #5f6368;">Request to join this graph as a collaborator.</p>
                         <div id="collaboration-join-actions" style="display: flex; gap: 10px;">
-                            <button class="btn-primary btn-small" onclick="databaseManager.triggerJoinGraph()">Join Graph</button>
+                            <button class="btn btn-primary btn-small" onclick="databaseManager.triggerJoinGraph()">Join Graph</button>
                         </div>
                     </div>
                 </div>
@@ -127,7 +128,7 @@
                 <h3 style="margin-bottom: 10px; color: #1a73e8;">Export</h3>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <p style="margin: 0; color: #5f6368;">Download this graph as a .knw file.</p>
-                    <button class="btn-primary btn-small" onclick="databaseManager.triggerExportGraph()">Download .knw</button>
+                    <button class="btn btn-primary btn-small" onclick="databaseManager.triggerExportGraph()">Download .knw</button>
                 </div>
                 
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
@@ -139,7 +140,7 @@
                     <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 10px;">Upload a .knw file to <strong>permanently replace</strong> this graph.</p>
                     <div style="display: flex; gap: 10px;">
                         <input type="file" id="import-file-input" accept=".knw" style="flex: 1; font-size: 0.9em;">
-                        <button class="btn-danger btn-small" onclick="databaseManager.triggerImportGraph()">Overwrite</button>
+                        <button class="btn btn-danger btn-small" onclick="databaseManager.triggerImportGraph()">Overwrite</button>
                     </div>
                 </div>
 
@@ -148,7 +149,7 @@
                         <h4 style="font-size: 1em; margin-bottom: 4px;">Delete Graph</h4>
                         <p style="font-size: 0.9em; color: #5f6368; margin: 0;">This action cannot be undone.</p>
                     </div>
-                    <button class="btn-danger btn-small" onclick="databaseManager.triggerDeleteGraph()">Delete</button>
+                    <button class="btn btn-danger btn-small" onclick="databaseManager.triggerDeleteGraph()">Delete</button>
                 </div>
             </div>
         </div>
@@ -179,8 +180,8 @@
                 </div>
                 
                 <div class="button-group" style="justify-content: flex-end;">
-                    <button class="btn-secondary" onclick="databaseManager.closeGlobalImportModal()">Cancel</button>
-                    <button class="btn-primary" onclick="databaseManager.submitGlobalImport()">Import Graph</button>
+                    <button class="btn btn-secondary" onclick="databaseManager.closeGlobalImportModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="databaseManager.submitGlobalImport()">Import Graph</button>
                 </div>
             </div>
         </div>
@@ -221,14 +222,14 @@
                 <div id="proposal-detail-vote-section" style="display: none; margin-bottom: 20px;">
                     <p style="margin: 0 0 10px 0; color: #5f6368;">Cast your vote:</p>
                     <div style="display: flex; gap: 10px; justify-content: center;">
-                        <button id="proposal-detail-approve-btn" class="btn-primary btn-small" onclick="databaseManager.voteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash, 1)">&#10003; Approve</button>
-                        <button id="proposal-detail-reject-btn" class="btn-danger btn-small" onclick="databaseManager.voteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash, -1)">&#10007; Reject</button>
+                        <button id="proposal-detail-approve-btn" class="btn btn-primary btn-small" onclick="databaseManager.voteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash, 1)">&#10003; Approve</button>
+                        <button id="proposal-detail-reject-btn" class="btn btn-danger btn-small" onclick="databaseManager.voteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash, -1)">&#10007; Reject</button>
                     </div>
                 </div>
 
                 <div id="proposal-detail-delete-section" style="display: none; margin-bottom: 20px;">
                     <p style="margin: 0 0 10px 0; color: #5f6368;">Delete this proposal:</p>
-                    <button class="btn-danger btn-small" onclick="databaseManager.deleteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash)">Delete Proposal</button>
+                    <button class="btn btn-danger btn-small" onclick="databaseManager.deleteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash)">Delete Proposal</button>
                 </div>
 
                 <div id="proposal-detail-invite-section" style="display: none; margin-bottom: 20px;">
@@ -236,7 +237,7 @@
                 </div>
 
                 <div class="button-group" style="justify-content: flex-end;">
-                    <button class="btn-secondary" onclick="databaseManager.closeProposalDetailModal()">Close</button>
+                    <button class="btn btn-secondary" onclick="databaseManager.closeProposalDetailModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -284,26 +285,23 @@
         });
     </script>
     <!-- Custom Dialog Modal -->
-    <div id="dialogModal" class="modal" style="z-index: 9999;">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2 id="dialog-title">Confirm</h2>
-                <span class="close" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(false)">&times;</span>
-            </div>
-            <div id="dialog-body" style="margin-bottom: 20px; line-height: 1.5;">
+    <div id="dialogModal" class="dialog-overlay" style="display: none; z-index: 9999;">
+        <div class="dialog-modal">
+            <div id="dialog-title" class="dialog-title">Confirm</div>
+            <div id="dialog-body" class="dialog-message">
                 <!-- Message goes here -->
             </div>
             <div id="dialog-input-container" class="form-group" style="display: none;">
                 <input type="text" id="dialog-input" style="width: 100%;">
             </div>
-            <div class="button-group" style="justify-content: flex-end;">
-                <button id="dialog-cancel-btn" class="btn-secondary" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(false)">Cancel</button>
-                <button id="dialog-confirm-btn" class="btn-primary" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(true)">OK</button>
+            <div class="dialog-buttons">
+                <button id="dialog-cancel-btn" class="btn btn-secondary dialog-btn-cancel" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(false)">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn btn-primary dialog-btn-confirm" onclick="window.databaseStateManager && window.databaseStateManager.closeDialog(true)">OK</button>
             </div>
         </div>
     </div>
     <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
     </footer>
 </body>
 </html>

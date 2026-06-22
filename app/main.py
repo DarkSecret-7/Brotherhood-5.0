@@ -1,6 +1,6 @@
 # This file is part of The Brotherhood Project
 #
-# Copyright (C) 2026  The Brotherhood Project
+# Copyright (C) 2026  The Brotherhood Project Developers
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -139,6 +139,15 @@ async def dashboard_profile(request: Request):
         return redirect_response
         
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "profile.html"),
+        headers=secure_headers)
+
+@app.get("/dashboard/proposals")
+async def dashboard_proposals(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+        
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "proposals.html"),
         headers=secure_headers)
 
 # Academia routes

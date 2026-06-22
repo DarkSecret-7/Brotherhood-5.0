@@ -1,7 +1,7 @@
 <!--
   This file is part of The Brotherhood Project
 
-  Copyright (C) 2026  The Brotherhood Project
+  Copyright (C) 2026  The Brotherhood Project Developers
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,11 +23,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Graph Library - Academia</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/frontend/css/common.css">
     <link rel="stylesheet" href="/frontend/css/academia_styles.css">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
-    <div class="dashboard-container">
+    <div class="main-container">
         <div class="header">
             <div style="display: flex; align-items: center;">
                 <div class="hamburger-menu">
@@ -43,8 +44,8 @@
         <main class="dashboard-main">
 
             <div class="tabs">
-                <button class="btn tab-btn active" onclick="libraryController.switchTab('bookmarks')">My Bookmarks</button>
-                <button class="btn tab-btn" onclick="libraryController.switchTab('browse')">Browse Public Graphs</button>
+                <button class="tab-btn active" onclick="libraryController.switchTab('bookmarks')">My Bookmarks</button>
+                <button class="tab-btn" onclick="libraryController.switchTab('browse')">Browse Public Graphs</button>
             </div>
 
             <!-- Bookmarks Section (default view) -->
