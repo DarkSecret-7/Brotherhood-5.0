@@ -198,29 +198,61 @@ def validate_import_file(filename: str) -> bool:
     return filename.endswith(".knw")
 
 def parse_import_content(content: bytes) -> dict:
-    """Parse and validate imported JSON content"""
+    """Parse and validate imported .knw content (protocol v1.0).
+
+    Tries the v1.0 binary header first; raises a clear 400 on anything else.
+    """
+    from .knw_format import decode_knw, is_knw_v10, KNWFormatError
+
+    if not is_knw_v10(content):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported .knw file: only protocol v1.0 (binary) is accepted",
+        )
+
     try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON content")
-    return data
+        payload = decode_knw(content)
+    except KNWFormatError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid .knw file: {exc}")
+
+    metadata, graph, _, _ = split_payload(payload)
+    # Reassemble the legacy flat dict so the rest of the import pipeline
+    # (clean_import_data, handle_redirects_import) keeps working unchanged.
+    merged = dict(graph)
+    merged["_knw_metadata"] = metadata
+    return merged
+
+def split_payload(payload: dict):
+    """Return (metadata, graph, graphHash, fileHash) from a decoded v1.0 payload."""
+    return (
+        payload.get("metadata") or {},
+        payload.get("graph") or {},
+        payload.get("graphHash", ""),
+        payload.get("fileHash", ""),
+    )
 
 def clean_import_data(data: dict) -> dict:
-    """Clean imported data by removing read-only fields and setting defaults"""
+    """Clean imported data by removing read-only fields and setting defaults.
+
+    The v1.0 `_knw_metadata` envelope is **preserved** so that downstream
+    `import_snapshot` can honour fields like `version_label`, `base_uuid`,
+    `created`, and `last_updated`. When the metadata block is absent the
+    database falls back to its own generated values.
+    """
     # Strip top-level fields that should not be imported (DB will generate these)
     data.pop('id', None)
     data.pop('node_count', None)
-    
+
     # Note: created_at and last_updated are preserved as they are metadata to be restored
-    
+
     # Strip site-specific fields (these should not be imported)
     data.pop('is_public', None)
     data.pop('authors', None)
-    
+
     # Ensure metadata defaults if missing
     if 'base_uuid' not in data:
         data['base_uuid'] = None
-    
+
     return data
 
 def handle_redirects_import(data: dict) -> dict:
@@ -240,15 +272,44 @@ def handle_redirects_import(data: dict) -> dict:
     return data
 
 def create_export_file(snapshot_data: dict, graphLabel: str) -> StreamingResponse:
-    """Create export file response"""
-    # Create file stream
-    file_content = json.dumps(snapshot_data, indent=2, default=str)
+    """Create v1.0 .knw file response (binary: magic + version + zstd payload).
+
+    All snapshot identity fields live strictly in `metadata`. The `graph`
+    block carries only the graph contents (nodes, domains, redirects).
+    """
+    from .knw_format import encode_knw, DEFAULT_LICENSE
+
+    authors = snapshot_data.get("authors") or []
+
+    # Metadata carries every snapshot-identifying field. Authors are
+    # preserved here so they can be honoured on import.
+    metadata = {
+        "uuid": snapshot_data.get("public_uuid"),
+        "version_label": snapshot_data.get("version_label") or graphLabel,
+        "base_uuid": snapshot_data.get("base_uuid"),
+        "base_version_label": snapshot_data.get("base_graph_label"),
+        "author": (authors[0]["username"] if authors else "unknown"),
+        "authors": authors,
+        "license": dict(DEFAULT_LICENSE),
+        "created": snapshot_data.get("created_at"),
+        "last_updated": snapshot_data.get("last_updated"),
+    }
+
+    # The graph block is intentionally minimal: only the actual graph
+    # contents. Identity fields are NOT duplicated here.
+    graph_block = {
+        "nodes": snapshot_data.get("nodes", []),
+        "domains": snapshot_data.get("domains", []),
+        "redirects": snapshot_data.get("redirects", []),
+    }
+
+    blob = encode_knw(metadata, graph_block)
     filename = f"{graphLabel}.knw"
-    
+
     return StreamingResponse(
-        StringIO(file_content),
-        media_type="application/json",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        iter([blob]),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 # --- Snapshot and Authorization Utilities ---

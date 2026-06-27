@@ -24,7 +24,8 @@ from typing import List, Union
 from datetime import datetime, timezone
 
 from app import services
-from .. import crud, schemas, models, utils
+from .. import crud, schemas, models
+from ..utils import utils
 from uuid import UUID
 
 class ProposalService:
@@ -254,6 +255,9 @@ class ProposalService:
 
         if proposal.proposal_type == "Remove":
             services.authorship.AuthorshipService.remove_author(db, proposal.graph_uuid, proposal.target_user_uuid)
+
+        if proposal.proposal_type == "Delete":
+            crud.snapshots.delete_snapshot_by_uuid(db, proposal.graph_uuid)
 
         return ProposalService.update_proposal_status(db, proposal.public_hash, "Executed")
 

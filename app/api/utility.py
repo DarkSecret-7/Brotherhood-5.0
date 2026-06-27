@@ -19,7 +19,8 @@
 Utility endpoints (health check, contact form, etc.)
 """
 from fastapi import APIRouter
-from .. import schemas, utils
+from .. import schemas
+from ..utils import utils
 
 router = APIRouter()
 

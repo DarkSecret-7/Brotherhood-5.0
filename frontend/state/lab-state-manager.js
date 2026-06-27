@@ -351,11 +351,11 @@ class LabStateManager {
     }
 
     /**
-     * Export current workspace to .knw file (client-side only)
+     * Export current workspace to a v1.0 .knw file (binary, zstd-compressed).
      * @param {Object} exportOptions - Export options (versionLabel, overwrite)
-     * @returns {void} - Triggers browser download
+     * @returns {Promise<void>} - Triggers browser download once encoding completes
      */
-    exportToFile(exportOptions = {}) {
+    async exportToFile(exportOptions = {}) {
         const versionLabel = exportOptions.versionLabel || this.state.currentVersionLabel || 'workspace';
         const overwrite = exportOptions.overwrite || false;
 
@@ -367,10 +367,8 @@ class LabStateManager {
         let backendDomains = [];
 
         if (window.snapshotsTransformer) {
-            // Use transformer for exact backend compatibility
             const frontendNodes = this.state.nodes.map(node => ({
                 ...node,
-                // Ensure position exists for transformation
                 position: node.position || { x: null, y: null }
             }));
             const frontendDomains = this.state.domains;
@@ -378,46 +376,50 @@ class LabStateManager {
             backendDomains = window.snapshotsTransformer.transformDomainsToBackend(frontendDomains);
         }
 
-        // Determine base_uuid and base_graph_label based on overwrite logic
-        let exportBaseUuid = null;
-        let exportBaseGraphLabel = null;
-        let exportVersionLabel = versionLabel;
-
+        // Determine version label based on overwrite logic. Base graph
+        // identity is taken directly from state below.
+        let exportVersionLabel;
         if (overwrite) {
             // Overwrite: keep current base graph as base
-            exportBaseUuid = this.state.baseGraphUuid || null;
-            exportBaseGraphLabel = this.state.baseGraphLabel;
             exportVersionLabel = versionLabel || this.state.currentVersionLabel;
         } else {
-            // New version: current graph becomes base
-            exportBaseUuid = this.state.currentSnapshotUuid || null;
-            exportBaseGraphLabel = this.state.currentVersionLabel;
+            // New version: fall back to a placeholder if nothing was provided
             exportVersionLabel = versionLabel || 'Unknown Workspace Graph';
         }
 
-        // Build export data in backend-compatible format
-        const exportData = {
-            public_uuid: overwrite ? this.state.currentSnapshotUuid : null,
-            base_uuid: exportBaseUuid,
-            version_label: exportVersionLabel,
-            base_graph_label: exportBaseGraphLabel,
-            created_at: this.state.createdAt?.toISOString() || new Date().toISOString(),
-            last_updated: new Date().toISOString(),
-            authors: currentUser ? [{
-                user_uuid: currentUser.user_uuid,
-                username: currentUser.username
-            }] : [],
+        const authors = currentUser ? [{
+            user_uuid: currentUser.user_uuid,
+            username: currentUser.username
+        }] : [];
+
+        // The graph block carries only the actual graph contents.
+        const graphBlock = {
             nodes: backendNodes,
             domains: backendDomains,
             redirects: []
         };
 
-        // Create JSON string
-        const jsonString = JSON.stringify(exportData, null, 2);
+        // The metadata block carries every snapshot-identifying field,
+        // including authors (preserved for re-import).
+        const metadata = {
+            uuid: overwrite ? this.state.currentSnapshotUuid : null,
+            version_label: this.state.currentVersionLabel || exportVersionLabel,
+            base_uuid: this.state.baseGraphUuid || null,
+            base_version_label: this.state.baseGraphLabel || null,
+            author: currentUser?.username || 'unknown',
+            authors: authors,
+            license: { ...(window.KNWFormat?.DEFAULT_LICENSE || { name: 'CC-BY-SA-4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' }) },
+            created: this.state.createdAt?.toISOString() || new Date().toISOString(),
+            last_updated: new Date().toISOString(),
+        };
 
-        // Create blob and download
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        if (!window.KNWFormat) {
+            throw new Error('KNW format module not loaded (frontend/utils/knw-format.js)');
+        }
+
+        const blob = await window.KNWFormat.encodeKNW(metadata, graphBlock);
+
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
         const link = document.createElement('a');
         link.href = url;
         link.download = `${exportVersionLabel}.knw`;
@@ -428,19 +430,39 @@ class LabStateManager {
     }
 
     /**
-     * Import workspace from .knw file (client-side only)
-     * @param {Object} importData - Parsed import data
-     * @returns {void} - Replaces current workspace
+     * Import workspace from a v1.0 .knw file (binary, zstd-compressed).
+     * Accepts either a File object or an ArrayBuffer/Uint8Array.
+     * @param {File|Uint8Array|ArrayBuffer} source - File input or raw bytes
+     * @returns {Promise<void>} - Replaces current workspace once decoded
      */
-    importFromFile(importData) {
-        // Validate import data structure
-        if (!importData || typeof importData !== 'object') {
-            throw new Error('Invalid import data');
+    async importFromFile(source) {
+        if (!window.KNWFormat) {
+            throw new Error('KNW format module not loaded (frontend/utils/knw-format.js)');
         }
-
         if (!window.snapshotsTransformer) {
             throw new Error('Snapshots transformer not available. Please ensure the transformer is loaded.');
         }
+
+        let bytes;
+        if (source instanceof Uint8Array) {
+            bytes = source;
+        } else if (source instanceof ArrayBuffer) {
+            bytes = new Uint8Array(source);
+        } else if (source && typeof source.arrayBuffer === 'function') {
+            // File or Blob-like
+            bytes = new Uint8Array(await source.arrayBuffer());
+        } else {
+            throw new Error('Unsupported import source: expected File, Blob, ArrayBuffer, or Uint8Array');
+        }
+
+        if (!window.KNWFormat.isKNWV10(bytes)) {
+            throw new Error('Unsupported .knw file: only protocol v1.0 (binary) is accepted');
+        }
+
+        const payload = await window.KNWFormat.decodeKNW(bytes);
+        const metadata = payload.metadata || {};
+        const importData = payload.graph || {};
+        importData._knw_metadata = metadata;
 
         // Clear workspace first
         this.clearWorkspace();
@@ -454,25 +476,22 @@ class LabStateManager {
         const frontendNodes = window.snapshotsTransformer.transformNodesFromBackend(backendFormat.nodes);
         const frontendDomains = window.snapshotsTransformer.transformDomainsFromBackend(backendFormat.domains);
 
-        // Mark all imported items as dirty since they're new to the workspace
-        frontendNodes.forEach(node => {
-            node._isDirty = true;
-        });
-        frontendDomains.forEach(domain => {
-            domain._isDirty = true;
-        });
+        frontendNodes.forEach(node => { node._isDirty = true; });
+        frontendDomains.forEach(domain => { domain._isDirty = true; });
 
         // Update state
         this.state.nodes = frontendNodes;
         this.state.domains = frontendDomains;
         this.state.redirects = importData.redirects || [];
-        this.state.currentSnapshotUuid = importData.public_uuid || null;
-        this.state.currentVersionLabel = importData.version_label || 'Imported Graph';
-        this.state.baseGraphUuid = importData.base_uuid || null;
-        this.state.baseGraphLabel = importData.base_graph_label || null;
-        this.state.createdAt = importData.created_at ? new Date(importData.created_at) : null;
-        this.state.lastUpdated = importData.last_updated ? new Date(importData.last_updated) : null;
-        this.state.authors = importData.authors || [];
+        // All snapshot identity fields come strictly from the v1.0
+        // metadata envelope (single source of truth).
+        this.state.currentSnapshotUuid = metadata.uuid || null;
+        this.state.currentVersionLabel = metadata.version_label || 'Imported Graph';
+        this.state.baseGraphUuid = metadata.base_uuid || null;
+        this.state.baseGraphLabel = metadata.base_version_label || null;
+        this.state.createdAt = metadata.created ? new Date(metadata.created) : null;
+        this.state.lastUpdated = metadata.last_updated ? new Date(metadata.last_updated) : null;
+        this.state.authors = metadata.authors || [];
         this.state.isPublic = false;
         this.state.isDirty = true;
 

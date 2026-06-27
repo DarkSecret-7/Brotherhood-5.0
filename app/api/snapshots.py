@@ -124,16 +124,15 @@ def update_snapshot(
     return services.snapshots.SnapshotService.update_snapshot(db, snapshot_uuid, update_data)
 
 @router.delete("/snapshots/{snapshot_uuid}")
-def delete_snapshot(snapshot_uuid: UUID, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
-    """Delete snapshot - requires 'delete' action authorization"""
+def delete_snapshot(snapshot_uuid: UUID,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Delete snapshot - requires 'delete' action authorization"""    
     user_uuid = current_user.public_uuid if current_user else None
-    # Check delete authorization before deleting
-    if not services.snapshots.SnapshotService.check_snapshot_authorization(db, snapshot_uuid, user_uuid, "delete"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this snapshot")
-    
-    success = services.snapshots.SnapshotService.delete_snapshot(db, snapshot_uuid)
+    success = services.snapshots.SnapshotService.delete_snapshot(db, snapshot_uuid, user_uuid)
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
     
     return {"message": "Snapshot deleted successfully"}
 
@@ -156,7 +155,7 @@ def export_snapshot(
         snapshot_data = services.snapshots.SnapshotService.export_snapshot(db, snapshot_uuid)
         
         # Create export file
-        from ..utils import create_export_file
+        from ..utils.utils import create_export_file
         graph_label = snapshot_data.get('version_label') or f"graph_{snapshot_uuid}"
         return create_export_file(snapshot_data, graph_label)
     except ValueError as e:
@@ -171,21 +170,21 @@ def import_snapshot(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Import snapshot from .knw file"""
+    """Import snapshot from a v1.0 .knw file (binary, zstd-compressed)."""
     if not current_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
-    
+
     # Validate file extension
-    from ..utils import validate_import_file, parse_import_content
+    from ..utils.utils import validate_import_file, parse_import_content
     if not validate_import_file(file.filename):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file format. Only .knw files are allowed.")
-    
+
+    # Read raw bytes - v1.0 .knw is a binary format
+    content = file.file.read()
+    import_data = parse_import_content(content)
+
+    # Import the snapshot
     try:
-        # Read and parse file content
-        content = file.file.read()
-        import_data = parse_import_content(content)
-        
-        # Import the snapshot
         result = services.snapshots.SnapshotService.import_snapshot(
             db=db,
             import_data=import_data,
@@ -196,5 +195,3 @@ def import_snapshot(
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON content in file")

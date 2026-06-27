@@ -110,7 +110,7 @@ class AuthorshipService:
         # The same timestamp is persisted as the row's created_at so that
         # the hash and the row always agree.
         from datetime import datetime, timezone
-        from ..utils import generate_hash
+        from ..utils.utils import generate_hash
         invitation_time = datetime.now(timezone.utc)
         string_data = (
             f"invitation:{snapshot_uuid}:{inviter_uuid}:"

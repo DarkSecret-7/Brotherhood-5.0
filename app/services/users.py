@@ -21,7 +21,8 @@ Orchestrates CRUD operations and handles business rules.
 """
 from sqlalchemy.orm import Session
 from uuid import UUID
-from .. import crud, schemas, models, utils
+from .. import crud, schemas, models
+from ..utils import utils
 
 class UserService:
 

@@ -481,7 +481,7 @@ class LabUIController {
                         ${domain.description ? `<span class="tree-item-description">${this.escapeHtml(domain.description)}</span>` : ''}
                     </div>
                         ${domain.parentId && !isDeleted ? 
-                            `<button class="btn btn-warning btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
+                            `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
                         ${!isDeleted && hasSelections ? 
                             `<button class="btn btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">Move</button>` : ''}
                         ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>` : ''}
@@ -534,7 +534,7 @@ class LabUIController {
                     </div>
                     <div class="tree-item-actions" onclick="event.stopPropagation()">
                         ${node.domainId && !isDeleted ? 
-                            `<button class="btn btn-warning btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">Eject</button>` : ''}
+                            `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">Eject</button>` : ''}
                         ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">Edit</button>` : ''}
                         ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">Delete</button>` : ''}
                         ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreNode(${node.id})">Restore</button>` : ''}

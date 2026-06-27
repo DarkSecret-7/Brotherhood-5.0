@@ -22,7 +22,8 @@ Orchestrates CRUD operations and handles business rules.
 from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import Optional
-from .. import crud, schemas, models, utils
+from .. import crud, schemas, models
+from ..utils import utils
 from uuid import UUID
 
 # Import self-assessment module (located in root)

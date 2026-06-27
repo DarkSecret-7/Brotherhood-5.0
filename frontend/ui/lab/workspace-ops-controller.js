@@ -526,13 +526,13 @@ class WorkspaceOpsController {
     }
 
     /**
-     * Handle export workspace to .knw file (client-side)
+     * Handle export workspace to a v1.0 .knw file (client-side, binary).
      */
-    handleExportWorkspace() {
+    async handleExportWorkspace() {
         // Get version label and overwrite settings from the same inputs used for database save
         const versionLabelElement = document.getElementById('version-label');
         const overwriteToggleElement = document.getElementById('overwrite-toggle');
-        
+
         const versionLabel = versionLabelElement ? versionLabelElement.value.trim() : '';
         const overwrite = overwriteToggleElement ? overwriteToggleElement.checked : false;
 
@@ -542,7 +542,7 @@ class WorkspaceOpsController {
         }
 
         try {
-            this.stateManager.exportToFile({ versionLabel, overwrite });
+            await this.stateManager.exportToFile({ versionLabel, overwrite });
             this.stateManager.showMessage(`Exported successfully as ${versionLabel}.knw`, 'success');
         } catch (error) {
             this.stateManager.showMessage(`Export Error: ${error.message}`, 'error');
@@ -561,50 +561,40 @@ class WorkspaceOpsController {
     }
 
     /**
-     * Handle file input change for import
+     * Handle file input change for import (v1.0 binary .knw).
      * @param {Event} event - File input change event
      */
-    handleFileImport(event) {
+    async handleFileImport(event) {
         const file = event.target.files[0];
         if (!file) return;
 
         // Validate file extension
         if (!file.name.endsWith('.knw')) {
             this.stateManager.showMessage('Please select a .knw file', 'error');
-            event.target.value = ''; // Clear file input
+            event.target.value = '';
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const fileContent = e.target.result;
-                const importData = JSON.parse(fileContent);
+        try {
+            // Read as ArrayBuffer (v1.0 .knw is binary)
+            const bytes = new Uint8Array(await file.arrayBuffer());
 
-                // Show confirmation dialog before replacing workspace
-                this.stateManager.customConfirm(
-                    `Are you sure you want to import "${file.name}"? This will replace the current workspace with all unsaved changes lost.`,
-                    (confirmed) => {
-                        if (confirmed) {
-                            try {
-                                this.stateManager.importFromFile(importData);
-                                this.stateManager.showMessage(`Imported successfully from ${file.name}`, 'success');
-                            } catch (error) {
-                                this.stateManager.showMessage(`Import Error: ${error.message}`, 'error');
-                            }
-                        }
+            // Show confirmation dialog before replacing workspace
+            this.stateManager.customConfirm(
+                `Are you sure you want to import "${file.name}"? This will replace the current workspace with all unsaved changes lost.`,
+                async (confirmed) => {
+                    if (!confirmed) return;
+                    try {
+                        await this.stateManager.importFromFile(bytes);
+                        this.stateManager.customAlert(`Imported successfully from ${file.name}`);
+                    } catch (error) {
+                        this.stateManager.customAlert(`Import Error: ${error.message}`);
                     }
-                );
-            } catch (error) {
-                this.stateManager.showMessage(`Failed to parse file: ${error.message}`, 'error');
-            }
-        };
-
-        reader.onerror = () => {
-            this.stateManager.showMessage('Failed to read file', 'error');
-        };
-
-        reader.readAsText(file);
+                }
+            );
+        } catch (error) {
+            this.stateManager.showMessage(`Failed to read file: ${error.message}`, 'error');
+        }
 
         // Clear file input
         event.target.value = '';

@@ -744,7 +744,7 @@ class DatabaseStateManager {
         this.clearError();
         
         try {
-            const result = await this.snapshotsTransformer.importSnapshot(file, overwrite);
+            const result = await window.snapshotsApiService.importSnapshot(file, overwrite);
             
             // Refresh list
             await this.refreshSnapshots(true);

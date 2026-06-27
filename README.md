@@ -184,59 +184,73 @@ The system runs as a single web service:
    - View and manage user information like profiles and graph bookmarks
 
 ### 5. Import & Export (.knw)
-The system supports a custom `.knw` (Knowledge Graph) file format for sharing graphs. The .knw format is **JSON-based** with a `.knw` extension.
+The system uses the `.knw` (Knowledge Graph) file format for sharing graphs. The current version is **v1.0** — a binary format with a small header followed by a zstd-compressed JSON payload.
 
 **⚠️ CRITICAL: There is only one .knw format.** Both the backend API and frontend workspace use identical field naming and structure. Any inconsistency will cause data loss or import failures.
 
 **Export:**
 - Open any graph snapshot.
 - Click **"Download .knw"** inside the "Export" section of the graph details.
-- The file contains all nodes, domains, metadata, and sources.
+- The file contains all nodes, domains, metadata (including authors and license), and both SHA-256 hashes.
 
 **Import:**
 - **Global Import**: Use the "Import Graph (.knw)" button on the Database Management dashboard to add a new graph.
 - **Overwrite**: Inside an existing graph's settings, you can import a `.knw` file to completely replace the current graph content (requires confirmation).
-- **Smart Resolution**: The importer automatically resolves user references (creators) and base graph links. If a referenced user or graph is missing, it defaults to safe values ("Unknown" or null) to prevent errors.
+- **Smart Resolution**: The importer honours the `metadata` block: existing UUIDs, version labels, base graph links, and authors are preserved when possible. If the file declares authors but their UUIDs are unknown to the database, those entries are skipped and authorship falls back to the importing user.
 
-#### .knw File Format Specification
+#### .knw File Format (v1.0)
+
+##### Binary layout
+
+| Offset | Size | Field |
+|--------|------|-------|
+| 0      | 3 bytes | Magic bytes: ASCII `"KNW"` |
+| 3      | 2 bytes | Protocol version: `uint16` little-endian (currently `1`) |
+| 5      | 1 byte  | Compression algorithm: `1` = zstd |
+| 6      | N bytes | zstd-compressed canonical JSON payload |
+
+##### Decompressed payload
 
 ```json
 {
-  "public_uuid": "uuid-string-or-null",
-  "base_uuid": "uuid-string-or-null",
-  "version_label": "Graph Name",
-  "base_graph_label": "Parent Graph Name or null",
-  "created_at": "ISO-8601-timestamp",
-  "last_updated": "ISO-8601-timestamp",
-  "authors": [{"user_uuid": "...", "username": "..."}],
-  "nodes": [{
-    "local_id": 1,
-    "title": "Node Title",
-    "description": "...",
-    "prerequisite": "(1 AND 2) OR 3",
-    "mentions": {"5": true},
-    "domain_id": 1,
-    "x": 100.5,
-    "y": 200.3,
-    "assessable": true,
-    "source_items": [{
-      "title": "Source Title",
-      "bib_type": "PDF",
-      "author": "Author Name",
-      "year": 2024,
-      "url": "https://example.com",
-      "fragment_start": "Chapter 1",
-      "fragment_end": "Page 10",
-      "bib_hash": "64-char-sha256-hex",
-      "source_uuid": "uuid-string"
-    }]
-  }],
-  "domains": [{"local_id": 1, "title": "Domain", "description": "...", "parent_id": null}],
-  "redirects": [{"old_local_id": 5, "new_local_id": 10}]
+  "metadata": {
+    "uuid":               "<graph public uuid, or null>",
+    "version_label":      "Graph Name",
+    "base_uuid":          "<parent graph uuid, or null>",
+    "base_version_label": "<parent graph version label, or null>",
+    "author":             "primary-author-username",
+    "authors": [
+      { "user_uuid": "author-uuid", "username": "author-name" }
+    ],
+    "license": {
+      "name": "CC-BY-SA-4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    "created":      "<ISO-8601 timestamp>",
+    "last_updated": "<ISO-8601 timestamp>"
+  },
+  "graph": {
+    "nodes":     [ ... ],
+    "domains":   [ ... ],
+    "redirects": [ ... ]
+  },
+  "graphHash": "<lowercase hex SHA-256>",
+  "fileHash":  "<lowercase hex SHA-256>"
 }
 ```
 
-**Critical Field Names (snake_case required in .knw files):**
+**Identity fields live strictly in `metadata`.** The `graph` block carries only the actual graph contents. On import, if `metadata.authors` is non-empty, the first entry becomes the snapshot's creator and the remaining authors are reattached when their UUIDs exist locally; if `metadata.authors` is absent or empty, authorship is handed over to the importing user.
+
+##### Hashing
+
+Canonical JSON is produced with sorted keys, no whitespace, UTF-8, and no ASCII escaping. Then:
+
+- `graphHash = SHA-256(canonical({nodes, domains, redirects}))`
+- `fileHash  = SHA-256(canonical({metadata, graph}))` — the hash fields themselves are excluded from the input
+
+On import the decoder recomputes both hashes and rejects the file if either differs (tampering / corruption).
+
+**Critical Field Names (snake_case required in `.knw` files):**
 | Field | Description |
 |-------|-------------|
 | `bib_hash` | Bibliography SHA-256 hash (64-char hex). **Must be `bib_hash`, not `public_hash`.** |
@@ -291,7 +305,7 @@ When you edit a prerequisite in the Web UI, the system automatically:
 
 ### Graph Governance (Proposals)
 A consent-based governance system for graph management:
-- **Proposal Types**: Join (request to join as author), Invite (invite another user), Merge (merge graphs), Delete (remove graph)
+- **Proposal Types**: Join (request to join as author), Invite (invite another user), Delete (remove graph)
 - **Voting**: Authors vote approve/reject on proposals
 - **Automatic Execution**: Delete proposals execute immediately when approved
 - **API**: `/api/v1/proposals/*` endpoints

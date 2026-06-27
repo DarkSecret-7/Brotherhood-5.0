@@ -26,7 +26,8 @@ import traceback
 from .database import engine, Base
 from .api import api_router, llm, assessments
 from .api.auth import get_current_user
-from . import models, utils
+from . import models
+from .utils import utils
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

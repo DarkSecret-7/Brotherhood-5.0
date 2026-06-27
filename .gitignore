@@ -39,5 +39,5 @@ test/
 DATABASE_BACKUPS/
 
 # Development Artifacts
-teamplan/
+future_plans/
 graphify-out/

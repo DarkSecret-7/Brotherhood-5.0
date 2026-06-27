@@ -21,7 +21,8 @@ Sends API requests and processes responses.
 """
 import json
 import requests
-from .. import schemas, utils
+from .. import schemas
+from ..utils import utils
 from . import prompts
 
 # Available free models on OpenRouter (rate limited: 20 req/min, 50-1000 req/day)

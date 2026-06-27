@@ -20,7 +20,8 @@ Bibliography service layer - Business logic for bibliography operations.
 Orchestrates CRUD operations and handles business rules.
 """
 from sqlalchemy.orm import Session
-from .. import crud, schemas, models, utils
+from .. import crud, schemas, models
+from ..utils import utils
 
 class BibliographyService:
 

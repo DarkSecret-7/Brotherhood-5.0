@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List, Union
-from .. import crud, schemas, models
+from .. import crud, services, schemas, models
 
 class SnapshotService:
 
@@ -217,9 +217,31 @@ class SnapshotService:
         return snapshot
 
     @staticmethod
-    def delete_snapshot(db: Session, snapshot_uuid: UUID) -> bool:
+    def delete_snapshot(db: Session, snapshot_uuid: UUID, user_uuid: UUID = None) -> bool:
         """Delete snapshot with business logic"""
-        return crud.snapshots.delete_snapshot_by_uuid(db, snapshot_uuid)
+        # Check snapshot exists, and user is authorized to delete
+        snapshot = crud.snapshots.get_snapshot_by_uuid(db, snapshot_uuid)
+        if not snapshot:
+            raise ValueError("Snapshot not found")
+        if not user_uuid:
+            raise ValueError("User authentication required for snapshot deletion")
+        if not SnapshotService.check_snapshot_authorization(db, snapshot.public_uuid, user_uuid, "delete"):
+            raise ValueError("Not authorized to delete this snapshot")
+
+        # Check if there is only one author and delete directly
+        if len(snapshot.authors) == 1:
+            crud.snapshots.delete_snapshot_by_uuid(db, snapshot_uuid)
+            return {"success": True, "direct": True, "message": "Snapshot deleted successfully"}
+
+        # If there are multiple authors, make a proposal for deletion
+        proposal_data = schemas.ProposalCreate(
+            proposal_type="Delete",
+            graph_uuid=snapshot_uuid,
+            proposer_uuid=user_uuid
+        )
+        proposal = services.proposals.ProposalService.create_proposal(db, proposal_data)
+
+        return {"success": True, "direct": False, "message": "Snapshot deletion proposal created successfully", "proposal_hash": proposal.public_hash}
 
     @staticmethod
     def export_snapshot(db: Session, snapshot_uuid: UUID) -> dict:
@@ -290,34 +312,57 @@ class SnapshotService:
     @staticmethod
     def import_snapshot(db: Session, import_data: dict, current_user: models.User, overwrite: bool = False, target_uuid: UUID = None) -> schemas.GraphSnapshotRead:
         """Import snapshot from .knw file data"""
-        from ..utils import clean_import_data, handle_redirects_import
+        from ..utils.utils import clean_import_data, handle_redirects_import
         from datetime import datetime
-        
-        # Clean the import data (remove read-only and site-specific fields)
+
+        # Clean the import data (remove read-only and site-specific fields).
+        # The v1.0 metadata envelope (`_knw_metadata`) is preserved here so we
+        # can honour the snapshot's identifying fields below.
         cleaned_data = clean_import_data(import_data)
         
         # Handle redirects format conversion if needed
         cleaned_data = handle_redirects_import(cleaned_data)
-        
-        # Parse timestamps if present
-        imported_created_at = None
-        imported_last_updated = None
-        if cleaned_data.get('created_at'):
+
+        # Pull the v1.0 metadata envelope. The format is strict: every
+        # identity field is read from here, never from the graph block
+        # (which carries only nodes/domains/redirects).
+        metadata = cleaned_data.get('_knw_metadata') or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        # Resolve the effective creator. If metadata.authors is a non-empty
+        # list of {"user_uuid", "username"} objects, use the first one as
+        # the creator. Otherwise hand authorship over to the importing
+        # user (the existing behaviour).
+        metadata_authors = metadata.get('authors') or []
+        first_author_uuid = None
+        if isinstance(metadata_authors, list):
+            for entry in metadata_authors:
+                if isinstance(entry, dict) and entry.get('user_uuid'):
+                    first_author_uuid = entry['user_uuid']
+                    break
+
+        effective_version_label = metadata.get('version_label')
+        effective_base_uuid = metadata.get('base_uuid')
+        effective_creator_uuid = first_author_uuid or (
+            current_user.public_uuid if current_user else None
+        )
+
+        # Parse timestamps from the metadata envelope.
+        def _parse_iso(value):
+            if not value:
+                return None
             try:
-                imported_created_at = datetime.fromisoformat(cleaned_data['created_at'].replace('Z', '+00:00'))
+                return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
             except (ValueError, AttributeError):
-                pass
-        if cleaned_data.get('last_updated'):
-            try:
-                imported_last_updated = datetime.fromisoformat(cleaned_data['last_updated'].replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                pass
-        
-        # Check if a snapshot with this UUID already exists
-        # If target_uuid is provided, search for overwrite target first
-        # If not, simply use uuid on the import file
+                return None
+
+        imported_created_at = _parse_iso(metadata.get('created'))
+        imported_last_updated = _parse_iso(metadata.get('last_updated'))
+
+        # Locate existing snapshot, if any. UUID comes from metadata.
         existing_snapshot = None
-        import_uuid = cleaned_data.get('public_uuid')
+        import_uuid = metadata.get('uuid')
         if target_uuid:
             try:
                 existing_snapshot = crud.snapshots.get_snapshot_by_uuid(db, UUID(target_uuid))
@@ -332,12 +377,12 @@ class SnapshotService:
         # If overwrite is requested and snapshot exists, update it
         if overwrite and existing_snapshot:
             # Check write authorization
-            if not SnapshotService.check_snapshot_authorization(db, existing_snapshot.public_uuid, current_user.id if current_user else None, "write"):
+            if not SnapshotService.check_snapshot_authorization(db, existing_snapshot.public_uuid, current_user.public_uuid if current_user else None, "write"):
                 raise ValueError("Not authorized to overwrite this snapshot")
             
             # Build update data (is_public is NOT imported - site-specific)
             update_data = schemas.GraphSnapshotUpdate(
-                version_label=cleaned_data.get('version_label'),
+                version_label=effective_version_label,
                 nodes=[
                     schemas.NodeCreate(
                         local_id=node.get('local_id'),
@@ -392,8 +437,8 @@ class SnapshotService:
         else:
             # Create new snapshot (is_public defaults to False - not imported)
             create_data = schemas.GraphSnapshotCreate(
-                version_label=cleaned_data.get('version_label'),
-                base_uuid=cleaned_data.get('base_uuid'),
+                version_label=effective_version_label,
+                base_uuid=effective_base_uuid,
                 nodes=[
                     schemas.NodeCreate(
                         local_id=node.get('local_id'),
@@ -432,16 +477,16 @@ class SnapshotService:
                 ],
                 redirects=[
                     schemas.NodeRedirectBase(
-                        snapshot_uuid=import_data.get('public_uuid'),  # Will be replaced by backend
+                        snapshot_uuid=metadata.get('uuid'),  # backend replaces with the real one
                         old_local_id=redirect.get('old_local_id'),
                         new_local_id=redirect.get('new_local_id')
                     ) for redirect in cleaned_data.get('redirects', [])
                 ] if cleaned_data.get('redirects') else None,
-                created_by=schemas.UserRead(user_uuid=current_user.public_uuid, username=current_user.username) if current_user else None
+                created_by=schemas.UserRead(user_uuid=effective_creator_uuid, username=None) if effective_creator_uuid else (schemas.UserRead(user_uuid=current_user.public_uuid, username=current_user.username) if current_user else None)
             )
-            
+
             result = SnapshotService.create_snapshot(db=db, snapshot_data=create_data)
-            
+
             # Restore timestamps if they were in the import
             if imported_created_at or imported_last_updated:
                 new_snapshot = crud.snapshots.get_snapshot_by_uuid(db, result.public_uuid)
@@ -451,8 +496,89 @@ class SnapshotService:
                     db.commit()
                     db.refresh(new_snapshot)
                     result = SnapshotService._convert_to_read_schema(new_snapshot)
-            
+
+            # Preserve authorship from metadata. The first author has
+            # already been set as the creator; recreate authorship records
+            # for the remaining authors whose UUIDs exist in the DB.
+            # Fall back to the importing user when an author UUID is not
+            # found locally.
+            SnapshotService._preserve_authorship(
+                db=db,
+                snapshot_public_uuid=result.public_uuid,
+                metadata_authors=metadata_authors,
+                current_user=current_user,
+            )
+
             return result
+
+    @staticmethod
+    def _preserve_authorship(
+        db: Session,
+        snapshot_public_uuid: str,
+        metadata_authors: list | None,   
+        current_user: models.User | None = None,
+    ) -> None:
+        """Recreate authorship records from a v1.0 .knw metadata envelope.
+
+        `create_snapshot` has already set `created_by` (and therefore
+        an authorship row) for the first author. This helper walks the
+        remaining authors, looks each one up by UUID, and adds an
+        authorship row when the user exists locally. Authors whose UUIDs
+        are unknown are silently skipped: authorship is best-effort.
+        """
+        if not isinstance(metadata_authors, list) or not metadata_authors:
+            return
+
+        # Get snapshot ID from UUID
+        snapshot_id = crud.snapshots.get_snapshot_by_uuid(db, snapshot_public_uuid).id
+        if not snapshot_id:
+            return
+
+        # Collect UUIDs of authors already on the snapshot (so we don't
+        # create duplicate rows for the first author who became the
+        # creator).
+        existing_user_ids = {
+            row.user_id
+            for row in db.query(models.GraphAuthorship)
+                .filter(models.GraphAuthorship.graph_id == snapshot_id)
+                .all()
+        }
+
+        for entry in metadata_authors:
+            if not isinstance(entry, dict):
+                continue
+            user_uuid = entry.get('user_uuid')
+            if not user_uuid:
+                continue
+            try:
+                user = crud.users.get_user_by_uuid(db, UUID(user_uuid))
+            except (ValueError, TypeError):
+                continue
+            if not user or user.id in existing_user_ids:
+                continue
+            crud.snapshots.create_authorship_record(
+                db=db,
+                graph_id=snapshot_id,
+                user_id=user.id,
+            )
+            existing_user_ids.add(user.id)
+
+        # If metadata_authors was non-empty but every author was unknown
+        # to the database, the snapshot would end up with no authorship
+        # at all (the first author didn't exist either, so create_snapshot
+        # couldn't seed one). Hand authorship to current_user in that case.
+        if not existing_user_ids and current_user is not None:
+            crud.snapshots.create_authorship_record(
+                db=db,
+                graph_id=snapshot_id,
+                user_id=current_user.id,
+            )
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def get_snapshot_with_action(db: Session, snapshot_uuid: UUID, user_uuid: UUID, action: str) -> schemas.GraphSnapshotRead:
@@ -594,8 +720,8 @@ class SnapshotService:
                 # Create redirect objects without adding to session yet
                 db_redirect = models.NodeRedirect(
                     snapshot_id=snapshot_id,
-                    source_node_uuid=redirect.source_node_uuid,
-                    target_node_uuid=redirect.target_node_uuid
+                    old_local_id=redirect.old_local_id,
+                    new_local_id=redirect.new_local_id
                 )
                 db_redirects.append(db_redirect)
             
@@ -712,7 +838,7 @@ class SnapshotService:
     def _process_source_updates(db: Session, db_node: models.Node, source_items: list):
         """Process individual source updates - only update changed sources using UUIDs"""
         from ..crud import bibliography as bib_crud
-        from ..utils import generate_hash
+        from ..utils.utils import generate_hash
         
         # Build mapping of UUID -> source fragment for this node
         existing_by_uuid = {}
@@ -794,7 +920,7 @@ class SnapshotService:
     def _create_source_fragments(db: Session, db_node: models.Node, source_items: list):
         """Create source fragments for a node"""
         from ..crud import bibliography as bib_crud
-        from ..utils import generate_hash
+        from ..utils.utils import generate_hash
         
         for src in source_items:
             # Find or create bibliography
