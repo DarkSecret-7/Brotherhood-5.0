@@ -900,11 +900,13 @@ tr:hover td {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    pointer-events: none;           /* Prevents click events from obstructing the privacy recall button */
 }
 
 .cookie-banner-container.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
+    pointer-events: auto;
 }
 
 .cookie-banner-content {
