@@ -44,6 +44,7 @@ body {
     background: #ffffff;
     border-bottom: 1px solid #e8eaed;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    height: 15vh;
 }
 
 .header a {
@@ -76,7 +77,7 @@ body {
 
 /* Main gallery container */
 .gallery-container {
-    height: 100vh;
+    height: 85vh;
     overflow: hidden;
     display: flex;
     flex-direction: row;

@@ -188,44 +188,48 @@ async def dashboard_assessment(request: Request):
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "academia", "assessment.html"),
         headers=secure_headers)
 
+def _landing_template(name: str) -> str:
+    return os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "frontend", "templates", "landing", name,
+    )
+
 # Root endpoint - serve landing page directly
 @app.get("/")
 async def root():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "index.html"))
+    return FileResponse(_landing_template("index_architech.html"))
 
-# Landing page routes
 @app.get("/landing")
 async def landing():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "index.html"))
-
-# Landing sub-pages
-@app.get("/landing/crisis")
-async def landing_crisis():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "crisis.html"))
-
-@app.get("/landing/solution")
-async def landing_solution():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "solution.html"))
-
-@app.get("/landing/components")
-async def landing_components():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "components.html"))
-
-@app.get("/landing/help")
-async def landing_help():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "help.html"))
-
-@app.get("/landing/contact")
-async def landing_contact():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "contact.html"))
+    return FileResponse(_landing_template("index_architech.html"))
 
 @app.get("/landing/documents")
 async def landing_documents():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "documents.html"))
+    return FileResponse(_landing_template("documents.html"))
 
 @app.get("/landing/gallery")
 async def public_gallery():
-    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "landing", "public_gallery.html"))
+    return FileResponse(_landing_template("public_gallery.html"))
+
+@app.get("/landing/crisis")
+async def landing_crisis():
+    return FileResponse(_landing_template("crisis.html"))
+
+@app.get("/landing/solution")
+async def landing_solution():
+    return FileResponse(_landing_template("solution.html"))
+
+@app.get("/landing/components")
+async def landing_components():
+    return FileResponse(_landing_template("components.html"))
+
+@app.get("/landing/help")
+async def landing_help():
+    return FileResponse(_landing_template("help.html"))
+
+@app.get("/landing/contact")
+async def landing_contact():
+    return FileResponse(_landing_template("contact.html"))
 
 # Curator Lab routes
 @app.get("/lab")

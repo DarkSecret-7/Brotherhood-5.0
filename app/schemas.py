@@ -232,7 +232,9 @@ class UserProfileRead(UserRead):
 
 class UserCreate(UserBase):
     password: str
-    invitation_code: str
+    # Optional: when supplied, the invitation is validated and marked used.
+    # Open signups (no code) are also accepted.
+    invitation_code: Optional[str] = None
 
 # --- Graph Snapshots ---
 

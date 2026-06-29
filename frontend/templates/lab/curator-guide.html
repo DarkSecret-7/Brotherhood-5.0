@@ -21,17 +21,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Curator Guide - The Brotherhood Curator Lab</title>
+    <title>Curator Onboarding Guide - The Brotherhood Curator Lab</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
     <link rel="stylesheet" href="/frontend/css/common.css">
     <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
     <style>
         .doc-content { line-height: 1.6; }
-        .doc-content h2 { margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .doc-content h3 { margin-top: 25px; color: #444; }
+        .doc-content h2 { margin-top: 40px; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; color: #1a73e8; }
+        .doc-content h3 { margin-top: 30px; color: #202124; }
         .doc-content ul, .doc-content ol { padding-left: 20px; margin-bottom: 15px; }
         .doc-content li { margin-bottom: 8px; }
-        .doc-content code { background: #f1f3f4; padding: 2px 5px; border-radius: 4px; font-family: monospace; color: #c7254e; }
+        .doc-content code { background: #f1f3f4; padding: 3px 6px; border-radius: 4px; font-family: 'Consolas', 'Courier New', Courier, monospace; color: #c7254e; font-size: 0.9em; }
+        .doc-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+        .doc-content th, .doc-content td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        .doc-content th {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-weight: 600;
+            text-transform: none;
+            font-size: 0.9em;
+            letter-spacing: normal;
+        }
+        .doc-content tr:hover td {
+            background-color: transparent;
+            cursor: default;
+        }
+        .doc-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 30px 0;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -49,161 +81,536 @@
 
     <div class="lab-main">
         <div class="card doc-content">
-            <h1>Welcome to The Brotherhood Curator Lab! 🌟</h1>
-            <p>This guide will help you get started with building and curating the knowledge graph. Think of this tool as a digital whiteboard where you can map out ideas, connect them, and organize them into a structured learning path.</p>
-
-            <h2>1. The Workspace: Your Digital Drafting Table 🎨</h2>
-            <p>When you log in, you land on the <strong>Node Draft</strong> tab. This is your sandbox. Nothing here is permanent until you decide to save it, so feel free to experiment!</p>
-            <ul>
-                <li><strong>Draft Nodes List</strong>: This is where your new ideas (Nodes) and groups (Domains) will appear as you create them.</li>
-                <li><strong>Persistent Toolbar</strong>: Located below the tabs, it shows the active version you are working on and provides a <strong>"Clear Workspace"</strong> button to reset your draft.</li>
-                <li><strong>Graph Visualizer</strong>: Click the tab to see a picture of your connections. Use this often to see how your ideas link together!</li>
-            </ul>
-
-            <h2>2. Building Blocks: Domains & Nodes 🧱</h2>
+            <h1>Curator Onboarding Guide</h1>
+            <p>Welcome to the <strong>Curator Lab</strong> — the graph authoring environment for The Brotherhood Project. This guide covers the full curator workflow: drafting in the workspace, saving to the database, collaborating with co-authors, and sharing graphs via <code>.knw</code> files.</p>
+            <p><strong>Key pages</strong></p>
             
-            <h3>Domains (The Big Buckets) 📂</h3>
-            <p>Domains are like chapters in a book or folders on your computer. They help keep things organized.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th>URL</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Workspace</td>
+                            <td><code>/lab/workspace</code></td>
+                            <td>Draft and edit nodes/domains</td>
+                        </tr>
+                        <tr>
+                            <td>Database Management</td>
+                            <td><code>/lab/database</code></td>
+                            <td>List, import, export, and manage saved graphs</td>
+                        </tr>
+                        <tr>
+                            <td>Curator Guide (in-app)</td>
+                            <td><code>/lab/curator-guide</code></td>
+                            <td>Same content rendered in the app</td>
+                        </tr>
+                        <tr>
+                            <td>Proposals Dashboard</td>
+                            <td><code>/dashboard/proposals</code></td>
+                            <td>Vote on proposals, track join requests, respond to invitations</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <p>You must be logged in to access the Lab.</p>
+            
+            <hr>
+
+            <h2>1. How the Lab fits together</h2>
+            <p>The Lab splits <strong>draft editing</strong> from <strong>database operations</strong>:</p>
             <ul>
-                <li><strong>To Add a Domain</strong>: Click the blue <strong>Add Domain</strong> button at the top.</li>
-                <li><strong>Give it a Name</strong>: Like "History", "Science", or "Chapter 1".</li>
-                <li><strong>Give it an ID</strong>: A simple number (e.g., 100, 200) to keep it sorted.</li>
+                <li><strong>Workspace</strong> holds your current draft (nodes, domains, layout). Changes here are local until you save.</li>
+                <li><strong>Database Management</strong> talks to the server: list graphs, fetch into workspace, import/export <code>.knw</code>, manage visibility, collaboration, and deletion.</li>
             </ul>
-
-            <h3>Nodes (The Ideas) 💡</h3>
-            <p>Nodes are the specific topics, facts, or concepts within those domains.</p>
-            <ul>
-                <li><strong>Scroll down to "Add New Node"</strong>.</li>
-                <li><strong>Local ID</strong>: Pick a unique number for this node (e.g., 1, 2, 3).</li>
-                <li><strong>Title</strong>: What is this concept called?</li>
-                <li><strong>Description</strong>: A short explanation.</li>
-                <li><strong>Under Domain ID</strong>: Type the ID of the Domain this node belongs to (e.g., 100).</li>
-                <li><strong>Sources</strong>: Where can one learn about this? Click <strong>Add Source</strong> to link it to a resource.</li>
-                <li><strong>Click "Add to Draft"</strong>: Watch it appear in your list above!</li>
-            </ul>
-
-            <h3>📚 Sources &amp; Bibliography</h3>
-            <p>Each node can have multiple sources linked to it. Sources are stored in a shared bibliography:</p>
-            <ul>
-                <li><strong>Title</strong>: Name of the resource (e.g., "Introduction to Python")</li>
-                <li><strong>Author</strong>: Who created the resource</li>
-                <li><strong>Type</strong>: PDF, Video, or Other</li>
-                <li><strong>Year</strong>: Publication year (optional)</li>
-                <li><strong>URL</strong>: Link to the resource (optional)</li>
-                <li><strong>Fragment</strong>: For specific sections (e.g., "Chapter 3" or "00:05:30-00:10:00")</li>
-            </ul>
-            <p>Sources are reused across nodes - if multiple nodes reference the same book, they share the same bibliography entry.</p>
-
-            <h2>3. Connecting the Dots (Prerequisites) 🔗</h2>
-            <p>This is the most powerful part! You can define what needs to be learned <em>before</em> something else.</p>
-            <ul>
-                <li><strong>Prerequisite Expression</strong>: In the "Add New Node" section, you can say "To learn Node 3, you must know Node 1 and Node 2".</li>
-                <li><strong>How to write it</strong>:
-                    <ul>
-                        <li>Simple: <code>1</code> (Means you need Node 1 first).</li>
-                        <li>Combined: <code>1 AND 2</code> (Need both).</li>
-                        <li>Options: <code>1 OR 2</code> (Need either one).</li>
-                        <li>Complex: <code>(1 AND 2) OR 3</code>.</li>
-                        <li><strong style="color: #d93025;">CRITICAL</strong>: You must <strong>click outside the box</strong> (unfocus) for the system to process and simplify your expression!</li>
-                    </ul>
-                </li>
-            </ul>
-
-            <h2>4. Graph Visualization (Under Development) 👁️</h2>
-            <p>The graph visualization feature is currently under active development and may not be fully functional.</p>
-
-            <h3>Current Architecture</h3>
-            <ul>
-                <li><strong>Core Visualizer</strong>: <code>frontend/components/graph-visualizer.js</code> (vis.js-based)</li>
-                <li><strong>Workspace Controller</strong>: <code>frontend/ui/lab/graph-controller.js</code></li>
-                <li><strong>Gallery Processor</strong>: <code>frontend/components/gallery-graph-processor.js</code></li>
-            </ul>
-
-            <h3>Planned Features</h3>
-            <ul>
-                <li>Drag-and-drop node positioning</li>
-                <li>Domain grouping visualization with convex hulls</li>
-                <li>Interactive prerequisite pathway exploration</li>
-            </ul>
-
-            <h2>5. Saving & Publishing 💾</h2>
-            <p>Once you're happy with your draft:</p>
+            <p>Typical flow:</p>
             <ol>
-                <li>Switch to the <strong>Save Version</strong> tab.</li>
-                <li><strong>Your Layout Matters</strong>: The system saves the exact position of every node. Make sure your graph looks good before saving!</li>
-                <li><strong>Overwrite Toggle</strong>:
-                    <ul>
-                        <li><strong>Unchecked</strong>: Creates a brand new graph. Redirection for assessable nodes is <strong>optional</strong> but recommended.</li>
-                        <li><strong>Checked</strong>: Updates the existing graph (use this if you're editing). Redirection for any changed or removed assessable nodes is <strong>mandatory</strong> to ensure capability trail stability.</li>
-                    </ul>
-                </li>
+                <li><strong>Fetch</strong> a graph from Database Management → opens in Workspace.</li>
+                <li>Edit in <strong>Node Draft</strong> / <strong>Graph Visualizer</strong>.</li>
+                <li><strong>Save Version</strong> to persist changes (new graph or overwrite).</li>
+                <li>Manage metadata, collaborators, and exports from <strong>Database Management</strong>.</li>
+            </ol>
+            <p>Your draft is also persisted to <strong>browser localStorage</strong>, so a refresh usually recovers unsaved work — but always save important changes to the database.</p>
+
+            <hr>
+
+            <h2>2. The Workspace</h2>
+            <p>Open <code>/lab/workspace</code>. Three tabs:</p>
+            
+            <h3>Node Draft</h3>
+            <p>Your sandbox. Nothing is permanent until you save to the database.</p>
+            <ul>
+                <li><strong>Active Workspace</strong> — list of draft domains and nodes. Use <strong>Add Domain</strong> or the <strong>Add New Node</strong> sidebar.</li>
+                <li><strong>Toolbar</strong> (below tabs) — shows which graph you are working on; <strong>Import</strong> loads a <code>.knw</code> into the draft; <strong>Clear Workspace</strong> resets the draft.</li>
+                <li><strong>✨ AI Suggest</strong> — opens the suggestion modal (see §9).</li>
+            </ul>
+            <p>Click a node or domain in the list to edit or delete it. Edited items are marked dirty until saved.</p>
+
+            <h3>Graph Visualizer</h3>
+            <p>Interactive graph view powered by <strong>vis.js</strong>.</p>
+            <ul>
+                <li>Arrows point from <strong>prerequisite</strong> → <strong>dependent</strong> node.</li>
+                <li><strong>Reset Layout</strong> / <strong>Randomise</strong> / <strong>Fix Positions</strong> / <strong>Refresh Graph</strong> control layout and re-render.</li>
+                <li>Node positions are saved with the snapshot — arrange the graph before saving.</li>
+            </ul>
+
+            <h3>Save Version</h3>
+            <p>Persist the draft to the database.</p>
+            <ol>
+                <li>Enter a <strong>Version Label</strong> (required).</li>
+                <li><strong>Overwrite base graph</strong> — see §5 for when to use this.</li>
+                <li><strong>Save Snapshot</strong> — writes to the database (with confirmation if overwriting).</li>
+                <li><strong>Export .knw</strong> — downloads the current draft as a file without saving to the DB (see §8).</li>
             </ol>
 
-            <h3>🔒 Assessable Nodes & Stability</h3>
-            <p>Assessable nodes (marked with ⭐) are critical for tracking progress. If you change their ID or remove them, you should provide a <strong>Redirect ID</strong>. This tells the system where the "capability" formerly represented by that node has moved to.</p>
+            <hr>
+
+            <h2>3. Building blocks: Domains & Nodes</h2>
+            
+            <h3>Domains</h3>
+            <p>Organizational containers (chapters, subject areas, folders).</p>
             <ul>
-                <li><strong>Mandatory Overwrite Protection</strong>: You cannot overwrite a graph if you've broken an assessable node trail without providing a valid redirect.</li>
-                <li><strong>Version Control</strong>: Redirects are saved with a timestamp, creating a permanent audit trail of how capabilities have evolved. Each redirect records when the change occurred, preserving the complete history of capability transformations.</li>
+                <li>Click <strong>Add Domain</strong>, give it a <strong>name</strong> and numeric <strong>ID</strong> (e.g. 100, 200).</li>
+                <li>Domains can nest via parent relationships when editing.</li>
             </ul>
 
-            <h3>🔒 Ownership & Remixing</h3>
+            <h3>Nodes</h3>
+            <p>Individual concepts within domains.</p>
+            <p>In <strong>Add New Node</strong>:</p>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Local ID</strong></td>
+                            <td>Unique integer within the graph (e.g. 1, 2, 3)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Title</strong></td>
+                            <td>Short name</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Description</strong></td>
+                            <td>Longer explanation (optional)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Under Domain ID</strong></td>
+                            <td>Which domain this node belongs to</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Prerequisite Expression</strong></td>
+                            <td>What must be learned first (see §4)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sources</strong></td>
+                            <td>Bibliography links (see below)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <p>Click <strong>Add to Draft</strong>. Use the edit modal on existing nodes to change fields, toggle <strong>Assessable</strong>, or enable <strong>Propagate Changes</strong> when renaming an ID (updates references in other nodes' prerequisites).</p>
+            <p>Assessable nodes appear with an <strong>A</strong> badge in the draft list. They matter for Academia self-assessments and redirect rules on save (§5).</p>
+
+            <h3>Sources & Bibliography</h3>
+            <p>Each node can link to shared bibliography entries:</p>
             <ul>
-                <li><strong>Updating Your Work</strong>: If you are the original creator of the graph, you will see the <strong>Overwrite base graph</strong> checkbox. Check this if you want to update your existing version.</li>
-                <li><strong>Remixing Others' Work</strong>: If you are building on top of someone else's graph, the <strong>Overwrite</strong> option will be hidden. This protects their original work! You can still make changes and save, but it will automatically be saved as a <strong>new</strong> graph (your own copy).</li>
+                <li><strong>Title</strong>, <strong>Author</strong>, <strong>Type</strong> (PDF / Video / Other), <strong>Year</strong>, <strong>URL</strong></li>
+                <li><strong>Fragment</strong> — optional positioning (e.g. <code>Chapter 3</code>, <code>00:05:30-00:10:00</code>)</li>
+            </ul>
+            <p>The same source entry is reused when multiple nodes reference the same resource.</p>
+
+            <hr>
+
+            <h2>4. Prerequisites</h2>
+            <p>Define learning order with boolean expressions:</p>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Expression</th>
+                            <th>Meaning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>1</code></td>
+                            <td>Requires node 1</td>
+                        </tr>
+                        <tr>
+                            <td><code>1 AND 2</code></td>
+                            <td>Requires both</td>
+                        </tr>
+                        <tr>
+                            <td><code>1 OR 2</code></td>
+                            <td>Requires either</td>
+                        </tr>
+                        <tr>
+                            <td><code>(1 AND 2) OR 3</code></td>
+                            <td>Combined logic</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <p><strong>Important:</strong> After editing a prerequisite field, <strong>click outside the input</strong> (unfocus). The system then parses, validates, simplifies, and applies transitive reduction (removing redundant dependencies).</p>
+            <p>The system also enforces:</p>
+            <ul>
+                <li><strong>Reference integrity</strong> — you cannot reference a non-existent node ID.</li>
+                <li><strong>Cascade updates</strong> — renaming a node ID can propagate to all referencing prerequisites (use <strong>Propagate Changes</strong> in the edit modal).</li>
+                <li><strong>Safe deletion</strong> — deleting a node removes its ID from other nodes' prerequisites.</li>
+                <li><strong>Circularity detection</strong> — cycles like A → B → A are blocked.</li>
             </ul>
 
-            <h3>👥 Managing Graph Authors</h3>
-            <p>Graphs support multiple authors with role-based permissions:</p>
+            <hr>
+
+            <h2>5. Saving, overwriting & remixing</h2>
+            
+            <h3>New graph vs overwrite</h3>
+            <p>On the <strong>Save Version</strong> tab:</p>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Overwrite toggle</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Unchecked</strong></td>
+                            <td>Creates a <strong>new</strong> graph snapshot (fork).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Checked</strong></td>
+                            <td><strong>Overwrites</strong> the graph you loaded from (same UUID).</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <p>When you <strong>Fetch</strong> an existing graph into the workspace, the overwrite toggle is enabled and pre-checked — you are editing that snapshot. Clearing the workspace or starting fresh disables overwrite; saving then creates a new graph.</p>
+            <p>Saving with overwrite asks for confirmation before replacing all server data.</p>
+
+            <h3>Remixing someone else's graph</h3>
+            <ol>
+                <li><strong>Fetch</strong> their graph from Database Management (any registered user can fetch for editing).</li>
+                <li>Edit in the workspace.</li>
+                <li><strong>Uncheck Overwrite base graph</strong> and give a new <strong>Version Label</strong>.</li>
+                <li><strong>Save Snapshot</strong> — creates your own graph linked to theirs via <code>base_uuid</code>.</li>
+            </ol>
+            <p>You cannot overwrite a graph unless you are an <strong>author</strong> with write permission.</p>
+
+            <hr>
+
+            <h2>6. Database Management</h2>
+            <p>Open <code>/lab/database</code> to manage saved graphs.</p>
+
+            <h3>Graph list</h3>
+            <p>Each row shows version label, node count, assessable count, authors, and base graph. Actions:</p>
             <ul>
-                <li><strong>Roles</strong>: Authors can be assigned roles - <strong>Curator</strong> (full control), <strong>Editor</strong> (can modify content), <strong>Viewer</strong> (read-only).</li>
-                <li><strong>Adding Authors</strong>: Existing authors can add new authors via the API (UI feature coming soon).</li>
-                <li><strong>Last Author Protection</strong>: The system prevents removing the last remaining author to ensure graphs always have ownership.</li>
+                <li><strong>Click the version name</strong> — open the <strong>Manage Graph</strong> modal.</li>
+                <li><strong>Fetch</strong> — load the graph into the workspace (clears current draft; redirects to Workspace).</li>
             </ul>
 
-            <h2>6. Standalone Workspace: No Database Required 💻</h2>
-            <p>The workspace can function as a <strong>standalone web app</strong> without any database connection - perfect for creating personal graphs privately!</p>
-
-            <h3>How It Works</h3>
+            <h3>Manage Graph modal</h3>
+            <p><strong>Metadata</strong></p>
             <ul>
-                <li><strong>Local Storage</strong>: Your graph data is saved to your browser's local storage.</li>
-                <li><strong>No Database Needed</strong>: Create, edit, and visualize graphs entirely offline.</li>
+                <li>Edit <strong>Graph Name</strong>, toggle <strong>Public Access</strong> (visible in the public gallery), click <strong>Save Changes</strong>.</li>
+            </ul>
+            <p><strong>Collaboration</strong> (authors only)</p>
+            <ul>
+                <li><strong>Invite</strong> — enter another user's UUID and send an invitation (see §7).</li>
+                <li>Non-authors see <strong>Join Graph</strong> instead.</li>
+            </ul>
+            <p><strong>Pending Proposals</strong> (authors only)</p>
+            <ul>
+                <li>Lists proposals awaiting votes on this graph. Click to view details and vote.</li>
+            </ul>
+            <p><strong>Export</strong></p>
+            <ul>
+                <li><strong>Download .knw</strong> — server-side export of the saved graph.</li>
+            </ul>
+            <p><strong>Danger Zone</strong></p>
+            <ul>
+                <li><strong>Delete Graph</strong> — remove the graph (see §7 for multi-author behaviour).</li>
             </ul>
 
-            <h3>Import/Export Directly in Workspace</h3>
+            <h3>Global import</h3>
+            <p>Click <strong>Import Graph (.knw)</strong> on the main database page to upload a file as a <strong>new</strong> database graph. Optionally check <strong>Overwrite if a graph with the same version label exists</strong>. Note that this will replace all the data with the data of the new graph and you cannot do so unless you are an author.</p>
+
+            <hr>
+
+            <h2>7. Proposals & collaboration</h2>
+            <p>Graph authorship changes use a <strong>consent-based proposal system</strong>. Authors vote; the proposer and target user do not count toward the remaining vote tally.</p>
+            <p>Manage everything from:</p>
             <ul>
-                <li><strong>Export</strong>: Click <strong>"Export Graph (.knw)"</strong> at the top of the workspace to download your graph as a file.</li>
-                <li><strong>Import</strong>: Click <strong>"Import Graph (.knw)"</strong> to load a previously exported graph into your workspace.</li>
-                <li><strong>Share</strong>: Send the <code>.knw</code> file to others - they can import it into their own standalone workspace.</li>
+                <li><strong>Database Management → Manage Graph</strong> (per-graph pending list + invite/join actions)</li>
+                <li><strong>Dashboard → Proposals</strong> (<code>/dashboard/proposals</code>) — three tabs:</li>
+            </ul>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tab</th>
+                            <th>Shows</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Graph Proposals</strong></td>
+                            <td>Proposals on graphs where you are an author (vote here)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Join Requests</strong></td>
+                            <td>Join requests you submitted</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Invitations</strong></td>
+                            <td>Direct authorship invitations sent to you</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <p>Click any item to open details. Pending proposals let authors <strong>Approve</strong> or <strong>Reject</strong>. Proposers can <strong>Delete</strong> their own pending proposals.</p>
+
+            <h3>Proposal types</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Who initiates</th>
+                            <th>What happens when approved</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Join</strong></td>
+                            <td>Non-author requests collaboration</td>
+                            <td>Requestor becomes an author</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Invite</strong></td>
+                            <td>Author invites a user</td>
+                            <td>Target receives an authorship invitation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Remove</strong></td>
+                            <td>Author removes a co-author</td>
+                            <td>Target loses authorship</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Delete</strong></td>
+                            <td>Author deletes the graph</td>
+                            <td>Graph is permanently removed</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Direct actions vs proposals</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Direct (immediate)</th>
+                            <th>Proposal (requires votes)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Join</strong></td>
+                            <td>Never — always a Join proposal</td>
+                            <td>Always</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Invite</strong></td>
+                            <td>Sole author → direct invitation to target</td>
+                            <td>Multiple authors → Invite proposal</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Remove co-author</strong></td>
+                            <td>Exactly two authors → immediate removal</td>
+                            <td>Three or more → Remove proposal</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Delete graph</strong></td>
+                            <td>Sole author → immediate delete</td>
+                            <td>Multiple authors → Delete proposal</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Invitations (separate from Invite proposals)</h3>
+            <p>When a <strong>sole author</strong> invites someone, the target gets a direct <strong>Authorship Invitation</strong> (not a proposal). They accept or decline on the <strong>Invitations</strong> tab in Dashboard → Proposals.</p>
+            <p>When an <strong>Invite proposal</strong> is approved, the system sends an invitation to the target — they still must accept before becoming an author.</p>
+
+            <h3>Voting rules</h3>
+            <ul>
+                <li>Only <strong>authors of the affected graph</strong> may vote (except viewing your own join requests).</li>
+                <li>Each author gets one vote: approve (+1) or reject (−1).</li>
+                <li>When all relevant authors have voted: <strong>more approvals than rejections → executed</strong>; otherwise <strong>rejected</strong>.</li>
+                <li>Status values: <code>Pending</code>, <code>Executed</code>, <code>Rejected</code>.</li>
             </ul>
 
-            <h3>When to Use Standalone Mode</h3>
+            <h3>Collaboration UI quick reference</h3>
+            <p><strong>As an author</strong></p>
+            <ol>
+                <li>Open graph in Database Management → <strong>Manage Graph</strong>.</li>
+                <li>Enter user UUID under Collaboration → <strong>Invite</strong>.</li>
+                <li>Monitor <strong>Pending Proposals</strong> in the modal or vote on <strong>Dashboard → Proposals</strong>.</li>
+            </ol>
+            <p><strong>As a non-author</strong></p>
+            <ol>
+                <li>Open the graph → <strong>Join Graph</strong>.</li>
+                <li>Track status under <strong>Dashboard → Proposals → Join Requests</strong>.</li>
+                <li>Wait for authors to approve your Join proposal.</li>
+            </ol>
+            <p><strong>Removing a co-author</strong></p>
             <ul>
-                <li>Creating personal knowledge graphs you don't want to publish</li>
-                <li>Drafting graphs offline before uploading to the database</li>
-                <li>Sharing graphs with friends without them needing accounts</li>
-                <li>Privacy-sensitive content that stays local-only</li>
+                <li>Done via the authorship API (<code>DELETE /snapshots/{uuid}/authors/{user_uuid}</code>). With two authors this executes immediately; with three or more it creates a Remove proposal. <em>(UI for removal is API-only today.)</em></li>
+            </ul>
+            <p><strong>Last author protection</strong></p>
+            <ul>
+                <li>A graph always retains at least one author. You cannot remove yourself via the remove action — a co-author must initiate removal.</li>
             </ul>
 
-            <h2>7. AI Assistance 🤖</h2>
-            <p>Stuck on what to add next? Let the AI help you!</p>
+            <hr>
+
+            <h2>8. Import & export (.knw v1.0)</h2>
+            <p>The <code>.knw</code> format is the portable graph exchange format. Both the backend and frontend use the <strong>same v1.0 binary spec</strong> — field names and hashing must match or imports will fail.</p>
+
+            <h3>Format summary</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Part</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Header</strong> (6 bytes)</td>
+                            <td>Magic <code>KNW</code> + protocol version <code>1</code> + compression id <code>1</code> (zstd)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Payload</strong></td>
+                            <td>zstd-compressed JSON: <code>{ metadata, graph, graphHash, fileHash }</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>metadata</strong></td>
+                            <td>Identity: <code>uuid</code>, <code>version_label</code>, <code>base_uuid</code>, <code>authors</code>, <code>license</code>, timestamps, etc.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>graph</strong></td>
+                            <td>Contents: <code>nodes</code>, <code>domains</code>, <code>redirects</code> (plus export metadata fields)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hashes</strong></td>
+                            <td>SHA-256 over canonical JSON (RFC 8785 / JCS). Tampered files are rejected.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>Default license on export: <strong>CC-BY-SA-4.0</strong>.</p>
+            <p>On import, if <code>metadata.authors</code> is present the first entry becomes the creator; remaining authors are reattached when their UUIDs exist in the database. Unknown author UUIDs are skipped and authorship falls back to the importing user.</p>
+            <p>Full spec: <code>app/utils/knw_format.py</code> and <code>frontend/utils/knw-format.js</code>.</p>
+
+            <h3>Five import/export paths</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Where</th>
+                            <th>Action</th>
+                            <th>Effect</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Workspace toolbar</strong></td>
+                            <td><strong>Import</strong></td>
+                            <td>Loads <code>.knw</code> into the <strong>draft only</strong> (replaces workspace; unsaved work lost). Does not touch the database.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Save Version tab</strong></td>
+                            <td><strong>Export .knw</strong></td>
+                            <td>Downloads the <strong>current draft</strong> as a file (client-side). Requires a version label.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Database list</strong></td>
+                            <td><strong>Import Graph (.knw)</strong></td>
+                            <td>Uploads to the <strong>database</strong> as a new graph. Optional overwrite if version label matches.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Manage Graph modal</strong></td>
+                            <td><strong>Download .knw</strong></td>
+                            <td>Exports the <strong>saved server snapshot</strong>.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Practical tips</h3>
             <ul>
-                <li><strong>Click "✨ AI Suggest"</strong>: Located at the top of the workspace.</li>
-                <li><strong>Enter a Topic</strong>: Ask for "steps to learn Python" or "key events in WWII".</li>
-                <li><strong>Get Suggestions</strong>: The AI analyzes your current graph to provide relevant, modular additions.</li>
-                <li><strong>Select &amp; Import</strong>: Check the boxes for the nodes you like and click <strong>"Import Selected"</strong>. They will be automatically added to your draft with the correct IDs!</li>
+                <li>Use <strong>Export .knw</strong> or <strong>Download .knw</strong> for backups and sharing.</li>
+                <li>Use <strong>workspace Import</strong> to preview or edit a file locally before committing via Save.</li>
+                <li>Use <strong>global import</strong> to seed the database from a file without opening the workspace.</li>
+                <li>Use <strong>the workspace import/export</strong> to completely bypass the server for personal uses.</li>
             </ul>
 
-            <h3>🎯 Selection-Aware Context</h3>
-            <p>When you have nodes selected in the workspace, the AI will use <strong>only those selected nodes</strong> as context for suggestions. This is useful for:</p>
-            <ul>
-                <li><strong>Focused Expansion</strong>: Get suggestions specifically related to a subset of your graph.</li>
-                <li><strong>Domain-Specific Ideas</strong>: Select nodes from a domain to get relevant additions.</li>
-                <li><strong>Reduced Noise</strong>: Narrow context for more targeted suggestions.</li>
-            </ul>
-            <p>A blue reminder banner appears when selections are active, showing how many nodes will be used as context.</p>
+            <hr>
 
-            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
-            <p><strong>Happy Curating!</strong> 🚀</p>
+            <h2>9. AI assistance</h2>
+            <p>Click <strong>✨ AI Suggest</strong> in the workspace.</p>
+            <ol>
+                <li>Choose a model and enter a prompt (e.g. "steps to learn Python").</li>
+                <li>The AI suggests nodes based on your graph structure.</li>
+                <li>Select suggestions and click <strong>Import Selected</strong> — nodes are added to the draft with assigned IDs.</li>
+            </ol>
+            <p><strong>Selection-aware context:</strong> When nodes are selected in the draft list, only those nodes are sent as context (a banner indicates this). Useful for focused expansion within one domain.</p>
+            <p>Requires an <code>OPENROUTER_API_KEY</code> on the server; without it the API returns mock suggestions.</p>
+
+            <hr>
+
+            <h2>10. Reference integrity & validation (summary)</h2>
+            <p>When editing prerequisites the system automatically:</p>
+            <ol>
+                <li>Parses boolean expressions into an AST.</li>
+                <li><strong>Simplifies</strong> the expression on input blur.</li>
+                <li>Applies <strong>transitive reduction</strong> (e.g. if A→B and B→C, redundant A→C is removed).</li>
+                <li>Validates references, prevents cycles, and cascades ID changes when requested.</li>
+            </ol>
+
+            <hr>
+
+            <h2>11. Getting help</h2>
+            <ul>
+                <li><strong>In-app guide:</strong> <code>/lab/curator-guide</code></li>
+                <li><strong>API docs:</strong> <code>/docs</code> (Swagger UI when running locally)</li>
+                <li><strong>Technical architecture:</strong> <code>README.md</code> in the <a href="https://github.com/TheBrotherhoodProject/TheBrotherhoodProject">github repository</a>.</li>
+            </ul>
+            <p><strong>Happy curating!</strong></p>
         </div>
     </div>
     <div id="side-panel-overlay" class="side-panel-overlay"></div>

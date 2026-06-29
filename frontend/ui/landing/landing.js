@@ -18,12 +18,9 @@
  */
 
 window.toggleNav = function () {
-    console.log('toggleNav called');
-    const nav = document.getElementById('main-nav');
-    console.log('nav element:', nav);
+    const nav = document.getElementsByClassName('nav-links')[0];
     if (nav) {
         nav.classList.toggle('active');
-        console.log('active class toggled, now:', nav.classList.contains('active'));
     }
 };
 
@@ -31,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('contact-form');
     const statusEl = document.getElementById('contact-status');
     const submitBtn = document.getElementById('contact-submit');
+    
+    // Initialize the privacy and cookie banner
+    initCookieBanner();
 
     if (!form || !statusEl || !submitBtn) return;
     
@@ -77,3 +77,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+function initCookieBanner() {
+    // 1. Create cookie banner HTML
+    const banner = document.createElement('div');
+    banner.id = 'cookie-banner';
+    banner.className = 'cookie-banner-container';
+    banner.innerHTML = `
+        <div class="cookie-banner-content">
+            <p class="cookie-banner-text">
+                We respect your privacy. We do not collect personal information from visitors to our public pages, nor do we use visitor information for profiling or advertising. Please note that essential third-party services (such as hosting and infrastructure) may automatically process limited server logs and technical data for security and operational purposes. Read our <a href="/docs/Privacy%20Policy.pdf" target="_blank" class="cookie-banner-link">Privacy Policy</a> for more details.
+            </p>
+            <button id="cookie-banner-dismiss" class="cookie-banner-btn">Got it</button>
+        </div>
+    `;
+
+    // 2. Create hanging recall button (using shield SVG)
+    const recallBtn = document.createElement('button');
+    recallBtn.id = 'privacy-recall-btn';
+    recallBtn.className = 'privacy-recall-btn';
+    recallBtn.title = 'Review Privacy Policy';
+    recallBtn.innerHTML = `
+        <svg viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    `;
+
+    document.body.appendChild(banner);
+    document.body.appendChild(recallBtn);
+
+    const dismissBtn = document.getElementById('cookie-banner-dismiss');
+    
+    // Check local storage state
+    const isDismissed = localStorage.getItem('cookie-banner-dismissed') === 'true';
+
+    if (isDismissed) {
+        // Show recall button on load if banner was already dismissed
+        setTimeout(() => {
+            recallBtn.classList.add('show');
+        }, 100);
+    } else {
+        // Show banner on load
+        setTimeout(() => {
+            banner.classList.add('show');
+        }, 100);
+    }
+
+    // Set action listeners
+    dismissBtn.addEventListener('click', () => {
+        banner.classList.remove('show');
+        localStorage.setItem('cookie-banner-dismissed', 'true');
+        // Wait for slide down transition then show recall button
+        setTimeout(() => {
+            recallBtn.classList.add('show');
+        }, 400);
+    });
+
+    recallBtn.addEventListener('click', () => {
+        recallBtn.classList.remove('show');
+        // Wait for fade out transition then show banner
+        setTimeout(() => {
+            banner.classList.add('show');
+        }, 300);
+    });
+}

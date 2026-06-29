@@ -36,11 +36,11 @@
             margin-bottom: 30px;
         }
         .login-header h1 {
-            color: var(--dashboard-primary);
+            color: var(--primary-color);
             margin-bottom: 10px;
         }
         .login-header p {
-            color: var(--dashboard-secondary);
+            color: var(--secondary-color);
             margin: 0;
         }
         .error-message {
@@ -64,7 +64,7 @@
             margin-top: 20px;
         }
         .signup-link a {
-            color: var(--dashboard-primary);
+            color: var(--primary-color);
             text-decoration: none;
             font-weight: 600;
         }
@@ -151,14 +151,6 @@
                 loginBtn.textContent = 'Login';
             }
         });
-        
-        // Check if already authenticated - removed auto-redirect to prevent loops
-        // document.addEventListener('DOMContentLoaded', () => {
-        //     if (authApiService.isAuthenticated()) {
-        //         // Already logged in, redirect to workspace
-        //         window.location.href = '/lab/workspace';
-        //     }
-        // });
     </script>
 </body>
 </html>

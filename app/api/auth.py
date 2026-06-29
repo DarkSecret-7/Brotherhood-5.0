@@ -58,27 +58,32 @@ async def get_current_user_optional(db: Session = Depends(database.get_db), toke
 
 @router.post("/auth/signup", response_model=schemas.UserRead)
 def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+    """User signup supporting both open signups and with invitation codes"""
+
     # Check if user already exists
     db_user = crud.users.get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
-    
-    # Check invitation code
-    db_invitation = services.invitations.InvitationService.get_invitation_by_code(db, code=user.invitation_code)
-    if not db_invitation or db_invitation.is_used:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or used invitation code")
-    
+
+    # Invitation codes are optional. When supplied we still validate and
+    # burn the code; when omitted, the signup proceeds as an open registration.
+    db_invitation = None
+    if user.invitation_code:
+        db_invitation = services.invitations.InvitationService.get_invitation_by_code(db, code=user.invitation_code)
+        if not db_invitation or db_invitation.is_used:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or used invitation code")
+
     # Create user - frontend sends plain passwords now
     new_user = services.users.UserService.create_user(db, user=user)
-    
-    # Mark invitation as used
-    services.invitations.InvitationService.use_invitation(db, db_invitation)
-    
+
+    # Mark invitation as used if one was supplied
+    if db_invitation is not None:
+        services.invitations.InvitationService.use_invitation(db, db_invitation)
+
     # Convert to response schema
     return schemas.UserRead(
-        user_uuid=new_user.public_uuid,
+        user_uuid=new_user.user_uuid,
         username=new_user.username,
-        email=new_user.email,
         created_at=new_user.created_at
     )
 

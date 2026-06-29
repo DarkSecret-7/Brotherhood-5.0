@@ -280,6 +280,14 @@ class LibraryController {
         if (state.previewModal.graphData && !state.previewModal.isLoading) {
             if (window.academiaGraphController) {
                 window.academiaGraphController.update(state.previewModal.graphData);
+
+                // Reload highllights (THERE MUST BE A BETTER WAY TO DO THIS, FUTURE WORK)
+                window.academiaGraphController.clearGroup0Highlights();
+                const assignable = {
+                    highlightedNodes: new Set(state.previewModal.selectedNodes),
+                    highlightedDomains: new Set(state.previewModal.selectedDomains)
+                };
+                window.academiaGraphController.setAssignables(assignable);
             }
         }
     }

@@ -24,24 +24,52 @@
     <base href="/landing/">
     <title>Documents – The Brotherhood</title>
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
+    <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/landing_styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="/ui/landing/landing.js"></script>
+    <script>
+        // Hydrate file sizes + types from the backend so the page stays
+        // correct when files in docs/ are added, replaced or resized.
+        // Falls back silently to the hard-coded placeholders if the API
+        // is unreachable.
+        (async () => {
+            try {
+                const res = await fetch('/api/v1/docs-info', { credentials: 'omit' });
+                if (!res.ok) return;
+                const docs = await res.json();
+                const byName = new Map(docs.map(d => [encodeURI(d.filename), d]));
+                document.querySelectorAll('[data-doc]').forEach(el => {
+                    const doc = byName.get(el.dataset.doc);
+                    if (!doc) return;
+                    if (el.classList.contains('document-size')) el.textContent = doc.size_human;
+                    else if (el.classList.contains('document-type')) el.textContent = doc.type;
+                });
+            } catch (err) {
+                console.warn('docs-info fetch failed; sizes remain placeholders', err);
+            }
+        })();
+    </script>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="logo"><a href="/landing" style="text-decoration:none; color:inherit;">The Brotherhood</a></div>
-        <div class="hamburger" onclick="toggleNav()">☰</div>
-        <ul class="nav-links" id="main-nav">
-            <li><a href="crisis">The Crisis</a></li>
-            <li><a href="solution">Our Response</a></li>
-            <li><a href="components">Components</a></li>
-            <li><a href="help">How You Can Help</a></li>
-            <li><a href="contact">Contact</a></li>
-            <li><a href="/dashboard" class="nav-login-btn">Login</a></li>
-        </ul>
+    <!-- ═══ NAV ═══ -->
+    <nav>
+    <a href="/" class="nav-logo">
+        <span class="nav-logo-dot"></span>
+        The Brotherhood
+    </a>
+    <div class="hamburger" onclick="toggleNav()">☰</div>
+    <div class="nav-links">
+        <a href="/dashboard">Workspace</a>
+        <a href="/landing/gallery">Gallery</a>
+        <a href="/landing/documents">Documents</a>
+        <span class="nav-divider"></span>
+        <a href="#about">About</a>
+        <a href="https://github.com/DarkSecret-7/The-Brotherhood-Project" target="_blank">GitHub</a>
+        <a href="/landing/contact">Contact</a>
+        <a href="/dashboard" class="nav-cta">Open Workspace →</a>
+    </div>
     </nav>
-
     <div class="landing-page">
         <div class="landing-layout">
             <div class="main-content" style="max-width: 900px; margin: 0 auto;">
@@ -64,8 +92,8 @@
                                     A comprehensive overview of the Brotherhood's approach to social reform through worker coordination infrastructure. This document explains how we're building protocols to transform labor power into political power.
                                 </p>
                                 <div class="document-meta">
-                                    <span class="document-type">PDF</span>
-                                    <span class="document-size">345 KB</span>
+                                    <span class="document-type" data-doc="New%20Brotherhood%20Brochure%20(Social%20Reform).pdf">PDF</span>
+                                    <span class="document-size"  data-doc="New%20Brotherhood%20Brochure%20(Social%20Reform).pdf">345 KB</span>
                                 </div>
                                 <div class="document-actions">
                                     <a href="/docs/New%20Brotherhood%20Brochure%20(Social%20Reform).pdf" target="_blank" class="doc-btn-secondary">View PDF</a>
@@ -83,12 +111,50 @@
                                     Focused on how the Brotherhood serves learners and skill development. This brochure explains our approach to work-based assessment, skill verification, and creating alternative pathways to capability recognition.
                                 </p>
                                 <div class="document-meta">
-                                    <span class="document-type">PDF</span>
-                                    <span class="document-size">285 KB</span>
+                                    <span class="document-type" data-doc="New%20Brotherhood%20Brochure%20(Learners).pdf">PDF</span>
+                                    <span class="document-size"  data-doc="New%20Brotherhood%20Brochure%20(Learners).pdf">285 KB</span>
                                 </div>
                                 <div class="document-actions">
                                     <a href="/docs/New%20Brotherhood%20Brochure%20(Learners).pdf" target="_blank" class="doc-btn-secondary">View PDF</a>
                                     <a href="/docs/New%20Brotherhood%20Brochure%20(Learners).pdf" download class="doc-btn-primary">Download PDF</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document 3: Privacy Policy -->
+                        <div class="document-card">
+                            <div class="document-icon">🔒</div>
+                            <div class="document-content">
+                                <h3>Privacy Policy</h3>
+                                <p class="document-description">
+                                    How we collect, store, and use your personal information. The Privacy Policy describes what data the Brotherhood keeps about you, how long it is retained, who can access it, and the choices available to you as a member of the Curator Lab.
+                                </p>
+                                <div class="document-meta">
+                                    <span class="document-type" data-doc="Privacy%20Policy.pdf">PDF</span>
+                                    <span class="document-size"  data-doc="Privacy%20Policy.pdf">123 KB</span>
+                                </div>
+                                <div class="document-actions">
+                                    <a href="/docs/Privacy%20Policy.pdf" target="_blank" class="doc-btn-secondary">View PDF</a>
+                                    <a href="/docs/Privacy%20Policy.pdf" download class="doc-btn-primary">Download PDF</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document 4: Terms of Service -->
+                        <div class="document-card">
+                            <div class="document-icon">📜</div>
+                            <div class="document-content">
+                                <h3>Terms of Service</h3>
+                                <p class="document-description">
+                                    The terms that govern your use of The Brotherhood Curator Lab. Read these before creating an account: they cover acceptable use of the platform, ownership of contributed graph content, moderation, and the conditions under which your account may be suspended.
+                                </p>
+                                <div class="document-meta">
+                                    <span class="document-type" data-doc="Terms%20of%20Service.pdf">PDF</span>
+                                    <span class="document-size"  data-doc="Terms%20of%20Service.pdf">117 KB</span>
+                                </div>
+                                <div class="document-actions">
+                                    <a href="/docs/Terms%20of%20Service.pdf" target="_blank" class="doc-btn-secondary">View PDF</a>
+                                    <a href="/docs/Terms%20of%20Service.pdf" download class="doc-btn-primary">Download PDF</a>
                                 </div>
                             </div>
                         </div>
@@ -104,19 +170,52 @@
                 </section>
             </div>
         </div>
-        
-        <footer>
-            <div class="footer-content">
-                <div class="footer-logo">The Brotherhood</div>
-                <div class="footer-links">
-                    <a href="../">Home</a>
-                    <a href="documents" class="active">Documents</a>
-                    <a href="gallery">Public Gallery</a>
-                    <a href="https://github.com/DarkSecret-7/The-Brotherhood-Project" target="_blank">GitHub</a>
-                </div>
-                <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: inherit; text-decoration: underline;">GNU GPL v3.0</a>.</div>
-            </div>
-        </footer>
     </div>
+        <!-- ═══ FOOTER ═══ -->
+        <footer>
+        <div class="footer-inner">
+            <div class="footer-top">
+            <div>
+                <div class="footer-logo">The Brotherhood</div>
+                <div class="footer-release">Architech 0.9 Release</div>
+                <p class="footer-tagline">Open infrastructure for a decentralised academia and industry.</p>
+            </div>
+            <div class="footer-links">
+            <div class="footer-links-group">
+                <h4>Platform</h4>
+                <a href="/dashboard">Workspace</a>
+                <a href="/landing/gallery">Public Gallery</a>
+                <a href="/landing/documents">Documents</a>
+                <a href="https://github.com/DarkSecret-7/The-Brotherhood-Project" target="_blank">GitHub</a>
+            </div>
+            <div class="footer-links-group">
+                <h4>Project</h4>
+                <a href="#about">About</a>
+                <a href="/landing/crisis">The Problem</a>
+                <a href="/landing/solution">Our Response</a>
+                <a href="/landing/components">Components</a>
+                <a href="/landing/help">Contribute</a>
+            </div>
+            <div class="footer-links-group">
+                <h4>Legal</h4>
+                <a href="/docs/Privacy%20Policy.pdf" target="_blank">Privacy Policy</a>
+                <a href="/docs/Terms%20of%20Service.pdf" target="_blank">Terms of Service</a>
+                <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GPL v3.0 License</a>
+                <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0 License</a>
+            </div>
+            </div>
+            </div>
+            <div class="footer-bottom">
+            <div class="footer-copy">
+                © 2026 The Brotherhood Project Developers. &nbsp;
+                Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GNU GPL v3.0</a>. &nbsp;
+                Content under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>.
+            </div>
+            <div class="footer-copy">
+                <a href="mailto:the.brotherhood.contacts@gmail.com">the.brotherhood.contacts@gmail.com</a>
+            </div>
+            </div>
+        </div>
+        </footer>
 </body>
 </html>
