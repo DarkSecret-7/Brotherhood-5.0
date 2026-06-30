@@ -375,12 +375,12 @@ textarea {
 
 .btn-secondary {
     background: #f1f3f4;
-    color: #3c4043;
+    color: #2e3336;
     border: 1px solid #dadce0;
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: #e8eaed;
+    background: #d6d8da;
 }
 
 .btn-danger {
