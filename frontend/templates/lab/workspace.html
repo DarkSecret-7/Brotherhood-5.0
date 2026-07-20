@@ -58,6 +58,7 @@
                 </div>
                 <div class="workspace-buttons" style="align-self: right;">
                     <button id="btn-import-workspace" class="btn btn-secondary btn-small" onclick="workspaceOpsController.handleImportWorkspace()">Import</button>
+                    <button id="btn-reset-workspace" class="btn btn-secondary btn-small" onclick="workspaceOpsController.handleResetWorkspace()">Reset</button>
                     <button id="btn-clear-workspace" class="btn btn-secondary btn-small destructive-hover" onclick="workspaceOpsController.handleClearWorkspace()">Clear Workspace</button>
                 </div>
             </div>
@@ -191,7 +192,7 @@
             </div>
             <div class="form-group">
                 <label>Local ID</label>
-                <input type="number" id="edit-node-id">
+                <input type="number" id="edit-node-id" disabled>    <!-- local id locked temporarily -->
             </div>
             <div class="form-group">
                 <label>Title</label>
@@ -230,11 +231,10 @@
     <!-- Create Domain Modal -->
     <div id="createDomainModal" class="modal">
         <div class="modal-content">
-            <!--    WILL ADD LATER
             <div class="inline-form-group">
                 <label>Under Domain ID</label>
                 <input type="number" id="domain-parent-domain" placeholder="ID (optional)" style="width: 100px;">
-            </div>-->
+            </div>
             <div class="modal-header">
                 <h2>Create Domain</h2>
                 <span class="close" onclick="labUIController.closeModal('createDomain')">&times;</span>
@@ -267,7 +267,7 @@
             </div>
             <div class="form-group">
                 <label>Local ID</label>
-                <input type="number" id="edit-domain-id">
+                <input type="number" id="edit-domain-id" disabled>    <!-- local id locked temporarily -->
             </div>
             <div class="form-group">
                 <label>Title</label>
@@ -509,27 +509,7 @@
             window.navController = navController;
             
             // Load initial data first
-            async function loadInitialData() {
-                try {
-                    const pendingSnapshot = window.databaseStateManager
-                        ? window.databaseStateManager.consumePendingWorkspaceSnapshot()
-                        : null;
-
-                    console.log('Pending snapshot:', pendingSnapshot);
-                    
-
-                    if (pendingSnapshot && pendingSnapshot.currentSnapshotUuid) {
-                        stateManager.loadSnapshot(pendingSnapshot);
-                    } else {
-                        // Keep persisted local draft if no staged backend snapshot is present
-                    }
-                    
-                } catch (error) {
-                    console.error('Failed to initialize workspace:', error);
-                }
-            }
-            
-            loadInitialData().then(() => {
+            stateManager.loadInitialData().then(() => {
                 // Initialize graph controller AFTER initial data is loaded
                 const graphController = new GraphController(stateManager);
                 window.graphController = graphController;

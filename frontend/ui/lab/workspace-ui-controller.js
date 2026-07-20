@@ -348,7 +348,6 @@ class LabUIController {
         }
 
         console.log(this.stateManager.getSelectedItems());
-        
     }
 
 
@@ -440,9 +439,7 @@ class LabUIController {
         const levelIndent = 10;
         const currentPadding = (depth * levelIndent) + 5;
         const isCollapsed = domain.isCollapsed;
-        const validityCheck = this.stateManager.getSelectedItems().every(item => {
-            return this.stateManager.checkMoveValidity(item.id, domain.id);
-        });
+        const validityCheck = this.stateManager.checkMoveValidity(this.stateManager.getSelectedItems(), domain.id);
         
         // Determine status classes and indicators
         const isDirty = domain._isDirty;
@@ -482,7 +479,7 @@ class LabUIController {
                     </div>
                         ${domain.parentId && !isDeleted ? 
                             `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
-                        ${!isDeleted && hasSelections ? 
+                        ${!isDeleted && hasSelections && validityCheck ? 
                             `<button class="btn btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">Move</button>` : ''}
                         ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>` : ''}
                         ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">Delete</button>` : ''}

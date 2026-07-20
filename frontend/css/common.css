@@ -338,6 +338,12 @@ input, textarea, select {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+input:disabled, textarea:disabled, select:disabled {
+    background-color: #dadce0;          /* Gray background for disabled inputs, hardcoded for now */
+    color: var(--text-color);
+    cursor: not-allowed;
+}
+
 input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: var(--primary-color);

@@ -44,6 +44,7 @@ class WorkspaceOpsController {
 
         this.elements.addDomain = {
             id: document.getElementById('create-domain-id'),
+            parentId: document.getElementById('domain-parent-domain'),
             title: document.getElementById('create-domain-title'),
             description: document.getElementById('create-domain-desc')
         }
@@ -65,7 +66,7 @@ class WorkspaceOpsController {
             description: this.elements.addNode.description.value.trim(),
             prerequisites: this.elements.addNode.prerequisite.value.trim(),
             domainId: this.elements.addNode.domainId.value ? parseInt(this.elements.addNode.domainId.value) : null,
-            assessable: this.elements.addNode.assessable.checked,
+            // assessable: this.elements.addNode.assessable.checked,
             sources: formSources.filter(s => !s._isDeleted) // Only include non-deleted sources
         };
 
@@ -103,34 +104,27 @@ class WorkspaceOpsController {
             id: parseInt(this.elements.addDomain.id.value) || null,
             title: this.elements.addDomain.title.value.trim(),
             description: this.elements.addDomain.description.value.trim(),
-            parentId: null // Will be set if grouping
+            parentId: parseInt(this.elements.addDomain.parentId.value), // Overrides common parent if automatically set upon modal opening
         };
 
         // Validate
         if (!domainData.title) {
             this.stateManager.customAlert('Domain title is required');
-            return;
+            throw new Error('Domain title is required');
         }
 
         if (!domainData.id || domainData.id <= 0 || typeof domainData.id !== 'number') {
             this.stateManager.customAlert('Valid domain ID is required');
-            return;
+            throw new Error('Valid domain ID is required');
+        }
+
+        if (domainData.parentId <= 0 || typeof domainData.parentId !== 'number') {
+            this.stateManager.customAlert('Invalid parent domain ID');
+            throw new Error('Invalid parent domain ID');
         }
 
         // Check if we have selected items to group
-        const { selectedNodes, selectedDomains } = this.stateManager.state;
-        const hasSelections = selectedNodes.size > 0 || selectedDomains.size > 0;
-        
-        // Set parent to common parent of selected items
-        if (hasSelections) {
-            const commonParent = this.stateManager.getCommonParentFromSelection();
-            if (commonParent !== false) {
-                domainData.parentId = commonParent;
-            } else {
-                this.stateManager.showMessage('No common parent found for selected items', 'error');
-                return;
-            }
-        }
+        const hasSelections = this.stateManager.state.selectedNodes.size > 0 || this.stateManager.state.selectedDomains.size > 0;
 
         // Add domain to state with error handling
         try {
@@ -169,7 +163,7 @@ class WorkspaceOpsController {
             title: editFormElements.title.value.trim(),
             description: editFormElements.description.value.trim(),
             prerequisites: editFormElements.prerequisite.value.trim(),
-            assessable: editFormElements.assessable.checked
+            // assessable: editFormElements.assessable.checked
         };
         
         // Validate form
@@ -192,7 +186,7 @@ class WorkspaceOpsController {
                 title: nodeData.title,
                 description: nodeData.description,
                 prerequisites: nodeData.prerequisites,
-                assessable: nodeData.assessable,
+                // assessable: nodeData.assessable,
                 sources: form.sources || []
             },
             editFormElements.propagateChanges.checked);
@@ -293,7 +287,7 @@ class WorkspaceOpsController {
             description: node.description,
             prerequisite: node.prerequisites,
             propagateChanges: node.propagateChanges !== false,
-            assessable: node.assessable || false,
+            // assessable: node.assessable || false,
             sources: node.sources || []
         });
 
@@ -387,7 +381,7 @@ class WorkspaceOpsController {
         if (node) {
             const parentDomain = this.stateManager.state.domains.find(d => d.id === node.domainId);
             if (parentDomain && parentDomain._isDeleted) {
-                this.stateManager.showMessage('Cannot restore node: parent domain is marked for deletion', 'error');
+                this.stateManager.customAlert('Cannot restore node: parent domain is marked for deletion');
                 return;
             }
         }
@@ -417,14 +411,16 @@ class WorkspaceOpsController {
         const hasSelections = selectedNodes.size > 0 || selectedDomains.size > 0;
         
         if (hasSelections) {
-            // Check if selected items have a common parent
-            /*if (this.stateManager.getCommonParentFromSelection() === false) {
-                this.stateManager.showMessage('Cannot group items: selected items must have a common parent', 'error');
-                return;
-            }*/
-
-           console.log("Has Selections");
-           
+            console.log("Has Selections"); 
+            
+            // Automatic parent suggestion to common parent of selected items (soft rule, can be overridden in modal)
+            const commonParent = this.stateManager.getCommonParentFromSelection();
+            if (commonParent !== false) {
+                this.elements.addDomain.parentId.value = commonParent;
+            } else {
+                this.elements.addDomain.parentId.value = null;
+                this.stateManager.customAlert('No common parent found for selected items. Domain will be at root level, Override the parent in next modal if you wish to change this.');
+            }
         }
         
         // Open create domain modal via state manager
@@ -499,6 +495,31 @@ class WorkspaceOpsController {
     }
 
     /**
+     * Handle reset workspace
+     */
+    handleResetWorkspace() {
+        // Show confirm dialog via state manager
+        this.stateManager.customConfirm(
+            'Are you sure you want to reset the workspace? This will refetch the snapshot from the database and clear all changes in the current workspace. If this graph was imported from a file, the database may not have it, or have a different version.',
+            async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        await this.databaseStateManager.fetchSnapshotToWorkspace(this.stateManager.state.currentSnapshotUuid);
+                        // Load initial data to sync with database
+                        this.stateManager.loadInitialData();
+                    } catch (error) {
+                        this.stateManager.customAlert(`Error resetting workspace: ${error.message}`);
+                    } finally {
+                        // Load initial data to sync with database
+                        this.stateManager.loadInitialData();
+                        this.stateManager.setLoading(false);
+                    }
+                }
+            }
+        );
+    }
+
+       /**
      * Handle clear workspace
      */
     handleClearWorkspace() {

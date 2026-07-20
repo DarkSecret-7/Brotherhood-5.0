@@ -258,6 +258,26 @@ class LabStateManager {
             this.autoSaveInterval = null;
         }
     }
+       
+    // Load initial data first
+    async loadInitialData() {
+        try {
+            const pendingSnapshot = window.databaseStateManager
+                ? window.databaseStateManager.consumePendingWorkspaceSnapshot()
+                : null;
+
+            console.log('Pending snapshot:', pendingSnapshot);
+            
+            if (pendingSnapshot && pendingSnapshot.currentSnapshotUuid) {
+                this.loadSnapshot(pendingSnapshot);
+            } else {
+                // Keep persisted local draft if no staged backend snapshot is present
+            }
+            
+        } catch (error) {
+            console.error('Failed to initialize workspace:', error);
+        }
+    }
 
     /**
      * Load snapshot by UUID - receives already transformed data from transformer
@@ -566,12 +586,18 @@ class LabStateManager {
     addNode(nodeData) {
         console.log('node: ', nodeData);
         
-
         // Check if node ID already exists
         const existingNode = this.state.nodes.find(node => node.id === nodeData.id);
         if (existingNode) {
-            this.showMessage(`Node with ID ${nodeData.id} already exists`, 'error');
-            return;
+            this.customAlert(`Node with ID ${nodeData.id} already exists`);
+            throw new Error(`Node with ID ${nodeData.id} already exists`);
+        }
+
+        // Check if domain ID exists
+        const domain = this.state.domains.find(d => d.id === nodeData.domainId);
+        if (!domain) {
+            this.customAlert(`Domain with ID ${nodeData.domainId} does not exist`);
+            throw new Error(`Domain with ID ${nodeData.domainId} does not exist`);
         }
 
         // Process prerequisites if utils are available
@@ -793,7 +819,15 @@ class LabStateManager {
         // Check if domain ID already exists
         const existingDomain = this.state.domains.find(domain => domain.id === domainData.id);
         if (existingDomain) {
+            this.customAlert(`Domain with ID ${domainData.id} already exists`);
             throw new Error(`Domain with ID ${domainData.id} already exists`);
+        }
+
+        // Check if parent domain exists
+        const parentDomain = this.state.domains.find(d => d.id === domainData.parentId);
+        if (!parentDomain) {
+            this.customAlert(`Parent domain with ID ${domainData.parentId} does not exist`);
+            throw new Error(`Parent domain with ID ${domainData.parentId} does not exist`);
         }
         
         // Create domain object
@@ -1033,27 +1067,41 @@ class LabStateManager {
     }
 
     /**
-     * Check if domainId is an ancestor of targetDomainId
+     * Check if domain is an ancestor of targetDomainId
      * @param {number} domainId - Domain ID
      * @param {number} targetDomainId - Target domain ID
-     * @returns {boolean} True if domainId is an ancestor of targetDomainId
+     * @returns {boolean} True if domain is an ancestor of targetDomainId, False if not an ancestor, null if ancestry is broken or domainId is not found
      */
-    checkMoveValidity(domainId, targetDomainId) {
-        // Check if domainId is an ancestor of targetDomainId and other valdiity checks
+    checkAncestry(domainId, targetDomainId) {
+        // Check if domainId is an ancestor of targetDomainId , move is invalid if it is
         let currentId = targetDomainId;
-        
         while (currentId) {
             const domain = this.state.domains.find(d => d.id === currentId);
-            if (!domain) return false;
+            if (!domain) throw new Error("Ancestry of target domain is broken");       // ancestry of targetDomainId is broken, block move
             
             if (domain.id === domainId) {
-                return false;
+                return true;
             }
             
             currentId = domain.parentId;
         }
         
-        return true;
+        return false;
+    }
+
+    /**
+     * Check if move is valid
+     * @param {Array} items - Array of items to move
+     * @param {number} targetDomainId - Target domain ID
+     * @returns {boolean} True if move is valid, False if invalid
+     */
+    checkMoveValidity(items, targetDomainId) {
+        if (items.length === 0) return false;       // Do not allow moving no items
+
+        if (!this.state.domains.find(d => d.id === targetDomainId)) return false;    // targetDomainId is not found, block move
+
+        // ancestry check for all domains
+        return !items.some(item => item.type === 'domain' ? this.checkAncestry(item.id, targetDomainId) : false);
     }
 
     /**
@@ -1064,33 +1112,32 @@ class LabStateManager {
         const selectedItems = this.getSelectedItems();
 
         // Check validity of move
-        const isValid = selectedItems.every(item => {
-            return this.checkMoveValidity(item.id, targetDomainId);
-        });
-
-        if (!isValid) {
-            throw new Error('Invalid move');
+        if (!this.checkMoveValidity(selectedItems, targetDomainId)) {
+            this.customAlert("Move is invalid");
+            throw new Error("Move is invalid");
         }
 
         selectedItems.forEach(item => {
             if (item.type === 'node') {
                 // Update node's domain
-                const nodeIndex = this.state.nodes.findIndex(n => n.id === item.id);
-                if (nodeIndex !== -1) {
-                    const oldNode = { ...this.state.nodes[nodeIndex] };
-                    this.state.nodes[nodeIndex].domainId = targetDomainId;
-                    this.state.nodes[nodeIndex]._isDirty = true;
+                const node = this.state.nodes.find(n => n.id === item.id);
+                // Check if update is necessary
+                if (node && node.domainId !== targetDomainId) {
+                    const oldNode = { ...node };
+                    node.domainId = targetDomainId;
+                    node._isDirty = true;
                     // Recalculate node update with new domainId
-                    this.recalculateNodeUpdate(oldNode, this.state.nodes[nodeIndex]);
+                    this.recalculateNodeUpdate(oldNode, node);
                 }
             } else if (item.type === 'domain') {
                 // Update domain's parent
-                const domainIndex = this.state.domains.findIndex(d => d.id === item.id);
-                if (domainIndex !== -1) {
-                    const oldDomain = { ...this.state.domains[domainIndex] };
-                    this.state.domains[domainIndex].parentId = targetDomainId;
+                const domain = this.state.domains.find(d => d.id === item.id);
+                // Check if update is necessary
+                if (domain && domain.parentId !== targetDomainId) {
+                    const oldDomain = { ...domain };
+                    domain.parentId = targetDomainId;
                     // Recalculate domain update with new parentId
-                    this.recalculateDomainUpdate(oldDomain, this.state.domains[domainIndex]);
+                    this.recalculateDomainUpdate(oldDomain, domain);
                 }
             }
         });
@@ -1497,7 +1544,7 @@ class LabStateManager {
      * Notify state change listeners
      */
     notifyStateChange() {
-        // Use only the subscribers array pattern
+        // Use only the subscribers array pattern       
         if (this.subscribers && this.subscribers.length > 0) {
             this.subscribers.forEach(callback => {
                 if (typeof callback === 'function') {
