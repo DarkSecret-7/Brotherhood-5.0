@@ -56,11 +56,12 @@ class GalleryStateManager {
             selectedDomain: null,
             showDomainDetails: false,
 
-            // Graph visualization state (minimal structure)
+            // Graph visualization state. The visualizer is the sole
+            // place that turns `node.pathways` into rendered edges, so
+            // we no longer carry an `edges` array here.
             graphState: {
                 nodes: [],  // {id, title, domainId, defaultPosition, position, pathways}
-                edges: [],  // {id, from, to}
-                cycles: [], // ["1-2", "2-3", "3-1"]
+                cycles: [], // [[nodeId, ...], ...]
                 domains: [] // {id, title, parentId}
             }
         };
@@ -158,10 +159,9 @@ class GalleryStateManager {
             this.state.isPublic = frontendSnapshot.isPublic || false;
             this.state.authors = frontendSnapshot.authors || [];
 
-            // Use graph data from transformer (already built with nodes, edges, cycles, domains)
+            // Use graph data from transformer (already built with nodes, cycles, domains)
             if (frontendSnapshot.graphData) {
                 this.state.graphState.nodes = frontendSnapshot.graphData.nodes || [];
-                this.state.graphState.edges = frontendSnapshot.graphData.edges || [];
                 this.state.graphState.cycles = frontendSnapshot.graphData.cycles || [];
                 this.state.graphState.domains = frontendSnapshot.graphData.domains || [];
             }
@@ -322,7 +322,6 @@ class GalleryStateManager {
         // Clear graph state (minimal structure)
         this.state.graphState = {
             nodes: [],
-            edges: [],
             cycles: [],
             domains: []
         };

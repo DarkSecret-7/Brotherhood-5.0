@@ -83,7 +83,6 @@ class LabStateManager {
             // Graph visualization state
             graphState: {
                 nodes: [],
-                edges: [],
                 cycles: [],
                 domains: []
             },
@@ -167,16 +166,11 @@ class LabStateManager {
 
             // Load graph state
             const graphNodes = localStorage.getItem('lab_graphNodes');
-            const graphEdges = localStorage.getItem('lab_graphEdges');
             const graphCycles = localStorage.getItem('lab_graphCycles');
             const graphDomains = localStorage.getItem('lab_graphDomains');
 
             if (graphNodes) {
                 this.state.graphState.nodes = JSON.parse(graphNodes);
-            }
-
-            if (graphEdges) {
-                this.state.graphState.edges = JSON.parse(graphEdges);
             }
 
             if (graphCycles) {
@@ -211,7 +205,6 @@ class LabStateManager {
 
             const graphState = this.state.graphState;
             localStorage.setItem('lab_graphNodes', JSON.stringify(graphState.nodes));
-            localStorage.setItem('lab_graphEdges', JSON.stringify(graphState.edges));
             localStorage.setItem('lab_graphCycles', JSON.stringify(graphState.cycles));
             localStorage.setItem('lab_graphDomains', JSON.stringify(graphState.domains));
         } catch (error) {
@@ -303,10 +296,9 @@ class LabStateManager {
             this.state.isPublic = frontendSnapshot.isPublic || false;
             this.state.authors = frontendSnapshot.authors || [];
 
-            // Use graph data from transformer (already built with nodes, edges, cycles, domains)
+            // Use graph data from transformer (already built with nodes, cycles, domains)
             if (frontendSnapshot.graphData) {
                 this.state.graphState.nodes = frontendSnapshot.graphData.nodes || [];
-                this.state.graphState.edges = frontendSnapshot.graphData.edges || [];
                 this.state.graphState.cycles = frontendSnapshot.graphData.cycles || [];
                 this.state.graphState.domains = frontendSnapshot.graphData.domains || [];
             }
@@ -327,7 +319,8 @@ class LabStateManager {
             this.setLoading(false);
             throw error;
         } finally {
-            this.setLoading(false);
+            this.setLoading(false);     
+            console.log(this.state);   
         }
     }
 
@@ -521,7 +514,6 @@ class LabStateManager {
             backendFormat.domains
         );
         this.state.graphState.nodes = graphData.nodes || [];
-        this.state.graphState.edges = graphData.edges || [];
         this.state.graphState.cycles = graphData.cycles || [];
         this.state.graphState.domains = graphData.domains || [];
 
@@ -594,10 +586,12 @@ class LabStateManager {
         }
 
         // Check if domain ID exists
-        const domain = this.state.domains.find(d => d.id === nodeData.domainId);
-        if (!domain) {
-            this.customAlert(`Domain with ID ${nodeData.domainId} does not exist`);
-            throw new Error(`Domain with ID ${nodeData.domainId} does not exist`);
+        if (nodeData.domainId) {
+            const domain = this.state.domains.find(d => d.id === nodeData.domainId);
+            if (!domain) {
+                this.customAlert(`Domain with ID ${nodeData.domainId} does not exist`);
+                throw new Error(`Domain with ID ${nodeData.domainId} does not exist`);
+            }
         }
 
         // Process prerequisites if utils are available
@@ -824,10 +818,12 @@ class LabStateManager {
         }
 
         // Check if parent domain exists
-        const parentDomain = this.state.domains.find(d => d.id === domainData.parentId);
-        if (!parentDomain) {
-            this.customAlert(`Parent domain with ID ${domainData.parentId} does not exist`);
-            throw new Error(`Parent domain with ID ${domainData.parentId} does not exist`);
+        if (domainData.parentId) {
+            const parentDomain = this.state.domains.find(d => d.id === domainData.parentId);
+            if (!parentDomain) {
+                this.customAlert(`Parent domain with ID ${domainData.parentId} does not exist`);
+                throw new Error(`Parent domain with ID ${domainData.parentId} does not exist`);
+            }
         }
         
         // Create domain object
@@ -848,6 +844,20 @@ class LabStateManager {
         this.recalculateDomainUpdate(null, newDomain);
 
         this.state.isDirty = true;
+        this.notifyStateChange();
+    }
+
+    /**
+     * Toggle domain collapse
+     * @param {number} domainId - Domain ID
+     */
+    toggleDomainCollapse(domainId) {
+        const domain = this.state.domains.find(d => d.id === domainId);
+        const graphDomain = this.state.graphState.domains.find(d => d.id === domainId);
+        if (!domain || !graphDomain) return;
+        const next = !domain.isCollapsed;
+        domain.isCollapsed = next;
+        graphDomain.isCollapsed = next;
         this.notifyStateChange();
     }
 
@@ -1151,6 +1161,8 @@ class LabStateManager {
     }
 
     clearWorkspace() {
+        console.log(this.state);
+        
         this.state.nodes = [];
         this.state.domains = [];
         this.state.redirects = [];
@@ -1168,7 +1180,6 @@ class LabStateManager {
 
         // Clear graph state directly
         this.state.graphState.nodes = [];
-        this.state.graphState.edges = [];
         this.state.graphState.cycles = [];
         this.state.graphState.domains = [];
 
@@ -1177,7 +1188,8 @@ class LabStateManager {
     }
 
     /**
-     * Recalculate graph state for a node update (creation, edit, or deletion)
+     * Recalculate graph state for a node update (creation, edit, or
+     * deletion). Pathways are stored as `[[prereqId, ...], ...]`
      * @param {Object|null} oldNode - Previous node state (null for creation)
      * @param {Object|null} newNode - New node state (null for deletion)
      */
@@ -1187,10 +1199,18 @@ class LabStateManager {
 
         // === 1. HANDLE NODE IN graphState.nodes ===
         if (oldNode && !newNode) {
-            // DELETION: Remove node from graphState
+            // DELETION: remove the node from graphState and scrub its
+            // id out of every other node's pathway arrays.
             this.state.graphState.nodes = this.state.graphState.nodes.filter(n => n.id !== nodeId);
+            this.state.graphState.nodes.forEach(node => {
+                if (!node.pathways) return;
+                node.pathways = node.pathways
+                    .map(pathway => pathway.filter(prereqId => prereqId !== nodeId))
+                    .filter(pathway => pathway.length > 0);
+            });
         } else if (!oldNode && newNode) {
-            // CREATION: Add new node to graphState
+            // CREATION: add a new graph node. Pathways will be set
+            // below if the new node carries prerequisites.
             this.state.graphState.nodes.push({
                 id: newNode.id,
                 title: newNode.title,
@@ -1200,7 +1220,7 @@ class LabStateManager {
                 pathways: []
             });
         } else if (oldNode && newNode) {
-            // UPDATE: Modify existing node properties
+            // UPDATE: modify existing node properties.
             const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
             if (graphNode) {
                 if (newNode.title !== undefined) graphNode.title = newNode.title;
@@ -1212,69 +1232,51 @@ class LabStateManager {
             }
         }
 
-        // === 2. HANDLE EDGES AND PATHWAYS ===
-        // Remove old edges targeting this node (if oldNode existed)
-        if (oldNode) {
-            this.state.graphState.edges = this.state.graphState.edges.filter(
-                edge => edge.to !== nodeId
-            );
-            // Remove edge IDs from other nodes' pathways (filter from all pathway arrays)
-            this.state.graphState.nodes.forEach(node => {
-                if (node.pathways) {
-                    node.pathways = node.pathways.map(pathway => 
-                        pathway.filter(edgeId => !edgeId.endsWith(`-${nodeId}`))
-                    ).filter(pathway => pathway.length > 0); // Remove empty pathways
-                }
-            });
-        }
-
-        // Add new edges and pathways (if newNode exists and has prerequisites)
+        // Build the new pathway list from the new node's prerequisites
+        // (if any) and write it to both the workspace node and the
+        // graphState node.
         if (newNode?.prerequisites && window.ExpressionUtils) {
-            const parsed = window.ExpressionUtils.parsePrerequisites(newNode.prerequisites);
-            if (parsed.isValid) {
-                const dnfPathways = window.ExpressionUtils.convertToDNF(parsed.structure);
-                const newPathways = [];
+            // `convertToDNF` accepts the raw prerequisite string; it
+            // re-parses and returns [[prereqId, ...], ...] (DNF).
+            const dnfPathways = window.ExpressionUtils.convertToDNF(newNode.prerequisites);
+            // Each pathway is an array of prereq node ids. Drop
+            // empty pathways and dedupe.
+            const newPathways = [];
+            const seen = new Set();
+            dnfPathways.forEach(pathway => {
+                if (!Array.isArray(pathway) || pathway.length === 0) return;
+                const sig = pathway.slice().sort((a, b) => a - b).join(',');
+                if (seen.has(sig)) return;
+                seen.add(sig);
+                newPathways.push(pathway.slice());
+            });
 
-                dnfPathways.forEach(pathway => {
-                    const pathwayEdgeIds = [];
-                    pathway.forEach(prereqId => {
-                        const edgeId = `${prereqId}-${nodeId}`;
-                        // Only add if edge doesn't already exist
-                        if (!this.state.graphState.edges.some(e => e.id === edgeId)) {
-                            this.state.graphState.edges.push({
-                                id: edgeId,
-                                from: prereqId,
-                                to: nodeId
-                            });
-                        }
-                        pathwayEdgeIds.push(edgeId);
-                    });
-                    if (pathwayEdgeIds.length > 0) {
-                        newPathways.push(pathwayEdgeIds);
-                    }
-                });
-
-                // Update node's pathways
-                const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
-                if (graphNode) {
-                    graphNode.pathways = newPathways;
-                }
-            }
+            const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
+            if (graphNode) graphNode.pathways = newPathways;
+            if (newNode) newNode.pathways = newPathways;
+        } else if (newNode && !newNode.prerequisites) {
+            // No prerequisites -> empty pathway list.
+            const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
+            if (graphNode) graphNode.pathways = [];
         }
 
         // === 3. RECALCULATE CYCLES (minimally) ===
+        // We hand the cycle detector a temporary edge list built from
+        // the current pathways. We DO NOT keep this list around as
+        // `graphState.edges`. Cycles are stored as node-id sequences.
         if (window.ExpressionUtils) {
             const minimalNodes = this.state.graphState.nodes.map(n => ({ id: n.id }));
-            const nodeCycles = window.ExpressionUtils.detectCycles(minimalNodes, this.state.graphState.edges);
-
-            this.state.graphState.cycles = nodeCycles.map(nodeCycle => {
-                const edgeCycle = [];
-                for (let i = 0; i < nodeCycle.length - 1; i++) {
-                    edgeCycle.push(`${nodeCycle[i]}-${nodeCycle[i + 1]}`);
-                }
-                edgeCycle.push(`${nodeCycle[nodeCycle.length - 1]}-${nodeCycle[0]}`);
-                return edgeCycle;
+            const tempEdges = [];
+            this.state.graphState.nodes.forEach(node => {
+                if (!node.pathways) return;
+                node.pathways.forEach(pathway => {
+                    pathway.forEach(prereqId => {
+                        tempEdges.push({ from: prereqId, to: node.id });
+                    });
+                });
             });
+            const nodeCycles = window.ExpressionUtils.detectCycles(minimalNodes, tempEdges);
+            this.state.graphState.cycles = nodeCycles.map(nodeCycle => nodeCycle.slice());
         }
     }
 
@@ -1292,16 +1294,22 @@ class LabStateManager {
             // DELETION: Remove domain from graphState
             this.state.graphState.domains = this.state.graphState.domains.filter(d => d.id !== domainId);
         } else if (!oldDomain && newDomain) {
-            // CREATION: Add new domain
+            // CREATION: add new domain. The visualizer reads
+            // `isCollapsed` straight from this object, so we copy it
+            // through (defaults to true on creation).
             this.state.graphState.domains.push({
                 id: newDomain.id,
-                parentId: newDomain.parentId
+                title: newDomain.title,
+                parentId: newDomain.parentId,
+                isCollapsed: newDomain.isCollapsed
             });
         } else if (oldDomain && newDomain) {
             // UPDATE: Modify domain properties
             const graphDomain = this.state.graphState.domains.find(d => d.id === domainId);
-            if (graphDomain && newDomain.parentId !== undefined) {
-                graphDomain.parentId = newDomain.parentId;
+            if (graphDomain) {
+                if (newDomain.parentId !== undefined) graphDomain.parentId = newDomain.parentId;
+                if (newDomain.title !== undefined) graphDomain.title = newDomain.title;
+                if (newDomain.isCollapsed !== undefined) graphDomain.isCollapsed = newDomain.isCollapsed;
             }
         }
 
@@ -1363,7 +1371,7 @@ class LabStateManager {
     /**
      * Update tab display using CSS classes
      */
-    updateTabDisplay() {
+    async updateTabDisplay() {
         const activeTab = this.state.activeTab;
         
         // Update tab buttons

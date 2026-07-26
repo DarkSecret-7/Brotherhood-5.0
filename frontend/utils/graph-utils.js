@@ -22,7 +22,234 @@
  * Provides static methods for working with graph visualizations
  */
 
+// Prefix used internally by the visualizer to namespace collapsed-domain
+// vis.js node ids. This is the ONLY place outside the visualizer that
+// needs to know about it (and it shouldn't: the outside always works
+// with integer domain/node ids; the visualizer translates).
+const COLLAPSED_DOMAIN_NODE_PREFIX = 'domain-';
+
 class GraphUtils {
+    /**
+     * Format a domain id as the internal collapsed-domain vis.js node id.
+     * @param {number|string} domainId
+     * @returns {string}
+     */
+    static getCollapsedDomainNodeId(domainId) {
+        return `${COLLAPSED_DOMAIN_NODE_PREFIX}${domainId}`;
+    }
+
+    /**
+     * Convert a domain id or node id to the internal vis.js node id.
+     * @param {number|string} id
+     * @param {string} type - 'domain' or 'node' for the type of id to convert
+     * @returns {string|null} The vis.js node id or null if the type is invalid
+     */
+    static convertToVisNodeId(id, type = 'node') {
+        return type === 'domain' ? GraphUtils.getCollapsedDomainNodeId(id)
+            : type === 'node' ? String(id) : null;
+    }
+
+    /**
+     * Parse a vis.js node id back into an integer domain id.
+     * Returns null if the input is not a collapsed-domain node id.
+     * @param {string|number} nodeId
+     * @returns {number|null}
+     */
+    static parseCollapsedDomainNodeId(nodeId) {
+        if (nodeId == null) return null;
+        const s = String(nodeId);
+        if (!s.startsWith(COLLAPSED_DOMAIN_NODE_PREFIX)) return null;
+        const n = parseInt(s.slice(COLLAPSED_DOMAIN_NODE_PREFIX.length), 10);
+        return Number.isNaN(n) ? null : n;
+    }
+
+    /**
+     * Parse a vis.js node id back into an integer domain id or node id.
+     * Returns null if the input is not a collapsed-domain node id.
+     * @param {string|number|null} visId - The vis.js node id to parse
+     * @returns {object|null} An object with properties {id: {number}, type: 'domain' | 'node'}
+     */
+    static parseVisId(visId) {
+        if (visId == null) return null;
+        if (String(visId).startsWith(COLLAPSED_DOMAIN_NODE_PREFIX)) return {id: GraphUtils.parseCollapsedDomainNodeId(visId), type: 'domain'};
+        return {id: Number(visId), type: 'node'};
+    }
+
+    /**
+     * Whether the given vis.js node id represents a collapsed domain node.
+     * @param {string|number} nodeId
+     * @returns {boolean}
+     */
+    static isCollapsedDomainNode(nodeId) {
+        return GraphUtils.parseCollapsedDomainNodeId(nodeId) !== null;
+    }
+
+    /**
+     * Recursively check whether the given domain id (or any of its ancestors)
+     * is in the set of collapsed domain ids.
+     * @param {number|string|null} domainId
+     * @param {Array} allDomains
+     * @param {Set|Array} collapsedDomainIds
+     * @returns {boolean}
+     */
+    static isAncestorCollapsed(domainId, allDomains, collapsedDomainIds) {
+        let current = domainId;
+        const collapsed = collapsedDomainIds instanceof Set
+            ? collapsedDomainIds
+            : new Set(collapsedDomainIds || []);
+        while (current != null) {
+            if (collapsed.has(current)) return true;
+            const domain = allDomains.find(d => d.id === current);
+            if (!domain || domain.parentId == null) break;
+            current = domain.parentId;
+        }
+        return false;
+    }
+
+    /**
+     * Recursively check whether any parent of the given domain (excluding the
+     * domain itself) is collapsed.
+     * @param {number|string|null} domainId
+     * @param {Array} allDomains
+     * @param {Set|Array} collapsedDomainIds
+     * @returns {boolean}
+     */
+    static isAnyParentCollapsed(domainId, allDomains, collapsedDomainIds) {
+        const domain = allDomains.find(d => d.id === domainId);
+        if (!domain || domain.parentId == null) return false;
+        return GraphUtils.isAncestorCollapsed(domain.parentId, allDomains, collapsedDomainIds);
+    }
+
+    /**
+     * Walk the parent chain starting from `domainId` and return the top-most
+     * collapsed ancestor's id (closest to the root). The domain itself is
+     * included in the search. Returns null if no ancestor is collapsed.
+     * @param {number|string|null} domainId
+     * @param {Array} allDomains
+     * @param {Set|Array} collapsedDomainIds
+     * @returns {number|string|null}
+     */
+    static getHighestCollapsedAncestor(domainId, allDomains, collapsedDomainIds) {
+        let current = domainId;
+        let highest = null;
+        const collapsed = collapsedDomainIds instanceof Set
+            ? collapsedDomainIds
+            : new Set(collapsedDomainIds || []);
+        while (current != null) {            
+            if (collapsed.has(current)) highest = current;
+            const domain = allDomains.find(d => d.id === current);
+            if (!domain || domain.parentId == null) break;
+            current = domain.parentId;
+        }
+        return highest;
+    }
+
+    /**
+     * Collect every node directly or indirectly contained within a domain
+     * (including through nested subdomains). Returns node objects, NOT ids.
+     * @param {Object} domain
+     * @param {Array} allDomains
+     * @param {Array} allNodes
+     * @returns {Array}
+     */
+    static getContainedNodes(domain, allDomains, allNodes) {
+        if (!domain) return [];
+        const targetId = domain.id;
+        const contained = [];
+        const childIds = new Set();
+        const queue = [targetId];
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            allDomains.forEach(d => {
+                if (d.parentId === currentId && !childIds.has(d.id)) {
+                    childIds.add(d.id);
+                    queue.push(d.id);
+                }
+            });
+        }
+        allNodes.forEach(node => {
+            if (node.domainId === targetId || childIds.has(node.domainId)) {
+                contained.push(node);
+            }
+        });
+        return contained;
+    }
+
+    /**
+     * Compute the center of gravity (average position) over a set of nodes.
+     * Nodes with null/undefined positions are ignored. Returns
+     * `{ x: null, y: null }` when no node contributes a valid position.
+     * @param {Array} nodes
+     * @returns {{x: number|null, y: number|null}}
+     */
+    static getCenterOfGravity(nodes) {
+        if (!nodes || nodes.length === 0) return { x: null, y: null };
+        let sumX = 0;
+        let sumY = 0;
+        let count = 0;
+        nodes.forEach(node => {
+            const pos = node.position || node.defaultPosition;
+            if (pos && pos.x !== null && pos.y !== null
+                && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+                sumX += pos.x;
+                sumY += pos.y;
+                count += 1;
+            }
+        });
+        if (count === 0) return { x: null, y: null };
+        return { x: sumX / count, y: sumY / count };
+    }
+
+    /**
+     * Re-position the nodes contained in a collapsed domain around an anchor
+     * (the domain's current position in the network).
+     *
+     * - Already-positioned descendants are translated to preserve their
+     *   relative offsets to the current CoG, then re-centred on `anchor`.
+     * - Null-position descendants are placed in a horizontal line around
+     *   `anchor`.
+     *
+     * Mutates each contained node's `position` field in place.
+     * @param {Array} contained - Contained node objects (with `position`
+     *   and/or `defaultPosition`)
+     * @param {{x: number, y: number}|null} anchor - Domain's current position
+     * @param {number} [nullSpacing=200] - Horizontal spacing for null nodes
+     */
+    static positionContainedNodes(contained, anchor, nullSpacing = 200) {
+        if (!contained || contained.length === 0 || !anchor) return;
+
+        const positioned = [];
+        const nullDescendants = [];
+        contained.forEach(n => {
+            const p = n.position || n.defaultPosition;
+            if (p && p.x !== null && p.y !== null
+                && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+                positioned.push(n);
+            } else {
+                nullDescendants.push(n);
+            }
+        });
+
+        if (positioned.length > 0) {
+            const cog = this.getCenterOfGravity(positioned);
+            if (cog.x !== null && cog.y !== null) {
+                const dx = anchor.x - cog.x;
+                const dy = anchor.y - cog.y;
+                positioned.forEach(n => {
+                    const p = n.position || n.defaultPosition;
+                    n.position = { x: p.x + dx, y: p.y + dy };
+                });
+            }
+        }
+
+        if (nullDescendants.length > 0) {
+            nullDescendants.forEach((n, i) => {
+                const offset = (i - (nullDescendants.length - 1) / 2) * nullSpacing;
+                n.position = { x: anchor.x + offset, y: anchor.y };
+            });
+        }
+    }
+
     /**
      * Check if point is in polygon
      * @param {Object} point - Point with x, y
@@ -137,14 +364,35 @@ class GraphUtils {
      * @param {Object} domain - Domain object
      * @param {Object} positions - Node positions
      * @param {Object} graphState - Graph state with nodes
+     * @param {Set|Array} [collapsedDomainIds] - Ids of collapsed domains. When a
+     *   child domain is collapsed, the parent hull treats it as a single
+     *   point (its center of gravity) rather than recursing into its hull.
      * @returns {Array} Array of points
      */
-    static getDomainPoints(domain, positions, graphState) {
+    static getDomainPoints(domain, positions, graphState, collapsedDomainIds) {
         const points = [];
         const baseMargin = 15;  // Base margin around the node
         const maxWidth = 150;   // Same as widthConstraint.maximum
         const charWidth = 7;    // Approximate width per character
         const lineHeight = 20;  // Height per line of text
+        const collapsed = collapsedDomainIds instanceof Set
+            ? collapsedDomainIds
+            : new Set(collapsedDomainIds || []);
+
+        // Helper to push the four corners of a node's bounding box into the
+        // given target array.
+        const pushNodeCorners = (node, pos, target) => {
+            const label = `${node.id}: ${node.title || 'Untitled'}`;
+            const textWidth = label.length * charWidth;
+            const numLines = Math.ceil(textWidth / maxWidth);
+            const actualLines = Math.max(1, numLines);
+            const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
+            const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
+            target.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
+            target.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
+            target.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
+            target.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
+        };
 
         // Helper to collect points for a domain and its child domains
         const collectPoints = (targetDomain, depth = 0) => {
@@ -157,23 +405,7 @@ class GraphUtils {
                     if (nodeDomainId === domainId) {
                         const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
                         if (pos) {
-                        // Calculate node box dimensions based on label text
-                            const label = `${node.id}: ${node.title || 'Untitled'}`;
-
-                        // Calculate how many lines the text will wrap to
-                            const textWidth = label.length * charWidth;
-                            const numLines = Math.ceil(textWidth / maxWidth);
-                            const actualLines = Math.max(1, numLines);
-
-                        // Calculate dimensions
-                            const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
-                            const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
-
-                        // Add bounding box corners (full extent of the node box)
-                            points.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
-                            points.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
-                            points.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
-                            points.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
+                            pushNodeCorners(node, pos, points);
                         }
                     }
                 });
@@ -185,6 +417,28 @@ class GraphUtils {
                     const childParentId = childDomain.parentId != null ? Number(childDomain.parentId) : null;
                     const targetId = targetDomain.id != null ? Number(targetDomain.id) : null;
                     if (childParentId === targetId) {
+                        if (collapsed.has(childDomain.id)) {
+                            // Collapsed child: contribute a single point at its
+                            // center of gravity so the parent hull still
+                            // encloses the child domain's visual mass.
+                            const contained = this.getContainedNodes(
+                                childDomain,
+                                graphState.domains || [],
+                                graphState.nodes || []
+                            );
+                            const cog = this.getCenterOfGravity(contained);
+                            if (cog.x !== null && cog.y !== null) {
+                                const label = childDomain.title || `Domain ${childDomain.id}`;
+                                const halfWidth = Math.min(maxWidth, label.length * charWidth) / 2 + baseMargin;
+                                const halfHeight = lineHeight / 2 + baseMargin;
+                                points.push({ x: cog.x - halfWidth, y: cog.y - halfHeight });
+                                points.push({ x: cog.x + halfWidth, y: cog.y - halfHeight });
+                                points.push({ x: cog.x + halfWidth, y: cog.y + halfHeight });
+                                points.push({ x: cog.x - halfWidth, y: cog.y + halfHeight });
+                            }
+                            return;
+                        }
+
                         // First collect child points recursively
                         collectPoints(childDomain, depth + 1);
 
@@ -197,16 +451,7 @@ class GraphUtils {
                                 if (String(node.domainId || '') === String(childDomain.id || '')) {
                                     const pos = positions[node.id] || positions[String(node.id)] || positions[parseInt(node.id)];
                                     if (pos) {
-                                        const label = `${node.id}: ${node.title || 'Untitled'}`;
-                                        const textWidth = label.length * charWidth;
-                                        const numLines = Math.ceil(textWidth / maxWidth);
-                                        const actualLines = Math.max(1, numLines);
-                                        const halfWidth = Math.min(maxWidth, textWidth) / 2 + baseMargin;
-                                        const halfHeight = (actualLines * lineHeight) / 2 + baseMargin;
-                                        childPoints.push({x: pos.x - halfWidth, y: pos.y - halfHeight});
-                                        childPoints.push({x: pos.x + halfWidth, y: pos.y - halfHeight});
-                                        childPoints.push({x: pos.x + halfWidth, y: pos.y + halfHeight});
-                                        childPoints.push({x: pos.x - halfWidth, y: pos.y + halfHeight});
+                                        pushNodeCorners(node, pos, childPoints);
                                     }
                                 }
                             });
@@ -274,6 +519,71 @@ class GraphUtils {
         }
         // Map hash to 0-360 range, use absolute value to handle negative hashes
         return Math.abs(hash) % 360;
+    }
+
+    /**
+     * Compute the visible representation of a regular node. If any ancestor
+     * of the node's domain is collapsed, the node maps to the topmost
+     * collapsed ancestor's vis.js id (`domain-{id}`). Otherwise the node
+     * keeps its integer id.
+     * @param {Object} node
+     * @param {Array} allDomains
+     * @param {Array} collapsedDomains
+     * @returns {string|number}
+     */
+    static remapNodeId(node, allDomains, collapsedDomains) {       
+        if (node.domainId == null) return node.id;
+        const highest = GraphUtils.getHighestCollapsedAncestor(
+            node.domainId, allDomains, collapsedDomains
+        );
+        
+        if (highest != null) {
+            return GraphUtils.getCollapsedDomainNodeId(highest);
+        }
+        return node.id;
+    }
+
+    /**
+     * Compute the signature of a pathway given the current node, pathwayIndex,
+     * and graph structure (nodes, domains, collapsed domains).
+     * @param {Object} nodeData - { nodeId, pathwayIndex }
+     * @param {Array} graphNodes
+     * @param {Array} graphDomains
+     * @param {Array|Set} collapsedDomainIds
+     * @returns {string} signature
+     */
+    static getPathwaySignature(nodeData, graphNodes, graphDomains, collapsedDomainIds) {
+        const { nodeId, pathwayIndex } = nodeData;
+        const node = (graphNodes || []).find(n => n.id === nodeId || String(n.id) === String(nodeId));
+        if (!node || !Array.isArray(node.pathways)) return '';
+        
+        const pathway = node.pathways[pathwayIndex];
+        if (!Array.isArray(pathway)) return '';
+        
+        const targetVisId = GraphUtils.remapNodeId(
+            {
+                id: node.id,
+                domainId: node.domainId == null ? null : node.domainId
+            },
+            graphDomains, collapsedDomainIds
+        );
+        
+        const remappedSources = new Set();
+        pathway.forEach(prereqId => {
+            if (prereqId == null) return;
+            const prereqNode = (graphNodes || []).find(n => n.id === prereqId || String(n.id) === String(prereqId));
+            const visFrom = GraphUtils.remapNodeId(
+                {
+                    id: prereqId,
+                    domainId: prereqNode ? prereqNode.domainId : null
+                },
+                graphDomains, collapsedDomainIds
+            );
+            if (visFrom === targetVisId) return; // would be a self-loop
+            remappedSources.add(`${visFrom}->${targetVisId}`);
+        });
+        
+        return Array.from(remappedSources).sort().join('|');
     }
 }
 

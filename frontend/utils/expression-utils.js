@@ -874,22 +874,18 @@ class ExpressionUtils {
      */
     static parseExpressionToTree(expression) {
         expression = expression.trim();
-        console.log('parseExpressionToTree:', expression);
         
         // Handle parentheses
         if (expression.startsWith('(') && expression.endsWith(')')) {
             const inner = expression.slice(1, -1).trim();
             if (this.isParenthesesBalanced(inner)) {
-                console.log('  Stripping outer parens, recursing on:', inner);
                 return this.parseExpressionToTree(inner);
             }
         }
         
         // Split by OR (lowest precedence)
         const orParts = this.splitByOperator(expression, 'OR');
-        console.log('  OR split result:', orParts);
         if (orParts.length > 1) {
-            console.log('  -> Creating OR node with', orParts.length, 'parts');
             return {
                 or: orParts.map(part => this.parseExpressionToTree(part))
             };
@@ -897,9 +893,7 @@ class ExpressionUtils {
         
         // Split by AND (higher precedence)
         const andParts = this.splitByOperator(expression, 'AND');
-        console.log('  AND split result:', andParts);
         if (andParts.length > 1) {
-            console.log('  -> Creating AND node with', andParts.length, 'parts');
             return {
                 and: andParts.map(part => this.parseExpressionToTree(part))
             };
@@ -907,12 +901,10 @@ class ExpressionUtils {
         
         // Base case: single node ID
         if (/^\d+$/.test(expression)) {
-            console.log('  -> Leaf node:', parseInt(expression));
             return { node: parseInt(expression) };
         }
         
         // Fallback: return as-is if can't parse
-        console.log('  -> Fallback expression');
         return { expression: expression };
     }
 

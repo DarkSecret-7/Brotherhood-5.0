@@ -25,12 +25,15 @@
 class AcademiaGraphController {
     /**
      * @param {HTMLElement|string} container - Container element or ID
-     * @param {Object} callbacks - { onNodeClick, onEdgeClick, onDomainClick, onUnfocus, onPositionChange }
+     * @param {Object} callbacks - { onNodeClick, onPathwayClick, onEdgeClick (legacy), onDomainClick, onUnfocus, onPositionChange }
      */
     constructor(container, callbacks = {}) {
         this.container = typeof container === 'string' ? document.getElementById(container) : container;
         this.callbacks = {
             onNodeClick: callbacks.onNodeClick || (() => {}),
+            // `onPathwayClick(nodeId, pathwayIndex)` is the new pathway-aware callback
+            onPathwayClick: callbacks.onPathwayClick || (() => {}),
+            // Legacy edge-click hook kept for back-compat.
             onEdgeClick: callbacks.onEdgeClick || (() => {}),
             onDomainClick: callbacks.onDomainClick || (() => {}),
             onUnfocus: callbacks.onUnfocus || (() => {}),
@@ -56,7 +59,9 @@ class AcademiaGraphController {
 
         this.visualizer = new GraphVisualizer(this.container, {
             onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
-            onEdgeClick: (edgeId) => this.handleEdgeClick(edgeId),
+            onPathwayClick: (nodeId, pathwayIndex) =>
+                this.handlePathwayClick(nodeId, pathwayIndex),
+            onEdgeClick: () => {},   // legacy stub
             onDomainClick: (domainId) => this.handleDomainClick(domainId),
             onUnfocus: () => this.handleUnfocus(),
             onPositionChange: (nodeId, pos) => this.handlePositionChange(nodeId, pos)
@@ -151,42 +156,27 @@ class AcademiaGraphController {
     }
 
     /**
-     * Handle edge click - implements pathway switching (from gallery-controller logic)
+     * Handle a pathway click, cycles through distinct available pathways starting from the reference index
+     * @param {Object} edgeData - Edge data of the form {source: {id, type}, target: {id, type}}
      */
-    handleEdgeClick(edgeIndex) {
-        if (!this.graphData || !this.graphData.edges) return;
+    handlePathwayClick(edgeData) {
+        const { pathways, referenceIndex } = this.visualizer.getUniqueEdgeContribution(edgeData, true);
 
-        const edge = this.graphData.edges[edgeIndex];
-        if (!edge) return;
+        // If no available pathways, return
+        if (pathways == null || pathways.length === 0) return;
 
-        const targetNodeId = edge.to;
-        const targetNode = this.graphData.nodes.find(n => n.id === targetNodeId);
-        if (!targetNode || !targetNode.pathways || targetNode.pathways.length === 0) return;
+        let nextIndex = null;
+        // If reference index is null, unhighlighted edge clicked, choose the first pathway
+        if (referenceIndex == null) nextIndex = 0;
+        // Else, cycle to the next pathway
+        else nextIndex = (referenceIndex + 1) % pathways.length;
 
-        const edgeId = edge.id;
-        let pathwayIndex = -1;
-        for (let i = 0; i < targetNode.pathways.length; i++) {
-            if (targetNode.pathways[i].includes(edgeId)) {
-                pathwayIndex = i;
-                break;
-            }
-        }
-        if (pathwayIndex === -1) return;
+        this.nodePathwayIndex.set(pathways[nextIndex].nodeId, pathways[nextIndex].pathwayIndex);
+        this.updateVisualization();
 
-        let currentIndex = this.nodePathwayIndex.get(targetNodeId) || 0;
-        if (currentIndex !== pathwayIndex) {
-            currentIndex = pathwayIndex;
-        } else {
-            currentIndex = (currentIndex + 1) % targetNode.pathways.length;
-        }
-
-        this.nodePathwayIndex.set(targetNodeId, currentIndex);
-        
-        // Refresh highlights and render
-        this.applyPathwayHighlights();
-        this.visualizer.updateVisualization(this.graphData);
-
-        this.callbacks.onEdgeClick(edgeIndex);
+        console.log('Pathway clicked. Cycling and highlighting:',
+            this.graphState.nodes.find(n => n.id === pathways[nextIndex].nodeId)?.pathways[pathways[nextIndex].pathwayIndex] || 'undefined',
+            ', at index:', pathways[nextIndex].pathwayIndex, ', for target:', pathways[nextIndex].nodeId);
     }
 
     /**
@@ -216,23 +206,16 @@ class AcademiaGraphController {
     }
 
     /**
-     * Apply pathway highlights based on internal state
+     * Apply pathway highlights based on internal state. Writes
+     * `(nodeId, pathwayIndex)` pairs to the visualizer's `highlightedPathways` map
      */
     applyPathwayHighlights() {
         if (!this.visualizer || !this.graphData) return;
-        
-        this.visualizer.assignable.highlightedEdges.clear();
-
+        this.visualizer.assignable.highlightedPathways.clear();
         this.nodePathwayIndex.forEach((pathwayIndex, nodeId) => {
             const node = this.graphData.nodes.find(n => n.id === nodeId);
-            if (node && node.pathways && node.pathways.length > pathwayIndex) {
-                const activePathway = node.pathways[pathwayIndex];
-                activePathway.forEach(edgeId => {
-                    const edgeIndex = this.graphData.edges.findIndex(e => e.id === edgeId);
-                    if (edgeIndex !== -1) {
-                        this.visualizer.assignable.highlightedEdges.add(edgeIndex);
-                    }
-                });
+            if (node && node.pathways && pathwayIndex < node.pathways.length) {
+                this.visualizer.assignable.highlightedPathways.set(nodeId, pathwayIndex);
             }
         });
     }
@@ -258,8 +241,8 @@ class AcademiaGraphController {
 
     /**
      * Set assignable highlights (nodes, edges, domains with group assignments)
-     * @param {Object} assignables - { highlightedNodes: Set, highlightedEdges: Set, highlightedDomains: Set }
-     *   Each set contains objects: {id, group} where group is 0-4
+     * @param {Object} assignables - { highlightedNodes: Set, highlightedEdges: Set (legacy), highlightedDomains: Set, highlightedPathways: Map (optional) }
+     *   Each Set contains objects: {id, group} where group is 0-4
      */
     setAssignables(assignables) {
         if (!this.visualizer) return;
@@ -285,10 +268,24 @@ class AcademiaGraphController {
             }
         }
         if (assignables.hasOwnProperty('highlightedEdges')) {
+            // `highlightedEdges` is the legacy index-based highlight set.
+            // The visualizer reads its active pathway highlights from
+            // `highlightedPathways`; we still let callers write
+            // `highlightedEdges` for backward compat, but it is not
+            // used by the new render pipeline.
             if (assignables.highlightedEdges) {
                 this.visualizer.assignable.highlightedEdges.clear();
                 assignables.highlightedEdges.forEach(item => {
                     this.visualizer.assignable.highlightedEdges.add(item);
+                });
+            }
+        }
+        if (assignables.hasOwnProperty('highlightedPathways')) {
+            // NEW: replace the (nodeId, pathwayIndex) map wholesale.
+            this.visualizer.assignable.highlightedPathways.clear();
+            if (assignables.highlightedPathways) {
+                assignables.highlightedPathways.forEach((pathwayIndex, nodeId) => {
+                    this.visualizer.assignable.highlightedPathways.set(nodeId, pathwayIndex);
                 });
             }
         }

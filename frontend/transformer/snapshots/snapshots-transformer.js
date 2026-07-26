@@ -128,23 +128,25 @@ class SnapshotsTransformer {
     }
 
     /**
-     * Build graph data from backend nodes for visualization
-     * Creates nodes with defaultPosition, position, and pathway attributes
+     * Build graph data from backend nodes for visualization.
+     * 
+     * IMPORTANT: this method does NOT build the legacy `edges` array.
      * @param {Array} backendNodes - Backend nodes array
      * @param {Array} backendDomains - Backend domains array (for hull rendering)
-     * @returns {Object} Graph data {nodes, edges, cycles, domains}
+     * @returns {Object} Graph data {nodes, cycles, domains}
      */
     buildGraphData(backendNodes, backendDomains) {
         if (!Array.isArray(backendNodes)) {
-            return { nodes: [], edges: [], cycles: [], domains: [] };
+            return { nodes: [], cycles: [], domains: [] };
         }
 
         const nodes = [];
-        const edges = [];
         const cycles = [];
-        const nodePathways = new Map(); // nodeId -> array of edge IDs for each pathway
+        // nodeId -> array of prereq-id arrays (one inner array per pathway)
+        const nodePathways = new Map();
 
-        // First pass: create graph nodes and collect prerequisite data
+        // First pass: create graph nodes with empty pathways. Pathways
+        // are populated in the next pass once every node exists.
         backendNodes.forEach(node => {
             const graphNode = {
                 id: node.local_id,
@@ -152,70 +154,43 @@ class SnapshotsTransformer {
                 domainId: node.domain_id || null,
                 defaultPosition: { x: node.x ?? null, y: node.y ?? null },
                 position: { x: node.x ?? null, y: node.y ?? null },
-                pathways: [] // Will be populated with arrays of edge IDs (one array per pathway)
+                pathways: []   // Array of prereq-id arrays (DNF)
             };
             nodes.push(graphNode);
             nodePathways.set(node.local_id, []);
         });
 
-        // Second pass: process prerequisites to create pathways and edges
-        // Use tree structure directly from backend - no string conversion needed
-        const allEdges = [];
+        // Second pass: extract DNF pathways from the backend tree and
+        // store them as arrays of prereq node ids.
         backendNodes.forEach(node => {
             if (node.prerequisite && window.ExpressionUtils) {
                 // Extract DNF pathways directly from tree structure
                 const dnfPathways = window.ExpressionUtils.extractPathwaysFromTree(node.prerequisite);
-                const pathways = []; // Array of pathways, each containing edge IDs
-
-                dnfPathways.forEach(pathway => {
-                    const pathwayEdgeIds = [];
-                    // Create edges for this pathway: each prereq -> dependent node
-                    pathway.forEach(prereqId => {
-                        const edgeId = `${prereqId}-${node.local_id}`;
-                        allEdges.push({
-                            id: edgeId,
-                            from: prereqId,
-                            to: node.local_id
-                        });
-                        pathwayEdgeIds.push(edgeId);
-                    });
-                    pathways.push(pathwayEdgeIds);
-                });
-
-                nodePathways.set(node.local_id, pathways);
+                console.log(node, dnfPathways, dnfPathways.map(p => Array.isArray(p) ? p.slice() : []));
+                
+                // Each pathway is already an array of prereq node ids
+                // (post-DNF). No edge-id fabrication here anymore.
+                nodePathways.set(node.local_id, dnfPathways.map(p => Array.isArray(p) ? p.slice() : []));
             }
         });
 
-        // Remove duplicate edges
-        const edgeMap = new Map();
-        allEdges.forEach(edge => {
-            if (!edgeMap.has(edge.id)) {
-                edgeMap.set(edge.id, edge);
-            }
-        });
-        const uniqueEdges = Array.from(edgeMap.values());
-        
+        // Cycle detection. We hand the cycle detector a temporary edge
+        // list built from the pathways; we DO NOT keep this list around
+        // as `graphState.edges`. Cycles themselves are stored as node-id
+        // sequences.
         if (window.ExpressionUtils) {
-            // Use nodes array (with .id) not backendNodes (with .local_id)
-            const nodeCycles = window.ExpressionUtils.detectCycles(nodes, uniqueEdges);
-            // Convert node cycles to edge references
-            nodeCycles.forEach(nodeCycle => {
-                const edgeCycle = [];
-                for (let i = 0; i < nodeCycle.length - 1; i++) {
-                    const edgeId = `${nodeCycle[i]}-${nodeCycle[i + 1]}`;
-                    edgeCycle.push(edgeId);
-                }
-                // Close the cycle
-                const lastEdgeId = `${nodeCycle[nodeCycle.length - 1]}-${nodeCycle[0]}`;
-                edgeCycle.push(lastEdgeId);
-                cycles.push(edgeCycle);
+            const tempEdges = [];
+            nodePathways.forEach((pathways, targetId) => {
+                pathways.forEach(pathway => {
+                    pathway.forEach(prereqId => {
+                        tempEdges.push({ from: prereqId, to: targetId });
+                    });
+                });
             });
-
-            // Perform transitive reduction - use nodes array (with .id) not backendNodes (with .local_id)
-            const reducedEdges = window.ExpressionUtils.transitiveReduction(nodes, uniqueEdges);
-            edges.push(...reducedEdges);
-        } else {
-            edges.push(...uniqueEdges);
+            const nodeCycles = window.ExpressionUtils.detectCycles(nodes, tempEdges);
+            nodeCycles.forEach(nodeCycle => {
+                cycles.push(nodeCycle.slice());
+            });
         }
 
         // Generate default positions for nodes without stored positions
@@ -236,7 +211,7 @@ class SnapshotsTransformer {
                         node.position = { x: algoPos.x, y: algoPos.y };
                     }
                 }
-                // Assign pathways (array of edge ID arrays)
+                // Assign pathways (array of prereq-id arrays)
                 node.pathways = nodePathways.get(node.id) || [];
             });
         }
@@ -245,10 +220,11 @@ class SnapshotsTransformer {
         const domains = (backendDomains || []).map(domain => ({
             id: domain.local_id,
             title: domain.title,
-            parentId: domain.parent_id || null
+            parentId: domain.parent_id || null,
+            isCollapsed: true            // For domain collapse visualization
         }));
 
-        return { nodes, edges, cycles, domains };
+        return { nodes, cycles, domains };
     }
 
     /**

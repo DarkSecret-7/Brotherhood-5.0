@@ -40,7 +40,6 @@ class GraphController {
         // Graph state
         this.graphState = {
             nodes: [],
-            edges: [],
             cycles: [],
             domains: []
         };
@@ -120,7 +119,7 @@ class GraphController {
      * Handle node click
      * @param {number} nodeId - Node ID
      */
-    handleNodeClick(nodeId) {
+    async handleNodeClick(nodeId) {
         // Clear only node highlights (edge highlights are independent)
         this.visualizer.assignable.highlightedNodes.clear();
         
@@ -129,63 +128,32 @@ class GraphController {
         
         // Re-render to apply highlight
         this.updateVisualization();
-        
+                
         console.log('Node clicked and highlighted:', nodeId);
     }
 
     /**
-     * Get the edge index from an edge ID
-     * @param {string} edgeId - Edge ID (e.g., "1-5")
-     * @returns {number} Edge index or -1 if not found
+     * Handle a pathway click, cycles through distinct available pathways starting from the reference index
+     * @param {Object} edgeData - Edge data of the form {source: {id, type}, target: {id, type}}
      */
-    getEdgeIndex(edgeId) {
-        return this.graphState.edges.findIndex(e => e.id === edgeId);
-    }
+    handlePathwayClick(edgeData) {
+        const { pathways, referenceIndex } = this.visualizer.getUniqueEdgeContribution(edgeData, true);
 
-    /**
-     * Handle edge click
-     * @param {number} edgeIndex - Edge index (from vis.js)
-     */
-    handleEdgeClick(edgeIndex) {
-        console.log('Edge clicked:', edgeIndex);
-        
-        // Get the edge from the graph state
-        const edge = this.graphState.edges[edgeIndex];
-        if (!edge) return;
-        
-        // Find the target node of this edge
-        const targetNodeId = edge.to;
-        const targetNode = this.graphState.nodes.find(n => n.id === targetNodeId);
-        if (!targetNode || !targetNode.pathways || targetNode.pathways.length === 0) return;
-        
-        // Find which pathway this edge belongs to
-        const edgeId = edge.id;
-        let pathwayIndex = -1;
-        for (let i = 0; i < targetNode.pathways.length; i++) {
-            if (targetNode.pathways[i].includes(edgeId)) {
-                pathwayIndex = i;
-                break;
-            }
-        }
-        if (pathwayIndex === -1) return; // Edge not in any pathway
-        
-        // Get current pathway index for this node (always initialized to 0)
-        let currentIndex = this.nodePathwayIndex.get(targetNodeId) || 0;
-        
-        // If clicking a different pathway edge, switch to it; otherwise cycle
-        if (currentIndex !== pathwayIndex) {
-            currentIndex = pathwayIndex;
-        } else {
-            // Cycle to the next pathway index
-            currentIndex = (currentIndex + 1) % targetNode.pathways.length;
-        }
-        
-        this.nodePathwayIndex.set(targetNodeId, currentIndex);
-        
-        // Re-render to apply highlights (updateVisualization handles edge highlighting)
+        // If no available pathways, return
+        if (pathways == null || pathways.length === 0) return;
+
+        let nextIndex = null;
+        // If reference index is null, unhighlighted edge clicked, choose the first pathway
+        if (referenceIndex == null) nextIndex = 0;
+        // Else, cycle to the next pathway
+        else nextIndex = (referenceIndex + 1) % pathways.length;
+
+        this.nodePathwayIndex.set(pathways[nextIndex].nodeId, pathways[nextIndex].pathwayIndex);
         this.updateVisualization();
-        
-        console.log(`Showing pathway ${currentIndex + 1}/${targetNode.pathways.length} for node ${targetNodeId}`);
+
+        console.log('Pathway clicked. Cycling and highlighting:',
+            this.graphState.nodes.find(n => n.id === pathways[nextIndex].nodeId)?.pathways[pathways[nextIndex].pathwayIndex] || 'undefined',
+            ', at index:', pathways[nextIndex].pathwayIndex, ', for target:', pathways[nextIndex].nodeId);
     }
 
     /**
@@ -212,10 +180,9 @@ class GraphController {
     updateGraphData() {
         // Get graph data from state manager (already built by transformer)
         const graphState = this.stateManager.state.graphState;
-        
+
         // Update local graph state
         this.graphState.nodes = graphState.nodes || [];
-        this.graphState.edges = graphState.edges || [];
         this.graphState.cycles = graphState.cycles || [];
         this.graphState.domains = graphState.domains || [];
 
@@ -227,7 +194,6 @@ class GraphController {
         });
     }
 
-    
     /**
      * Initialize graph visualizer
      */
@@ -237,13 +203,17 @@ class GraphController {
             // Import and create visualizer (will be created separately)
             this.visualizer = new GraphVisualizer(this.elements.graphContainer, {
                 onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
-                onEdgeClick: (edgeId) => this.handleEdgeClick(edgeId),
+                onPathwayClick: (edgeData) =>
+                    this.handlePathwayClick1(edgeData),
+                // Legacy edge-click hook
+                onEdgeClick: () => {},
                 onPositionChange: (nodeId, position) => this.handleNodePositionChange(nodeId, position),
-                onDomainClick: (domainId) => this.handleDomainClick(domainId)
+                onDomainClick: (domainId) => this.handleDomainClick(domainId),
+                onUnfocus: () => this.handleUnfocus(),
             });
-            
+
             console.log('GraphController: GraphVisualizer created');
-            
+
             // Initial visualization
             this.updateVisualization();
         } else {
@@ -254,35 +224,34 @@ class GraphController {
     /**
      * Update visualization with current graph data
      */
-    updateVisualization() {
+    updateVisualization() {   
         if (this.visualizer) {
-            // GraphController assigns edge highlights (not the visualizer)
-            this.applyPathwayHighlights();
+            this.applyPathwayHighlights();        
             this.visualizer.updateVisualization(this.graphState);
         }
     }
 
     /**
-     * Apply pathway edge highlights based on nodePathwayIndex
-     * Called by updateVisualization to set highlighted edges
+     * Apply pathway highlights by writing `(nodeId, pathwayIndex)`
+     * pairs to the visualizer's `highlightedPathways` map. The
+     * visualizer owns the edge reconstruction and applies the visual
+     * highlight itself during the render.
      */
     applyPathwayHighlights() {
-        this.visualizer.assignable.highlightedEdges.clear();
-        
-        // For each node with an active pathway, highlight ALL edges in that pathway
-        this.nodePathwayIndex.forEach((pathwayIndex, nodeId) => {
-            const node = this.graphState.nodes.find(n => n.id === nodeId);
-            if (node && node.pathways && node.pathways.length > pathwayIndex) {
-                const activePathway = node.pathways[pathwayIndex]; // Array of edge IDs
-                // Highlight all edges in this pathway
-                activePathway.forEach(edgeId => {
-                    const edgeIndex = this.getEdgeIndex(edgeId);
-                    if (edgeIndex !== -1) {
-                        this.visualizer.assignable.highlightedEdges.add(edgeIndex);
-                    }
-                });
-            }
-        });
+        this.visualizer.assignable.highlightedPathways.clear();
+        this.nodePathwayIndex.forEach((pathwayIndex, nodeId) =>
+            this.visualizer.assignable.highlightedPathways.set(nodeId, pathwayIndex)
+        );
+    }
+
+    /**
+     * Handle unfocus, clears all highlights
+     */
+    handleUnfocus() {
+        this.visualizer.assignable.highlightedPathways.clear();
+        this.visualizer.assignable.highlightedNodes.clear();
+        this.visualizer.assignable.highlightedDomains.clear();
+        this.updateVisualization();
     }
 
     /**
@@ -303,7 +272,6 @@ class GraphController {
             stateNode.position = { x: position.x, y: position.y };
         }
     }
-
     
     /**
      * Reset layout to default positions
@@ -378,6 +346,27 @@ class GraphController {
      * Toggle fixed positions - save current positions as default
      */
     fixPositions() {
+        // Handle collapsed domains: every descendant of a collapsed domain
+        // gets an actual, non-null position centered around the domain's
+        // current position in the network.
+        const allDomains = this.stateManager.state.domains || [];
+        const allNodes = this.stateManager.state.nodes || [];
+        const collapsedIds = new Set(
+            (allDomains || [])
+                .filter(d => d && d.isCollapsed)
+                .map(d => d.id)
+        );
+
+        collapsedIds.forEach(domainId => {
+            const domain = allDomains.find(d => d.id === domainId);
+            if (!domain) return;
+            const domainPos = this.visualizer
+                ? this.visualizer.getCollapsedDomainPosition(domainId)
+                : null;
+            const contained = GraphUtils.getContainedNodes(domain, allDomains, allNodes);
+            GraphUtils.positionContainedNodes(contained, domainPos);
+        });
+
         // Copy current position to defaultPosition for all nodes
         this.graphState.nodes.forEach(node => {
             if (node.position && (node.position.x !== null || node.position.y !== null)) {
@@ -429,9 +418,15 @@ class GraphController {
      * @returns {Object} Graph statistics
      */
     getGraphStatistics() {
+        // The visualizer is the only place that counts visible edges
+        // (it remaps by collapsed domain, merges duplicates, and may
+        // transitively reduce). We surface its count.
+        const edgeCount = this.visualizer
+            ? (this.visualizer.lastVisEdges || []).length
+            : 0;
         return {
             nodeCount: this.graphState.nodes.length,
-            edgeCount: this.graphState.edges.length,
+            edgeCount: edgeCount,
             cycleCount: this.graphState.cycles.length,
             domainCount: this.graphState.domains.length,
             assessableNodeCount: this.stateManager.state.nodes.filter(n => n.assessable).length

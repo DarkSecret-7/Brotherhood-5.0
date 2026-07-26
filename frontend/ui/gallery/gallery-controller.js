@@ -32,7 +32,6 @@ class GalleryController {
         // Graph state (local copy for visualization)
         this.graphState = {
             nodes: [],
-            edges: [],
             cycles: [],
             domains: []
         };
@@ -185,7 +184,10 @@ class GalleryController {
 
         this.visualizer = new GraphVisualizer(this.elements.main.graphContainer, {
             onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
-            onEdgeClick: (edgeId) => this.handleEdgeClick(edgeId),
+            onPathwayClick: (nodeId, pathwayIndex) =>
+                this.handlePathwayClick(nodeId, pathwayIndex),
+            // Legacy edge-click hook kept for back-compat.
+            onEdgeClick: () => {},
             onPositionChange: (nodeId, position) => this.handlePositionChange(nodeId, position),
             onDomainClick: (domainId) => this.handleDomainClick(domainId),
             onUnfocus: () => this.handleUnfocus()
@@ -249,24 +251,6 @@ class GalleryController {
     }
 
     /**
-     * Update graph data from state manager
-     */
-    updateGraphData() {
-        const graphState = this.stateManager.getGraphState();
-        this.graphState.nodes = graphState.nodes || [];
-        this.graphState.edges = graphState.edges || [];
-        this.graphState.cycles = graphState.cycles || [];
-        this.graphState.domains = graphState.domains || [];
-
-        // Initialize pathway indices for all nodes with pathways to 0
-        this.graphState.nodes.forEach(node => {
-            if (node.pathways && node.pathways.length > 0 && !this.nodePathwayIndex.has(node.id)) {
-                this.nodePathwayIndex.set(node.id, 0);
-            }
-        });
-    }
-
-    /**
      * Update graph visualization
      */
     updateVisualization() {
@@ -286,35 +270,60 @@ class GalleryController {
     }
 
     /**
-     * Apply pathway edge highlights based on nodePathwayIndex
-     * Called by updateVisualization to set highlighted edges
+     * Update graph data from state manager
      */
-    applyPathwayHighlights() {
-        this.visualizer.assignable.highlightedEdges.clear();
+    updateGraphData() {
+        const graphState = this.stateManager.getGraphState();
+        this.graphState.nodes = graphState.nodes || [];
+        this.graphState.cycles = graphState.cycles || [];
+        this.graphState.domains = graphState.domains || [];
 
-        // For each node with an active pathway, highlight ALL edges in that pathway
-        this.nodePathwayIndex.forEach((pathwayIndex, nodeId) => {
-            const node = this.graphState.nodes.find(n => n.id === nodeId);
-            if (node && node.pathways && node.pathways.length > pathwayIndex) {
-                const activePathway = node.pathways[pathwayIndex]; // Array of edge IDs
-                // Highlight all edges in this pathway
-                activePathway.forEach(edgeId => {
-                    const edgeIndex = this.getEdgeIndex(edgeId);
-                    if (edgeIndex !== -1) {
-                        this.visualizer.assignable.highlightedEdges.add(edgeIndex);
-                    }
-                });
+        // Initialize pathway indices for all nodes with pathways to 0
+        this.graphState.nodes.forEach(node => {
+            if (node.pathways && node.pathways.length > 0 && !this.nodePathwayIndex.has(node.id)) {
+                this.nodePathwayIndex.set(node.id, 0);
             }
         });
     }
 
     /**
-     * Get the edge index from an edge ID
-     * @param {string} edgeId - Edge ID (e.g., "1-5")
-     * @returns {number} Edge index or -1 if not found
+     * Apply pathway highlights by writing `(nodeId, pathwayIndex)`
+     * pairs to the visualizer's `highlightedPathways` map. The
+     * visualizer owns the edge reconstruction and applies the visual
+     * highlight itself during the render.
      */
-    getEdgeIndex(edgeId) {
-        return this.graphState.edges.findIndex(e => e.id === edgeId);
+    applyPathwayHighlights() {
+        this.visualizer.assignable.highlightedPathways.clear();
+        this.nodePathwayIndex.forEach((pathwayIndex, nodeId) => {
+            const node = this.graphState.nodes.find(n => n.id === nodeId);
+            if (node && node.pathways && pathwayIndex < node.pathways.length) {
+                this.visualizer.assignable.highlightedPathways.set(nodeId, pathwayIndex);
+            }
+        });
+    }
+
+    /**
+     * Handle a pathway click, cycles through distinct available pathways starting from the reference index
+     * @param {Object} edgeData - Edge data of the form {source: {id, type}, target: {id, type}}
+     */
+    handlePathwayClick(edgeData) {
+        const { pathways, referenceIndex } = this.visualizer.getUniqueEdgeContribution(edgeData, true);
+
+        // If no available pathways, return
+        if (pathways == null || pathways.length === 0) return;
+
+        let nextIndex = null;
+        // If reference index is null, unhighlighted edge clicked, choose the first pathway
+        if (referenceIndex == null) nextIndex = 0;
+        // Else, cycle to the next pathway
+        else nextIndex = (referenceIndex + 1) % pathways.length;
+
+        this.nodePathwayIndex.set(pathways[nextIndex].nodeId, pathways[nextIndex].pathwayIndex);
+        this.updateVisualization();
+
+        console.log('Pathway clicked. Cycling and highlighting:',
+            this.graphState.nodes.find(n => n.id === pathways[nextIndex].nodeId)?.pathways[pathways[nextIndex].pathwayIndex] || 'undefined',
+            ', at index:', pathways[nextIndex].pathwayIndex, ', for target:', pathways[nextIndex].nodeId);
     }
 
     /**
@@ -605,52 +614,6 @@ class GalleryController {
         this.stateManager.selectNode(nodeId);
 
         console.log('Node clicked and highlighted:', nodeId);
-    }
-
-    /**
-     * Handle edge click from visualizer
-     * @param {number} edgeIndex - Edge index (from vis.js)
-     */
-    handleEdgeClick(edgeIndex) {
-        console.log('Edge clicked:', edgeIndex);
-
-        // Get the edge from the graph state
-        const edge = this.graphState.edges[edgeIndex];
-        if (!edge) return;
-
-        // Find the target node of this edge
-        const targetNodeId = edge.to;
-        const targetNode = this.graphState.nodes.find(n => n.id === targetNodeId);
-        if (!targetNode || !targetNode.pathways || targetNode.pathways.length === 0) return;
-
-        // Find which pathway this edge belongs to
-        const edgeId = edge.id;
-        let pathwayIndex = -1;
-        for (let i = 0; i < targetNode.pathways.length; i++) {
-            if (targetNode.pathways[i].includes(edgeId)) {
-                pathwayIndex = i;
-                break;
-            }
-        }
-        if (pathwayIndex === -1) return; // Edge not in any pathway
-
-        // Get current pathway index for this node (always initialized to 0)
-        let currentIndex = this.nodePathwayIndex.get(targetNodeId) || 0;
-
-        // If clicking a different pathway edge, switch to it; otherwise cycle
-        if (currentIndex !== pathwayIndex) {
-            currentIndex = pathwayIndex;
-        } else {
-            // Cycle to the next pathway index
-            currentIndex = (currentIndex + 1) % targetNode.pathways.length;
-        }
-
-        this.nodePathwayIndex.set(targetNodeId, currentIndex);
-
-        // Re-render to apply highlights (updateVisualization handles edge highlighting)
-        this.updateVisualization();
-
-        console.log(`Showing pathway ${currentIndex + 1}/${targetNode.pathways.length} for node ${targetNodeId}`);
     }
 
     /**

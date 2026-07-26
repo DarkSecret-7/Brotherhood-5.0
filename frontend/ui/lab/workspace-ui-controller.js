@@ -569,11 +569,7 @@ class LabUIController {
     toggleDomainCollapse(domainId) {
         event.stopPropagation();
         
-        const domain = this.stateManager.state.domains.find(d => d.id === domainId);
-        if (domain) {           
-            domain.isCollapsed = !domain.isCollapsed;
-            this.stateManager.notifyStateChange();
-        }
+        this.stateManager.toggleDomainCollapse(domainId);
     }
 
     /**
