@@ -359,8 +359,8 @@ class LibraryController {
     handlePreviewLearn() {
         if (!this.currentPreviewGraphUuid) return;
 
-        // Navigate to assessment page with graph UUID as URL parameter
-        window.location.href = `/academia/assessment?graph=${this.currentPreviewGraphUuid}`;
+        // Navigate to learning page with graph UUID as URL parameter
+        window.location.href = `/academia/learning?graph=${this.currentPreviewGraphUuid}`;
     }
 
     /**
