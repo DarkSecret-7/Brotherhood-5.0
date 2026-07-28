@@ -476,6 +476,8 @@ class AssessmentController {
             
             // Summary tab - dual panel layout
             summaryTab: document.getElementById('assessment-summary-tab'),
+            summaryPanels: document.getElementById('dual-summary-panel'),
+            summaryCallback: document.getElementById('assessment-summary-callback'),
             // Saved panel
             summarySavedWant: document.getElementById('summary-saved-want'),
             summarySavedLearning: document.getElementById('summary-saved-learning'),
@@ -553,12 +555,12 @@ class AssessmentController {
     bindEvents() {
         if (this.elements.closeNodeBtn) {
             this.elements.closeNodeBtn.addEventListener('click', () => {
-                this.stateManager.closeNodeDetails();
+                this.graphController.handleUnfocus();
             });
         }
         if (this.elements.closeDomainBtn) {
             this.elements.closeDomainBtn.addEventListener('click', () => {
-                this.stateManager.closeDomainDetails();
+                this.graphController.handleUnfocus();
             });
         }
         
@@ -991,6 +993,17 @@ class AssessmentController {
             this.elements.domainCurrentLearning.textContent = currentLearning;
             this.elements.domainCurrentLearnt.textContent = currentLearnt;
             this.elements.domainCurrentTotal.textContent = currentTotal;
+        }
+    }
+
+    toggleSummaryTab() {
+        const summaryOpen = this.elements.summaryCallback.classList.contains('hidden');
+        if (summaryOpen) {
+            this.elements.summaryPanels.classList.add('hidden');
+            this.elements.summaryCallback.classList.remove('hidden');
+        } else {
+            this.elements.summaryPanels.classList.remove('hidden');
+            this.elements.summaryCallback.classList.add('hidden');
         }
     }
 

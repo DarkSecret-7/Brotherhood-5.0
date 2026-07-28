@@ -153,7 +153,7 @@ class LearningController {
     }
 
     openNodeDetailsFromSources() {
-        this.stateManager.showNodeDetails();
+        console.log("Not implemented :)");
     }
 
     initializeElements() {
@@ -172,12 +172,6 @@ class LearningController {
             sourcesNodeTitle: document.getElementById('sources-node-title'),
             sourcesNodeDescPreview: document.getElementById('sources-node-desc-preview'),
             sourcesList: document.getElementById('sources-list'),
-            nodeDetails: document.getElementById('node-details'),
-            nodeTitle: document.getElementById('node-detail-title'),
-            nodeDesc: document.getElementById('node-detail-desc'),
-            nodeAssessable: document.getElementById('node-detail-assessable'),
-            closeNodeBtn: document.getElementById('close-node-details'),
-            nodeDetailPrereq: document.getElementById('node-detail-prereq'),
             domainDetails: document.getElementById('domain-details'),
             domainTitle: document.getElementById('domain-detail-title'),
             domainDesc: document.getElementById('domain-detail-desc'),
@@ -208,15 +202,10 @@ class LearningController {
     bindEvents() {
         if (this.elements.closeSourcesPanel) {
             this.elements.closeSourcesPanel.addEventListener('click', () => {
-                this.stateManager.closeSourcesPanel();
+                this.graphController.handleUnfocus();
             });
         }
 
-        if (this.elements.closeNodeBtn) {
-            this.elements.closeNodeBtn.addEventListener('click', () => {
-                this.stateManager.closeNodeDetails();
-            });
-        }
         if (this.elements.closeDomainBtn) {
             this.elements.closeDomainBtn.addEventListener('click', () => {
                 this.stateManager.closeDomainDetails();
@@ -379,31 +368,9 @@ class LearningController {
                 }
             }
 
-            this.elements.sourcesPanel.style.display = 'block';
+            this.elements.sourcesPanel.style.display = 'flex';
         } else if (this.elements.sourcesPanel) {
             this.elements.sourcesPanel.style.display = 'none';
-        }
-
-        if (state.showNodeDetails && state.selectedNode) {
-            const node = state.selectedNode;
-            this.elements.nodeTitle.textContent = `${node.id}: ${node.title}`;
-            this.elements.nodeDesc.textContent = node.description || 'No description available.';
-            this.elements.nodeAssessable.textContent = node.assessable ? 'Assessable' : 'Not Assessable';
-            this.elements.nodeAssessable.className = node.assessable ? 'assessable-badge' : 'not-assessable-badge';
-
-            if (this.elements.nodeDetailPrereq) {
-                const prereqStr = node.prerequisiteString || '';
-                if (prereqStr) {
-                    this.elements.nodeDetailPrereq.innerHTML = `<strong>Prerequisites:</strong> ${this.escapeHtml(prereqStr)}`;
-                } else {
-                    this.elements.nodeDetailPrereq.innerHTML = '';
-                }
-            }
-
-            this.elements.nodeDetails.style.display = 'block';
-            this.elements.domainDetails.style.display = 'none';
-        } else {
-            this.elements.nodeDetails.style.display = 'none';
         }
 
         if (state.showDomainDetails && state.selectedDomain) {
@@ -412,8 +379,7 @@ class LearningController {
             this.elements.domainDesc.textContent = domain.description || 'No description available.';
             this.elements.domainMeta.textContent = `${domain.nodeCount || 0} nodes in this domain`;
 
-            this.elements.domainDetails.style.display = 'block';
-            this.elements.nodeDetails.style.display = 'none';
+            this.elements.domainDetails.style.display = 'flex';
         } else {
             this.elements.domainDetails.style.display = 'none';
         }
@@ -439,7 +405,7 @@ class LearningController {
 
         let linkHtml = '';
         if (source.url) {
-            linkHtml = `<a href="${this.escapeHtml(source.url)}" target="_blank" class="source-link">Open Resource</a>`;
+            linkHtml = `<a href="${this.escapeHtml(source.url + (source.fragmentStart ? `#page=${source.fragmentStart}` : ''))}" target="_blank" class="source-link">Open Resource</a>`;
         }
 
         return `

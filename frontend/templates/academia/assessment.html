@@ -41,16 +41,18 @@
                 <!-- Graph Info Section (shown when graph loaded) -->
                 <div id="graph-info-section" class="graph-info-section" style="display: none;">
                     <div id="graph-name-display" class="graph-name-display" onclick="assessmentController.showGraphMetadata()" title="Click to view graph metadata">
-                        <span id="graph-name-text">Loading...</span>
+                        <span id="graph-name-text" class="btn-text">Loading...</span>
+                        <span class="btn-icon">ℹ️</span>
                     </div>
-                    <button id="btn-exit-graph" class="btn btn-outline graph-exit-btn" onclick="assessmentController.exitGraph()" title="Exit to Library">
-                        Exit
+                    <button id="btn-exit-graph" class="btn btn-danger graph-exit-btn" onclick="assessmentController.exitGraph()" title="Exit to Library">
+                        <span class="btn-text">Exit</span>
+                        <span class="btn-icon" style="font-size: 0.8em;">➜]</span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <main class="dashboard-main">
+        <main class="academia-main">
             <!-- Default: No graph selected message -->
             <div id="no-graph-message" class="card message-card">
                 <h2>Select a Graph to Assess</h2>
@@ -79,10 +81,13 @@
             <div id="assessment-graph-view" class="assessment-graph-view">
                 <!-- Assessment Summary Stats Tab -->
                 <div id="assessment-summary-tab" class="assessment-summary-tab">
+                    <!-- Assessment Summary Tab callback button -->
+                    <button id="assessment-summary-callback" class="assessment-summary-callback" onclick="assessmentController.toggleSummaryTab()" title="Show/Hide Assessment Summary">🔘</button>
                     <!-- Dual Panel Layout: Saved (left) and Current (right) -->
-                    <div class="summary-panels">
+                    <div id="dual-summary-panel" class="summary-panels">
+                        <div class="close-summary-tab" onclick="assessmentController.toggleSummaryTab()">&times</button></div>
                         <!-- Saved Assessment Panel -->
-                        <div class="summary-panel">
+                        <div class="summary-panel saved-panel">
                             <div class="summary-panel-title">Saved Assessment</div>
                             <div class="summary-stats">
                                 <div class="summary-stat-item">
@@ -104,12 +109,12 @@
                             </div>
                             <!-- Refresh Saved Assessment Button -->
                             <div class="summary-actions">
-                                <button id="btn-refresh-saved" class="btn btn-text summary-btn refresh" onclick="assessmentController.refreshSavedAssessment()" title="Refresh from server">
-                                    <span>🔄</span> Refresh
+                                <button id="btn-refresh-saved" class="btn summary-btn  refresh" onclick="assessmentController.refreshSavedAssessment()" title="Refresh from server">
+                                    <span class="btn-icon">🔄</span><span class="btn-text">Refresh</span>
                                 </button>
                                 <!-- Delete Saved Assessment Button -->
-                                <button id="btn-delete-saved" class="btn btn-text summary-btn delete" onclick="assessmentController.deleteSavedAssessment()" title="Delete saved assessment">
-                                    <span>🗑️</span> Delete
+                                <button id="btn-delete-saved" class="btn summary-btn delete" onclick="assessmentController.deleteSavedAssessment()">
+                                    <span class="btn-icon">🗑️</span><span class="btn-text">Delete</span>
                                 </button>
                             </div>
                         </div>
@@ -145,11 +150,11 @@
                             </div>
                             <!-- Action Buttons -->
                             <div class="summary-actions">
-                                <button id="btn-save-assessment" class="btn btn-text summary-btn save" onclick="assessmentController.saveAssessment()" title="Save current assessment">
-                                    <span>💾</span> Save
+                                <button id="btn-save-assessment" class="btn summary-btn save" onclick="assessmentController.saveAssessment()" title="Save current assessment">
+                                    <span class="btn-icon">💾</span><span class="btn-text">Save</span>
                                 </button>
-                                <button id="btn-clear-current" class="btn btn-text summary-btn clear" onclick="assessmentController.clearCurrentProgress()" title="Clear all current progress">
-                                    <span>❌</span> Clear
+                                <button id="btn-clear-current" class="btn summary-btn clear" onclick="assessmentController.clearCurrentProgress()" title="Clear all current progress">
+                                    <span class="btn-icon">❌</span><span class="btn-text">Clear</span>
                                 </button>
                             </div>
                         </div>
@@ -159,7 +164,7 @@
                 <div id="graph-visualization-container"></div>
 
                 <!-- Node Details Panel (hidden by default) -->
-                <div id="node-details" class="node-details-panel" style="display: none;">
+                <div id="node-details" class="details-panel" style="display: none;">
                     <button class="close-details" id="close-node-details">&times;</button>
                     <h3 id="node-detail-title">Node Title</h3>
                     <div class="node-meta-badges">
@@ -170,17 +175,25 @@
                     
                     <!-- Assessment Status Buttons -->
                     <div id="node-assessment-controls" class="node-assessment-controls">
-                        <button class="btn btn-outline status-btn" data-status="0">⚪ Want to learn</button>
-                        <button class="btn btn-outline status-btn" data-status="1">🟡 Learning in progress</button>
-                        <button class="btn btn-outline status-btn" data-status="2">🟢 Learnt the concept</button>
-                        <button class="btn btn-text clear-status-btn">❌ Clear status</button>
+                        <button class="btn btn-outline status-btn" data-status="0">
+                            <span class="btn-icon">⚪</span><span class="btn-text">Want to learn</span>
+                        </button>
+                        <button class="btn btn-outline status-btn" data-status="1">
+                            <span class="btn-icon">🟡</span><span class="btn-text">Learning in progress</span>
+                        </button>
+                        <button class="btn btn-outline status-btn" data-status="2">
+                            <span class="btn-icon">🟢</span><span class="btn-text">Learnt the concept</span>
+                        </button>
+                        <button class="btn btn-text clear-status-btn">
+                            <span class="btn-icon">❌</span><span class="btn-text">Clear status</span>
+                        </button>
                     </div>
 
                     <div id="node-detail-desc" class="node-detail-description"></div>
                 </div>
 
                 <!-- Domain Details Panel (hidden by default) -->
-                <div id="domain-details" class="node-details-panel" style="display: none;">
+                <div id="domain-details" class="details-panel" style="display: none;">
                     <button class="close-details" id="close-domain-details">&times;</button>
                     <h3 id="domain-detail-title">Domain Title</h3>
                     <div id="domain-detail-meta" class="domain-meta"></div>
@@ -240,8 +253,8 @@
             </div>
         </main>
     </div>
-    <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+    <footer>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GNU GPL v3.0</a>.</div>
     </footer>
 
     <!-- Side Panel -->
@@ -346,6 +359,17 @@
     <script src="/frontend/ui/academia/assessment-controller.js"></script>
 
     <script>
+        function intiateSummaryTab() {
+            // Initiate summary tab as hidden on mobile devices
+            if (window.innerWidth < 768) {
+                document.getElementById('dual-summary-panel').classList.add('hidden');
+                document.getElementById('assessment-summary-callback').classList.remove('hidden');
+            } else {
+                document.getElementById('dual-summary-panel').classList.remove('hidden');
+                document.getElementById('assessment-summary-callback').classList.add('hidden');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Auth check
             if (!authApiService.isAuthenticated()) {
@@ -367,7 +391,10 @@
 
             // Start the assessment module
             await assessmentController.init();
+            intiateSummaryTab();
         });
+
+        window.addEventListener('resize', intiateSummaryTab);
     </script>
 </body>
 </html>

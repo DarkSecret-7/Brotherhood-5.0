@@ -53,6 +53,13 @@ class ProposalsController {
                 this.switchTab(btn.dataset.tab);
             });
         });
+
+        const tabSelect = document.getElementById('proposals-tab-select');
+        if (tabSelect) {
+            tabSelect.addEventListener('change', (e) => {
+                this.switchTab(e.target.value);
+            });
+        }
     }
 
     switchTab(tabId) {
@@ -60,6 +67,12 @@ class ProposalsController {
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabId);
         });
+
+        // Update tab select for mobile
+        const tabSelect = document.getElementById('proposals-tab-select');
+        if (tabSelect) {
+            tabSelect.value = tabId;
+        }
 
         // Update tab content
         document.querySelectorAll('.tab-content').forEach(content => {

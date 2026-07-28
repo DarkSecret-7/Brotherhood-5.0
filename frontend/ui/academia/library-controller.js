@@ -138,12 +138,18 @@ class LibraryController {
     }
 
     render(state) {
+        // Update tab select for mobile
+        const tabSelect = document.getElementById('library-tab-select');
+        if (tabSelect) {
+            tabSelect.value = this.activeTab;
+        }
+
         // Update tab button active states
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
-            if (this.activeTab === 'bookmarks' && btn.innerText.includes('Bookmarks')) {
+            if (this.activeTab === 'bookmarks' && (btn.innerText.includes('Bookmarks') || btn.textContent.includes('Bookmarks'))) {
                 btn.classList.add('active');
-            } else if (this.activeTab === 'browse' && btn.innerText.includes('Browse')) {
+            } else if (this.activeTab === 'browse' && (btn.innerText.includes('Browse') || btn.textContent.includes('Browse'))) {
                 btn.classList.add('active');
             } else {
                 btn.classList.remove('active');
@@ -196,10 +202,10 @@ class LibraryController {
                         <h3>${b.graph_meta.version_label}</h3>
                         <p>Bookmarked on: ${new Date(b.created_at).toLocaleDateString()}</p>
                         <div class="card-actions">
-                            <button class="btn btn-primary" onclick="window.location.href='/academia/learning?graph=${b.graph_uuid}'">Learn</button>
-                            <button class="btn btn-secondary" onclick="window.location.href='/academia/assessment?graph=${b.graph_uuid}'">Assess</button>
-                            <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${b.graph_uuid}')">Preview</button>
-                            <button class="btn btn-danger" onclick="libraryController.toggleBookmark('${b.graph_uuid}')">Remove</button>
+                            <button class="btn btn-primary" onclick="window.location.href='/academia/learning?graph=${b.graph_uuid}'"><span class="btn-icon">📖</span><span class="btn-text"> Learn</span></button>
+                            <button class="btn btn-secondary" onclick="window.location.href='/academia/assessment?graph=${b.graph_uuid}'"><span class="btn-icon">📝</span><span class="btn-text"> Assess</span></button>
+                            <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${b.graph_uuid}')"><span class="btn-icon">👁️</span><span class="btn-text"> Preview</span></button>
+                            <button class="btn btn-danger" onclick="libraryController.toggleBookmark('${b.graph_uuid}')"><span class="btn-icon">❌</span><span class="btn-text"> Remove</span></button>
                         </div>
                     </div>
                 `).join('')}
@@ -219,10 +225,10 @@ class LibraryController {
                         <p>Authors: ${this.extractAuthors(g.authors)}</p>
                         <p>Nodes: ${g.node_count}, Assessable: ${g.assessable_node_count}</p>
                         <div class="card-actions">
-                            <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${g.public_uuid}')">Preview</button>
+                            <button class="btn btn-outline" onclick="academiaStateManager.loadAndOpenPreview('${g.public_uuid}')"><span class="btn-icon">👁️</span><span class="btn-text"> Preview</span></button>
                             <button class="btn ${this.stateManager.isBookmarked(g.public_uuid) ? 'btn-danger' : 'btn-primary'}"
                                     onclick="libraryController.toggleBookmark('${g.public_uuid}')">
-                                ${this.stateManager.isBookmarked(g.public_uuid) ? 'Remove Bookmark' : 'Bookmark'}
+                                ${this.stateManager.isBookmarked(g.public_uuid) ? '<span class="btn-icon">❌</span><span class="btn-text"> Remove Bookmark</span>' : '<span class="btn-icon">🔖</span><span class="btn-text"> Bookmark</span>'}
                             </button>
                         </div>
                     </div>

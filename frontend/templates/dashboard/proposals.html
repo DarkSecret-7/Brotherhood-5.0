@@ -42,7 +42,12 @@
 
         <main class="dashboard-main">
             <!-- Tabs -->
-            <div class="tabs">
+            <div class="nav-tabs">
+                <select id="proposals-tab-select" class="nav-tabs-select">
+                    <option value="authored">Graph Proposals</option>
+                    <option value="join">Join Requests</option>
+                    <option value="received">Invitations</option>
+                </select>
                 <button class="tab-btn active" data-tab="authored">Graph Proposals</button>
                 <button class="tab-btn" data-tab="join">Join Requests</button>
                 <button class="tab-btn" data-tab="received">Invitations</button>
@@ -211,8 +216,9 @@
         </div>
     </div>
 
-    <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+    <footer>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GNU GPL v3.0</a>.</div>
+
     </footer>
 
     <!-- Scripts -->

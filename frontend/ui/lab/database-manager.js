@@ -185,7 +185,14 @@ class DatabaseManager {
         const listDiv = document.getElementById('snapshots-list');
         if (!listDiv) return;
         
-        let html = '<table class="snapshots-table"><thead><tr><th>Version</th><th>Nodes</th><th>Assessable</th><th>Authors</th><th>Based On</th><th>Actions</th></tr></thead><tbody>';
+        let html = '<table class="snapshots-table"><thead><tr>\
+            <th class="graph-column">Graph</th>\
+            <th class="node-column">Nodes</th>\
+            <th class="assessable-column">Assessable</th>\
+            <th class="author-column">Authors</th>\
+            <th class="based-on-column">Based On</th>\
+            <th class="action-column">Actions</th>\
+            </tr></thead><tbody>';
         
         for (let i = 0; i < snapshots.length; i++) {
             const s = snapshots[i];
@@ -199,18 +206,18 @@ class DatabaseManager {
                 : 'None';
             
             html += '<tr>' +
-                '<td style="cursor: pointer; color: #1a73e8; font-weight: 500;" onclick="databaseManager.openGraphActionModal(\'' + s.uuid + '\')">' +
+                '<td class="graph-column" style="cursor: pointer; color: #1a73e8; font-weight: 500;" onclick="databaseManager.openGraphActionModal(\'' + s.uuid + '\')">' +
                     '<div class="version-badge">' + versionLabel + '</div>' +
-                    '<div style="font-size: 0.7em; color: #9aa0a6; margin-top: 6px; line-height: 1.3;">' +
+                    '<div class="database-list-metadata">' +
                         '<b>C:</b> ' + createdDate + '<br>' +
                         '<b>U:</b> ' + updatedDate +
                     '</div>' +
                 '</td>' +
-                '<td>' + (s.nodeCount || 0) + '</td>' +
-                '<td>' + (s.assessableNodeCount || 0) + '</td>' +
-                '<td>' + (authors) + '</td>' +
-                '<td>' + (s.baseGraphLabel || 'None') + '</td>' +
-                '<td>' +
+                '<td class="node-column">' + (s.nodeCount || 0) + '</td>' +
+                '<td class="assessable-column">' + (s.assessableNodeCount || 0) + '</td>' +
+                '<td class="author-column">' + (authors) + '</td>' +
+                '<td class="based-on-column">' + (s.baseGraphLabel || 'None') + '</td>' +
+                '<td class="action-column">' +
                     '<div style="display: flex; gap: 5px;">' +
                         '<button class="btn btn-primary btn-small" onclick="databaseManager.fetchSnapshotToWorkspace(event, \'' + s.uuid + '\')">Fetch</button>' +
                     '</div>' +
@@ -245,6 +252,12 @@ class DatabaseManager {
         } else {
             authorElement.textContent = 'Unknown';
         }
+
+        // Set onclick for actions
+        document.getElementById('graph-action-fetch').addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.fetchSnapshotToWorkspace(event, snapshot.uuid);
+        });
         
         // Set Public Toggle
         document.getElementById('graph-action-public-toggle').checked = snapshot.isPublic || false;

@@ -114,6 +114,7 @@ class LabUIController {
         this.elements.modals = {
             editNode: document.getElementById('editModal'),
             createDomain: document.getElementById('createDomainModal'),
+            createNode: document.getElementById('createNodeModal'),
             editDomain: document.getElementById('editDomainModal'),
             source: document.getElementById('sourceModal'),
             llm: document.getElementById('llm-modal'),
@@ -326,7 +327,11 @@ class LabUIController {
             canGroupUnderDomain = this.stateManager.getCommonParentFromSelection() !== false;
             
             this.elements.buttons.addDomain.style.display = hasSelections && !canGroupUnderDomain ? 'none' : 'block';
-            this.elements.buttons.addDomain.textContent = canGroupUnderDomain ? 'Group Under Domain' : 'Add Domain'
+            const btnText = this.elements.buttons.addDomain.querySelector('.btn-text');
+ 
+            btnText.textContent = canGroupUnderDomain ? 'Group Under Domain' : 'Add Domain';
+            const btnIcon = this.elements.buttons.addDomain.querySelector('.btn-icon');
+            btnIcon.textContent = canGroupUnderDomain ? '📁' : '⭕';
         }
         
         // Update nodes list with tree structure built dynamically
@@ -344,7 +349,8 @@ class LabUIController {
         // Update draft count
         if (this.elements.workspace.draftCount) {
             const ender = nodes.length === 1 ? ' node' : ' nodes';
-            this.elements.workspace.draftCount.textContent = nodes.length + ender;
+            this.elements.workspace.draftCount.querySelector('#draft-count-num').textContent = nodes.length;
+            this.elements.workspace.draftCount.querySelector('#draft-count-ender').textContent = ender;
         }
 
         console.log(this.stateManager.getSelectedItems());
@@ -876,7 +882,16 @@ class LabUIController {
      * @param {Object} form - New node form state
      */
     renderNewNodeForm(form) {
-        const addFormElements = this.elements.forms.newNode;
+        const isMobile = window.innerWidth <= 768;
+        const addFormElements = isMobile ? {
+            domainId: document.getElementById('modal-node-parent-domain'),
+            localId: document.getElementById('modal-node-id'),
+            title: document.getElementById('modal-node-title'),
+            description: document.getElementById('modal-node-desc'),
+            prerequisite: document.getElementById('modal-node-pre'),
+            sources: document.getElementById('modal-new-node-sources')
+        } : this.elements.forms.newNode;
+
         if (!addFormElements) return;
         
         if (addFormElements.localId) addFormElements.localId.value = form.localId || '';
@@ -1375,36 +1390,39 @@ class LabUIController {
      * @param {string} formName - Form name ('editNode' or 'newNode')
      */
     renderEditNodeSources(sources, formName = 'editNode') {
-        const containerId = formName === 'editNode' ? 'edit-node-sources' : 'new-node-sources';
-        const container = document.getElementById(containerId);
-        if (!container) return;
+        const containerIds = formName === 'editNode' ? ['edit-node-sources'] : ['new-node-sources', 'modal-new-node-sources'];
         
-        container.innerHTML = '';
-        
-        if (sources.length === 0) {
-            container.innerHTML = '<span style="color: #9aa0a6; font-size: 0.9em;">No sources linked.</span>';
-            return;
-        }
-        
-        sources.forEach((source, index) => {
-            if (source._isDeleted) return; // Skip deleted sources
+        containerIds.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
             
-            const sourceDiv = document.createElement('div');
-            sourceDiv.className = 'source-item-row';
-            sourceDiv.style.marginBottom = '8px';
-            sourceDiv.style.display = 'flex';
-            sourceDiv.style.alignItems = 'center';
-            sourceDiv.style.gap = '8px';
-            sourceDiv.innerHTML = `
-                <div style="flex: 1; font-size: 0.9em;">
-                    <strong>${source.title || 'Untitled'}</strong>
-                    ${source.author ? `<span style="color: #666;"> - ${source.author}</span>` : ''}
-                </div>
-                ${source.url ? `<a href="${source.url}" target="_blank" class="source-link-btn">🔗</a>` : ''}
-                <button class="btn btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
-                <button class="btn btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
-            `;
-            container.appendChild(sourceDiv);
+            container.innerHTML = '';
+            
+            if (sources.length === 0) {
+                container.innerHTML = '<span style="color: #9aa0a6; font-size: 0.9em;">No sources linked.</span>';
+                return;
+            }
+            
+            sources.forEach((source, index) => {
+                if (source._isDeleted) return; // Skip deleted sources
+                
+                const sourceDiv = document.createElement('div');
+                sourceDiv.className = 'source-item-row';
+                sourceDiv.style.marginBottom = '8px';
+                sourceDiv.style.display = 'flex';
+                sourceDiv.style.alignItems = 'center';
+                sourceDiv.style.gap = '8px';
+                sourceDiv.innerHTML = `
+                    <div style="flex: 1; font-size: 0.9em;">
+                        <strong>${source.title || 'Untitled'}</strong>
+                        ${source.author ? `<span style="color: #666;"> - ${source.author}</span>` : ''}
+                    </div>
+                    ${source.url ? `<a href="${source.url}" target="_blank" class="source-link-btn">🔗</a>` : ''}
+                    <button class="btn btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
+                `;
+                container.appendChild(sourceDiv);
+            });
         });
     }
 

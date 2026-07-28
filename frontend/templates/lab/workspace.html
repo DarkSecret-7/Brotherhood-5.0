@@ -42,11 +42,16 @@
 
             <div style="display: flex; flex-direction: column; align-items: flex-end;">
                 <div style="margin-bottom: 6px;"><a href="/landing" style="text-decoration: none; font-weight: 600; color: #1a73e8;">Home</a></div>
-                <div><span id="status-dot" style="color: #34a853;">●</span> Connected to Backend</div>
+                <div><span id="status-dot" class="btn-icon" style="color: #34a853;">●</span><span class="btn-text"> Connected to Backend</span></div>
             </div>
         </div>
         <div class="lab-main">
             <div class="nav-tabs">
+                <select id="lab-tab-select" class="nav-tabs-select" onchange="labStateManager.setActiveTab(this.value)">
+                    <option value="workspace">Node Draft</option>
+                    <option value="graph">Graph Visualizer</option>
+                    <option value="save">Save Version</option>
+                </select>
                 <button id="tab-workspace" class="tab-btn active" onclick="labStateManager.setActiveTab('workspace')">Node Draft</button>
                 <button id="tab-graph" class="tab-btn" onclick="labStateManager.setActiveTab('graph')">Graph Visualizer</button>
                 <button id="tab-save" class="tab-btn" onclick="labStateManager.setActiveTab('save')">Save Version</button>
@@ -56,10 +61,10 @@
                 <div id="active-version-info" style="cursor: pointer;" onclick="labUIController.openMetadataModal()">
                     Working on: <span id="current-version-label">None</span>
                 </div>
-                <div class="workspace-buttons" style="align-self: right;">
-                    <button id="btn-import-workspace" class="btn btn-secondary btn-small" onclick="workspaceOpsController.handleImportWorkspace()">Import</button>
-                    <button id="btn-reset-workspace" class="btn btn-secondary btn-small" onclick="workspaceOpsController.handleResetWorkspace()">Reset</button>
-                    <button id="btn-clear-workspace" class="btn btn-secondary btn-small destructive-hover" onclick="workspaceOpsController.handleClearWorkspace()">Clear Workspace</button>
+                <div class="workspace-buttons">
+                    <button id="btn-import-workspace" class="btn btn-secondary btn-small" onclick="workspaceOpsController.handleImportWorkspace()"><span class="btn-icon">📥</span><span class="btn-text"> Import</span></button>
+                    <button id="btn-reset-workspace" class="btn btn-secondary btn-small" onclick="workspaceOpsController.handleResetWorkspace()"><span class="btn-icon">🔄</span><span class="btn-text"> Reset</span></button>
+                    <button id="btn-clear-workspace" class="btn btn-secondary btn-small destructive-hover" onclick="workspaceOpsController.handleClearWorkspace()"><span class="btn-icon">🗑️</span><span class="btn-text"> Clear Workspace</span></button>
                 </div>
             </div>
 
@@ -67,13 +72,14 @@
             <div id="view-workspace" class="view-section active">
                 <div class="workspace-layout">
                     <div class="workspace-column">
-                        <div class="card">
+                        <div class="card scroll-container" style="max-height: 80vh;">
                             <div class="section-header">
-                                <h2>Active Workspace</h2>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <button id="btn-llm-suggest" class="btn btn-secondary btn-small" onclick="labUIController.openLLMModal()">✨ AI Suggest</button>
-                                    <button id="btn-group-domain" class="btn btn-primary btn-small" onclick="workspaceOpsController.handleAddDomain()">Add Domain</button>
-                                    <span id="draft-count" class="badge-count">0 Nodes</span>
+                                <h2>Nodes</h2>
+                                <div class="node-draft-buttons">
+                                    <button id="btn-llm-suggest" class="btn btn-secondary btn-small" onclick="labUIController.openLLMModal()"><span class="btn-icon">✨</span><span class="btn-text"> AI Suggest</span></button>
+                                    <button id="btn-group-domain" class="btn btn-primary btn-small" onclick="workspaceOpsController.handleAddDomain()"><span class="btn-icon">📁</span><span class="btn-text"> Add Domain</span></button>
+                                    <button id="btn-open-add-node-modal" class="btn btn-primary btn-small" onclick="workspaceOpsController.handleOpenAddNodeModal()"><span class="btn-icon">➕</span><span class="btn-text"> Add Node</span></button>
+                                    <span id="draft-count" class="badge-count"><span id="draft-count-num">0</span><span id="draft-count-ender"> Nodes</span></span>
                                 </div>
                             </div>
                             
@@ -132,10 +138,10 @@
                     <div class="section-header">
                         <h2>Graph Visualization</h2>
                         <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-secondary btn-small" onclick="graphController.resetLayout()">Reset Layout</button>
-                            <button class="btn btn-secondary btn-small" onclick="graphController.randomizePositions()">Randomise</button>
-                            <button class="btn btn-primary btn-small" onclick="graphController.fixPositions()">Fix Positions</button>
-                            <button class="btn btn-secondary btn-small" onclick="graphController.refreshGraph()">Refresh Graph</button>
+                            <button class="btn btn-secondary btn-small" onclick="graphController.resetLayout()"><span class="btn-icon">🏠</span><span class="btn-text"> Reset Layout</span></button>
+                            <button class="btn btn-secondary btn-small" onclick="graphController.randomizePositions()"><span class="btn-icon">🎲</span><span class="btn-text"> Randomise</span></button>
+                            <button class="btn btn-primary btn-small" onclick="graphController.fixPositions()"><span class="btn-icon">📌</span><span class="btn-text"> Fix Positions</span></button>
+                            <button class="btn btn-secondary btn-small" onclick="graphController.refreshGraph()"><span class="btn-icon">🔄</span><span class="btn-text"> Refresh Graph</span></button>
                         </div>
                     </div>
                     
@@ -173,8 +179,8 @@
                         </div>
                     </div>
 
-                    <button id="btn-save-snapshot" class="btn btn-primary" onclick="workspaceOpsController.handleSaveSnapshot()">Save Snapshot</button>
-                    <button id="btn-export-workspace" class="btn btn-secondary" onclick="workspaceOpsController.handleExportWorkspace()">Export .knw</button>
+                    <button id="btn-save-snapshot" class="btn btn-primary" onclick="workspaceOpsController.handleSaveSnapshot()"><span class="btn-icon">💾</span><span class="btn-text"> Save Snapshot</span></button>
+                    <button id="btn-export-workspace" class="btn btn-secondary" onclick="workspaceOpsController.handleExportWorkspace()"><span class="btn-icon">📤</span><span class="btn-text"> Export .knw</span></button>
                 </div>
             </div>
         </div>
@@ -224,6 +230,45 @@
             <div class="button-group">
                 <button class="btn btn-primary" onclick="workspaceOpsController.updateNode()">Update Node</button>
                 <button class="btn btn-secondary" onclick="labUIController.closeModal('editNode')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Node Modal -->
+    <div id="createNodeModal" class="modal">
+        <div class="modal-content">
+            <div class="inline-form-group">
+                <label>Under Domain ID</label>
+                <input type="number" id="modal-node-parent-domain" placeholder="ID (optional)" style="width: 100px;">
+            </div>
+            <div class="modal-header">
+                <h2>Add New Node</h2>
+                <span class="close" onclick="labUIController.closeModal('createNode')">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Local ID</label>
+                <input type="number" id="modal-node-id" placeholder="Integer ID">
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="modal-node-title" placeholder="Node Title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="modal-node-desc" rows="2" placeholder="Optional description"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Prerequisite Expression</label>
+                <input type="text" id="modal-node-pre" placeholder="e.g. (1 AND 2) OR 3">
+            </div>
+            <div class="form-group">
+                <label>Sources</label>
+                <div id="modal-new-node-sources" class="sources-container"></div>
+                <button class="btn btn-secondary btn-small" onclick="labUIController.openSourceModal('modal-new')">Add Source</button>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="workspaceOpsController.addNode()">Add to Draft</button>
+                <button class="btn btn-secondary" onclick="labUIController.closeModal('createNode')">Cancel</button>
             </div>
         </div>
     </div>
@@ -308,9 +353,9 @@
                 <h2 id="source-modal-title">Add Source</h2>
                 <span class="close" onclick="labUIController.closeSourceModal()">&times;</span>
             </div>
-            <div style="display: flex; gap: 20px;">
+            <div class="modal-flex-row">
                 <!-- Left Side: Bibliography Details -->
-                <div style="flex: 1; border-right: 1px solid #eee; padding-right: 20px;">
+                <div class="modal-flex-column-left">
                     <h3 style="margin-top: 0; color: #5f6368; font-size: 0.9em;">Bibliography</h3>
                     <div class="form-group">
                         <label>Title *</label>
@@ -516,8 +561,9 @@
             });
         });
     </script>
-    <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+    <footer>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GNU GPL v3.0</a>.</div>
+
     </footer>
 </body>
 </html>

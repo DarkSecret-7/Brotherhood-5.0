@@ -41,9 +41,13 @@
             </div>
         </div>
 
-        <main class="dashboard-main">
+        <main class="academia-main">
 
-            <div class="tabs">
+            <div class="nav-tabs">
+                <select id="library-tab-select" class="nav-tabs-select" onchange="libraryController.switchTab(this.value)">
+                    <option value="bookmarks">My Bookmarks</option>
+                    <option value="browse">Browse Public Graphs</option>
+                </select>
                 <button class="tab-btn active" onclick="libraryController.switchTab('bookmarks')">My Bookmarks</button>
                 <button class="tab-btn" onclick="libraryController.switchTab('browse')">Browse Public Graphs</button>
             </div>
@@ -53,7 +57,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="margin: 10px 0;"></h2>       <!-- Placeholder for now -->
                     <button class="btn btn-outline" onclick="libraryController.refreshBookmarks()" title="Refresh bookmarks">
-                        🔄 Refresh
+                        <span class="btn-icon">🔄</span><span class="btn-text"> Refresh</span>
                     </button>
                 </div>
                 <div id="library-content">
@@ -74,8 +78,8 @@
         </main>
     </div>
         
-    <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+    <footer>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GNU GPL v3.0</a>.</div>
     </footer>
 
     <!-- Graph Preview Modal -->

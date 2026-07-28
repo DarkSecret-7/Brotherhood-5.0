@@ -53,10 +53,12 @@ class LabStateManager {
             modals: {
                 editNode: false,
                 createDomain: false,
+                createNode: false,
                 editDomain: false,
                 source: false,
                 llm: false,
-                dialog: false
+                dialog: false,
+                metadata: false
             },
 
             // Form states
@@ -1379,6 +1381,12 @@ class LabStateManager {
             const tabName = button.id.replace('tab-', '');
             button.classList.toggle('active', tabName === activeTab);
         });
+
+        // Update select element for mobile
+        const tabSelect = document.getElementById('lab-tab-select');
+        if (tabSelect) {
+            tabSelect.value = activeTab;
+        }
 
         // Update view sections using CSS
         document.querySelectorAll('.view-section').forEach(view => {

@@ -18,6 +18,13 @@
  */
 
 /* Dashboard Specific Styles (Inherits layout, reset, side panel, inputs, modals, and buttons from common.css) */
+.dashboard-main {
+    flex: 1;
+    padding: 0 24px 24px;
+    max-width: 1500px;
+    margin: 0 auto;
+    width: 100%;
+}
 
 /* Centered message cards */
 .message-card {
@@ -347,15 +354,6 @@
 
 .collapsible-header.collapsed {
     background: var(--bg-color);
-}
-
-.collapse-icon {
-    font-size: 0.8em;
-    transition: transform 0.2s;
-}
-
-.collapse-icon.collapsed {
-    transform: rotate(-90deg);
 }
 
 .collapsible-content {

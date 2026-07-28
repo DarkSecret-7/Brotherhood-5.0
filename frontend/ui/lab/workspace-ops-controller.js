@@ -60,17 +60,22 @@ class WorkspaceOpsController {
         const formSources = this.stateManager.state.forms.newNode.sources || [];
         
         // Validate form
+        const isMobile = window.innerWidth <= 768;
+        const localIdVal = isMobile ? document.getElementById('modal-node-id')?.value : this.elements.addNode.localId.value;
+        const titleVal = isMobile ? document.getElementById('modal-node-title')?.value : this.elements.addNode.title.value;
+        const descVal = isMobile ? document.getElementById('modal-node-desc')?.value : this.elements.addNode.description.value;
+        const preVal = isMobile ? document.getElementById('modal-node-pre')?.value : this.elements.addNode.prerequisite.value;
+        const domainIdVal = isMobile ? document.getElementById('modal-node-parent-domain')?.value : this.elements.addNode.domainId.value;
+
         const nodeData = {
-            id: this.elements.addNode.localId.value ? parseInt(this.elements.addNode.localId.value) : null,
-            title: this.elements.addNode.title.value.trim(),
-            description: this.elements.addNode.description.value.trim(),
-            prerequisites: this.elements.addNode.prerequisite.value.trim(),
-            domainId: this.elements.addNode.domainId.value ? parseInt(this.elements.addNode.domainId.value) : null,
-            // assessable: this.elements.addNode.assessable.checked,
+            id: localIdVal ? parseInt(localIdVal) : null,
+            title: (titleVal || '').trim(),
+            description: (descVal || '').trim(),
+            prerequisites: (preVal || '').trim(),
+            domainId: domainIdVal ? parseInt(domainIdVal) : null,
             sources: formSources.filter(s => !s._isDeleted) // Only include non-deleted sources
         };
 
-        
         if (!nodeData.title) {
             this.stateManager.customAlert('Node title is required');
             return;
@@ -87,6 +92,21 @@ class WorkspaceOpsController {
             
             // Reset form (preserves domainId)
             this.stateManager.resetForm('newNode');
+            
+            if (isMobile) {
+                // Clear modal inputs specifically
+                const modalId = document.getElementById('modal-node-id');
+                const modalTitle = document.getElementById('modal-node-title');
+                const modalDesc = document.getElementById('modal-node-desc');
+                const modalPre = document.getElementById('modal-node-pre');
+                if (modalId) modalId.value = '';
+                if (modalTitle) modalTitle.value = '';
+                if (modalDesc) modalDesc.value = '';
+                if (modalPre) modalPre.value = '';
+                
+                // Close modal
+                this.stateManager.toggleModal('createNode', false);
+            }
             
             // Render sidebar forms to update UI
             window.labUIController.renderSidebarForms();
@@ -425,6 +445,32 @@ class WorkspaceOpsController {
         
         // Open create domain modal via state manager
         this.stateManager.toggleModal('createDomain', true);
+    }
+
+    /**
+     * Handle open add node modal
+     */
+    handleOpenAddNodeModal() {
+        const { selectedNodes, selectedDomains } = this.stateManager.state;
+        const hasSelections = selectedNodes.size > 0 || selectedDomains.size > 0;
+        
+        const parentInput = document.getElementById('modal-node-parent-domain');
+        if (parentInput) {
+            if (hasSelections) {
+                // Automatic parent suggestion to common parent of selected items (soft rule)
+                const commonParent = this.stateManager.getCommonParentFromSelection();
+                if (commonParent !== false) {
+                    parentInput.value = commonParent;
+                } else {
+                    parentInput.value = '';
+                }
+            } else {
+                parentInput.value = '';
+            }
+        }
+        
+        // Open create node modal via state manager
+        this.stateManager.toggleModal('createNode', true);
     }
 
     /**

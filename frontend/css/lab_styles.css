@@ -622,15 +622,17 @@ input:checked + .slider:before {
 }
 
 .workspace-column {
-    flex: 1;
+    flex: 2;
     min-width: 0;
 }
 
 .sidebar-column {
-    width: 350px;
+    width: 300px;
     flex-shrink: 0;
     position: sticky;
     top: 20px;
+    max-height: 90vh;
+    overflow: auto;
 }
 
 #graphActionModal {
@@ -979,4 +981,76 @@ input:checked + .slider:before {
 .proposal-vote-btn.reject.active {
     background: #fce8e6;
     border-color: #ea4335;
+}
+
+.database-list-metadata {
+    font-size: 0.7em;
+    color: var(--secondary-color);
+    margin-top: 6px;
+    line-height: 1.3;
+}
+
+.node-draft-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        align-items: center;
+}
+
+@media (max-width: 768px) {
+    /* Active version and workspace buttons */
+    .active-version-display {
+        flex-direction: row !important;
+        align-items: flex-end !important;
+        gap: 15px !important;
+    }
+    .workspace-buttons {
+        justify-content: flex-end !important;
+        display: flex !important;
+        flex-shrink: 4;
+        gap: 5px !important;
+        width: 60% !important;
+    }
+    .workspace-buttons button {
+        text-align: center !important;
+    }
+
+    #draft-count-ender {
+        display: none !important;
+    }
+
+    div:has(> #btnLlmSuggest) {
+        justify-content: flex-end !important;
+    }
+
+    .database-list-metadata {
+        display: none !important;
+    }
+
+    .assessable-column,
+    .based-on-column {
+        display: none !important;
+    }
+
+    @media (max-width: 500px) {
+        .node-column {
+            display: none !important;
+        }
+    }
+
+    @media (max-width: 440px) {
+        .node-draft-buttons {
+            gap: 3px;
+        }
+
+        .author-column {
+            display: none !important;
+        }
+    }
+
+    @media (max-width: 300px) {
+        .action-column {
+            display: none !important;
+        }
+    }
 }

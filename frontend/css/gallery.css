@@ -227,7 +227,7 @@ body {
 }
 
 /* Node details panel - shared base styles */
-.node-details-panel {
+.details-panel {
     position: absolute;
     top: 50%;
     right: 20px;
@@ -251,7 +251,7 @@ body {
     transform: translateY(-50%);
 }
 
-.node-details-panel h3 {
+.details-panel h3 {
     margin-top: 0;
     color: #1a73e8;
     font-size: 18px;
@@ -259,7 +259,7 @@ body {
     margin-bottom: 8px;
 }
 
-.node-details-panel h4 {
+.details-panel h4 {
     font-size: 14px;
     margin-bottom: 8px;
     color: #202124;
@@ -455,7 +455,7 @@ body {
     
     */
     
-    .node-details-panel {
+    .details-panel {
         width: 280px;
         right: 10px;
     }
@@ -492,7 +492,7 @@ body {
 
     */
     
-    .node-details-panel,
+    .details-panel,
     #domain-details {
         width: calc(100% - 20px);
         right: 10px;
@@ -526,7 +526,7 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
-.node-details-panel {
+.details-panel {
     animation: fadeIn 0.2s ease;
 }
 

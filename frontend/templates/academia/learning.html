@@ -40,16 +40,18 @@
                 </div>
                 <div id="graph-info-section" class="graph-info-section" style="display: none;">
                     <div id="graph-name-display" class="graph-name-display" onclick="learningController.showGraphMetadata()" title="Click to view graph metadata">
-                        <span id="graph-name-text">Loading...</span>
+                        <span id="graph-name-text" class="btn-text">Loading...</span>
+                        <span class="btn-icon">ℹ️</span>
                     </div>
-                    <button id="btn-exit-graph" class="btn btn-outline graph-exit-btn" onclick="learningController.exitGraph()" title="Exit to Library">
-                        Exit
+                    <button id="btn-exit-graph" class="btn btn-danger graph-exit-btn" onclick="learningController.exitGraph()" title="Exit to Library">
+                        <span class="btn-text">Exit</span>
+                        <span class="btn-icon" style="font-size: 0.8em;">➜]</span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <main class="dashboard-main">
+        <main class="academia-main">
             <div id="no-graph-message" class="card message-card">
                 <h2>Select a Graph to Learn</h2>
                 <p>
@@ -75,47 +77,33 @@
                 <div id="graph-container-wrapper" class="graph-container-wrapper">
                     <div id="graph-visualization-container"></div>
                 </div>
+            </div>
+            <div id="sources-panel" class="sidebar-panel" style="display: none;">
+                <button class="close-sources-panel" id="close-sources-panel">&times;</button>
+                <div class="sidebar-content">
+                    <div id="sources-header" class="sources-header" onclick="learningController.openNodeDetailsFromSources()" title="Click to view full node details">
+                        <h3 id="sources-node-title">Node Title</h3>
+                        <p id="sources-node-desc-preview" class="sources-node-desc-preview">Node description preview...</p>
+                    </div>
 
-                <div id="sources-panel" class="sidebar-panel" style="display: none;">
-                    <button class="close-sources-panel" id="close-sources-panel">&times;</button>
-                    <div class="sidebar-content">
-                        <div id="sources-header" class="sources-header" onclick="learningController.openNodeDetailsFromSources()" title="Click to view full node details">
-                            <h3 id="sources-node-title">Node Title</h3>
-                            <p id="sources-node-desc-preview" class="sources-node-desc-preview">Node description preview...</p>
-                        </div>
-
-                        <div id="sources-list" class="sources-list">
-                            <p class="no-sources-message">No sources attached to this node.</p>
-                        </div>
+                    <div id="sources-list" class="sources-list">
+                        <p class="no-sources-message">No sources attached to this node.</p>
                     </div>
                 </div>
+            </div>
 
-                <div id="node-details" class="sidebar-panel" style="display: none;">
-                    <button class="close-details" id="close-node-details">&times;</button>
-                    <div class="sidebar-content">
-                        <h3 id="node-detail-title">Node Title</h3>
-                        <div class="node-meta-badges">
-                            <div id="node-detail-assessable" class="assessable-badge">Assessable</div>
-                        </div>
-                        <div id="node-detail-desc" class="node-detail-description"></div>
-                        <div id="node-detail-prereq" class="node-detail-prerequisites"></div>
-                    </div>
-                </div>
-
-                <div id="domain-details" class="sidebar-panel" style="display: none;">
-                    <button class="close-details" id="close-domain-details">&times;</button>
-                    <div class="sidebar-content">
-                        <h3 id="domain-detail-title">Domain Title</h3>
-                        <div id="domain-detail-meta" class="domain-meta"></div>
-                        <div id="domain-detail-desc" class="domain-description"></div>
-                    </div>
-                </div>
+            <div id="domain-details" class="details-panel sidebar-panel">
+                <button class="close-details" id="close-domain-details">&times;</button>
+                <h3 id="domain-detail-title">Domain Title</h3>
+                <div id="domain-detail-meta" class="domain-meta"></div>
+                <div id="domain-detail-desc" class="domain-description"></div>
             </div>
         </main>
     </div>
         
-    <footer style="padding: 20px; text-align: center; border-top: 1px solid #eee; margin-top: 40px; color: #5f6368; font-size: 0.9em;">
-        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank" style="color: #1a73e8; text-decoration: underline;">GNU GPL v3.0</a>.</div>
+    <footer>
+        <div class="footer-copy">© 2026 The Brotherhood Project Developers. Released under <a href="https://www.gnu.org/licenses/gpl-3.0" target="_blank">GNU GPL v3.0</a>.</div>
+
     </footer>
 
     <div id="side-panel-overlay" class="side-panel-overlay"></div>
