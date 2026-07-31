@@ -24,6 +24,38 @@ window.toggleNav = function () {
     }
 };
 
+/**
+ * Theme toggle handler for the landing page nav button.
+ *
+ * Reads the current effective theme from the `data-theme` attribute on
+ * <html> (set earlier by /frontend/utils/theme.js) and flips it. The new
+ * value is persisted to localStorage by `window.__theme.set` so that
+ * theme.js's bootstrapper will pick it up on the next page load.
+ *
+ * Per the Phase 2 plan, the landing toggle is strictly device-specific —
+ * it only mutates localStorage and does NOT call the settings API.
+ * Synchronisation with the backend will be added in Phase 4.
+ */
+window.toggleTheme = function () {
+    if (!window.__theme) return;
+    const next = window.__theme.current === 'dark' ? 'light' : 'dark';
+    window.__theme.set(next);
+    syncThemeToggleAria();
+};
+
+/**
+ * Update the toggle button's aria-pressed state to match the current
+ * theme. Called after every toggle and once on DOMContentLoaded so the
+ * button is announced correctly to assistive tech.
+ */
+function syncThemeToggleAria() {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn || !window.__theme) return;
+    const isDark = window.__theme.current === 'dark';
+    btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+    btn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('contact-form');
     const statusEl = document.getElementById('contact-status');
@@ -31,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize the privacy and cookie banner
     initCookieBanner();
+
+    // Sync the toggle button's aria state to the resolved theme.
+    syncThemeToggleAria();
 
     if (!form || !statusEl || !submitBtn) return;
     
@@ -86,7 +121,7 @@ function initCookieBanner() {
     banner.innerHTML = `
         <div class="cookie-banner-content">
             <p class="cookie-banner-text">
-                We respect your privacy. We do not collect personal information from visitors to our public pages, nor do we use visitor information for profiling or advertising. Please note that essential third-party services (such as hosting and infrastructure) may automatically process limited server logs and technical data for security and operational purposes. Read our <a href="/docs/Privacy%20Policy.pdf" target="_blank" class="cookie-banner-link">Privacy Policy</a> for more details.
+                We respect your privacy. We do not collect personal information (beyond language/visual preferences) from visitors to our public pages, nor do we use visitor information for profiling or advertising. Please note that essential third-party services (such as hosting and infrastructure) may automatically process limited server logs and technical data for security and operational purposes. Read our <a href="/docs/Privacy%20Policy.pdf" target="_blank" class="cookie-banner-link">Privacy Policy</a> for more details.
             </p>
             <button id="cookie-banner-dismiss" class="cookie-banner-btn">Got it</button>
         </div>

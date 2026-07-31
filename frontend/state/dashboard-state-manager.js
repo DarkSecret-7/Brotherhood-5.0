@@ -50,8 +50,17 @@ class DashboardStateManager {
             currentProposalTab: 'authored',         // authored, join, or received
             currentProposalDetail: null,
             isLoadingProposals: false,
-            proposalsError: null
-            
+            proposalsError: null,
+
+            // Settings State
+            settings: null,             // the canonical (server-confirmed) frontend-shaped settings object
+            settingsDraft: null,        // the in-progress local copy the user is editing
+            isSettingsDirty: false,     // true when the draft differs from the canonical settings
+            isLoadingSettings: false,
+            isSavingSettings: false,
+            settingsError: null,
+            // Transient save status surfaced next to the buttons, null | { type: 'ok'|'err', message: string }
+            settingsSaveStatus: null
         };
 
         this.listeners = [];
@@ -59,8 +68,6 @@ class DashboardStateManager {
 
     // --- State Access ---
     getState() {
-        console.log('Getting state:', this.state);
-        
         return this.state;
     }
 
@@ -180,11 +187,10 @@ class DashboardStateManager {
      * Set current proposal detail
      */
     setCurrentProposalDetail(proposal) {
-        console.log(proposal);
-        
         this.state.currentProposalDetail = proposal;
         this.notify();
     }
+
 
     /**
      * Get current proposal detail
@@ -333,6 +339,201 @@ class DashboardStateManager {
             console.error('Failed to respond to invitation:', error);
             throw error;
         }
+    }
+
+    // --- Settings Methods ---
+
+    /**
+     * Set the loaded settings object (frontend-shaped).
+     *
+     * When the server returned null for a known key (e.g. the user has
+     * never saved that preference), the draft is seeded with the
+     * localStorage fallback so that recomputeSettingsDirty works
+     * correctly from the very first toggle.
+     *
+     * @param {Object} settings
+     */
+    setSettings(settings) {
+        let draft = null;
+        if (settings) draft = this.calculateDraft(settings);
+        this.setState({
+            settings,
+            settingsDraft: draft,
+            isSettingsDirty: this.calculateSettingsDiff(settings, draft),
+            settingsError: null
+        });
+    }
+
+    /**
+     * Calculate the draft settings given a settings object from the server,
+     * Put all interpretation logic here on unknown keys.
+     * @param {dict} settings 
+     * @returns {dict}
+     */
+    calculateDraft(settings) {
+        const draft = { ...settings };
+        // If the server has no stored value for darkMode, seed the draft
+        // from localStorage so dirty-detection has a reference point.
+        if (typeof draft.darkMode !== 'boolean') {
+            console.log(localStorage.getItem('setting_dark_mode'));
+            
+            draft.darkMode = localStorage.getItem('setting_dark_mode') === 'true';
+        }
+
+        return draft;
+    }
+
+    /**
+     * Calculate the difference between the settings object and the draft.
+     * @param {Object} settings
+     * @param {Object} draft
+     * @returns {boolean} True if the settings object and draft are different, false otherwise
+     */
+    calculateSettingsDiff(settings, draft) {
+        if (!settings || !draft) {
+            return false;
+        }
+        return Object.keys(settings).some(key => settings[key] !== draft[key]);
+    }
+
+    /**
+     * Set the loading flag for the initial settings fetch.
+     * @param {boolean} loading
+     */
+    setSettingsLoading(loading) {
+        this.state.isLoadingSettings = loading;
+        this.notify();
+    }
+
+    /**
+     * Set the saving flag for in-flight upserts.
+     * @param {boolean} saving
+     */
+    setSettingsSaving(saving) {
+        this.state.isSavingSettings = saving;
+        this.notify();
+    }
+
+    /**
+     * Set the error message for the settings view.
+     * @param {string|null} error
+     */
+    setSettingsError(error) {
+        this.state.settingsError = error;
+        this.notify();
+    }
+
+    // --- Settings Draft Methods (save-driven flow) ---
+
+    /**
+     * Update one or more fields on the local draft and recompute
+     * `isSettingsDirty`. Visual theme is also flipped immediately
+     * via `window.__theme.set` so the user sees the change without
+     * waiting for the save round-trip.
+     *
+     * @param {Object} patch - Partial settings fields to apply
+     */
+    updateSettingsDraft(patch) {
+        if (!this.state.settingsDraft) return;
+        const next = { ...this.state.settingsDraft, ...patch };
+        this.state.settingsDraft = next;
+        this.recomputeSettingsDirty();
+        // Flip the document theme eagerly for the user-visible key.
+        if (patch && Object.prototype.hasOwnProperty.call(patch, 'darkMode') && window.__theme) {
+            window.__theme.set(next.darkMode ? 'dark' : 'light');
+        }
+        this.notify();
+    }
+
+    /**
+     * Recompute `isSettingsDirty` from the current canonical/draft pair.
+     *
+     * When the server has never stored a value for a key (`settings` is null
+     * or the key is null on the settings object), we compare the draft against
+     * the localStorage fallback value so that a user who toggled the theme
+     * locally before ever saving is correctly shown as having unsaved changes.
+     */
+    recomputeSettingsDirty() {
+        const draft = this.state.settingsDraft;
+        if (!draft) {
+            this.state.isSettingsDirty = false;
+            return;
+        }
+
+        const canonical = this.state.settings;
+
+        // Resolve the reference dark-mode value:
+        //   1. canonical.darkMode if it is a definite boolean from the server
+        //   2. localStorage fallback (what was applied on page-load)
+        //   3. default false
+        let refDarkMode;
+        if (canonical && typeof canonical.darkMode === 'boolean') {
+            refDarkMode = canonical.darkMode;
+        } else {
+            refDarkMode = localStorage.getItem('setting_dark_mode') === 'true';
+        }
+
+        this.state.isSettingsDirty = !!refDarkMode !== !!draft.darkMode;
+    }
+
+    /**
+     * Drop the draft and copy the canonical settings back over it.
+     * Also clears any stale save status.
+     *
+     * When the canonical settings is null (never saved) or darkMode is null
+     * (key not yet stored), we fall back to localStorage for the theme restore.
+     */
+    discardSettingsDraft() {
+        const canonical = this.state.settings;
+
+        // Re-build the reference draft (mirrors setSettings logic).
+        let draft = null;
+        if (canonical) {
+            draft = { ...canonical };
+            if (typeof draft.darkMode !== 'boolean') {
+                draft.darkMode = localStorage.getItem('setting_dark_mode') === 'true';
+            }
+        } else if (this.state.settingsDraft) {
+            // If we have no canonical yet, reset the draft to the localStorage value.
+            draft = { darkMode: localStorage.getItem('setting_dark_mode') === 'true' };
+        } else {
+            return;
+        }
+
+        this.state.settingsDraft = draft;
+        this.state.isSettingsDirty = false;
+        this.state.settingsSaveStatus = null;
+
+        // Re-apply the reference theme immediately.
+        if (window.__theme) {
+            window.__theme.set(draft.darkMode ? 'dark' : 'light');
+        }
+        this.notify();
+    }
+
+
+    /**
+     * Replace the canonical settings with the supplied value (the
+     * server-confirmed copy returned by the save) and clear the draft.
+     *
+     * @param {Object} settings
+     */
+    acceptSavedSettings(settings) {
+        this.setState({
+            settings,
+            settingsDraft: settings ? { ...settings } : null,
+            isSettingsDirty: false,
+            settingsSaveStatus: { type: 'ok', message: 'Settings saved.' }
+        });
+    }
+
+    /**
+     * Persist a transient save-status message to be rendered next to
+     * the Save/Discard buttons. Cleared on the next user action.
+     */
+    setSettingsSaveStatus(status) {
+        this.state.settingsSaveStatus = status;
+        this.notify();
     }
 }
 

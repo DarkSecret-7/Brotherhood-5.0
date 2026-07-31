@@ -583,7 +583,7 @@ class LabStateManager {
         // Check if node ID already exists
         const existingNode = this.state.nodes.find(node => node.id === nodeData.id);
         if (existingNode) {
-            this.customAlert(`Node with ID ${nodeData.id} already exists`);
+            this.showAlert(`Node with ID ${nodeData.id} already exists`);
             throw new Error(`Node with ID ${nodeData.id} already exists`);
         }
 
@@ -591,7 +591,7 @@ class LabStateManager {
         if (nodeData.domainId) {
             const domain = this.state.domains.find(d => d.id === nodeData.domainId);
             if (!domain) {
-                this.customAlert(`Domain with ID ${nodeData.domainId} does not exist`);
+                this.showAlert(`Domain with ID ${nodeData.domainId} does not exist`);
                 throw new Error(`Domain with ID ${nodeData.domainId} does not exist`);
             }
         }
@@ -815,7 +815,7 @@ class LabStateManager {
         // Check if domain ID already exists
         const existingDomain = this.state.domains.find(domain => domain.id === domainData.id);
         if (existingDomain) {
-            this.customAlert(`Domain with ID ${domainData.id} already exists`);
+            this.showAlert(`Domain with ID ${domainData.id} already exists`);
             throw new Error(`Domain with ID ${domainData.id} already exists`);
         }
 
@@ -823,7 +823,7 @@ class LabStateManager {
         if (domainData.parentId) {
             const parentDomain = this.state.domains.find(d => d.id === domainData.parentId);
             if (!parentDomain) {
-                this.customAlert(`Parent domain with ID ${domainData.parentId} does not exist`);
+                this.showAlert(`Parent domain with ID ${domainData.parentId} does not exist`);
                 throw new Error(`Parent domain with ID ${domainData.parentId} does not exist`);
             }
         }
@@ -1125,7 +1125,7 @@ class LabStateManager {
 
         // Check validity of move
         if (!this.checkMoveValidity(selectedItems, targetDomainId)) {
-            this.customAlert("Move is invalid");
+            this.showAlert("Move is invalid");
             throw new Error("Move is invalid");
         }
 
@@ -1657,7 +1657,7 @@ class LabStateManager {
      * @param {string} message - Alert message
      * @param {Function} callback - Optional callback
      */
-    customAlert(message, callback = null) {
+    showAlert(message, callback = null) {
         return this.showDialog({ type: 'alert', title: 'Alert', message, callback });
     }
 
@@ -1666,7 +1666,7 @@ class LabStateManager {
      * @param {string} message - Confirm message
      * @param {Function} callback - Optional callback
      */
-    customConfirm(message, callback = null) {
+    showConfirm(message, callback = null) {
         return this.showDialog({ type: 'confirm', title: 'Confirm', message, callback });
     }
 

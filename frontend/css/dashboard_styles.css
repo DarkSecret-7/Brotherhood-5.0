@@ -83,7 +83,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+    box-shadow: 0 1px 2px 0 var(--shadow-color), 0 1px 3px 1px var(--shadow-soft);
     text-align: center;
     position: sticky;
     top: 20px;
@@ -137,7 +137,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+    box-shadow: 0 1px 2px 0 var(--shadow-color), 0 1px 3px 1px var(--shadow-soft);
 }
 
 .profile-edit-card {
@@ -145,7 +145,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+    box-shadow: 0 1px 2px 0 var(--shadow-color), 0 1px 3px 1px var(--shadow-soft);
 }
 
 .edit-title {
@@ -232,7 +232,7 @@
 .social-icon {
     font-size: 0.75rem;
     font-weight: 700;
-    background: rgba(0,0,0,0.1);
+    background: color-mix(in srgb, var(--text-color) 10%, transparent);
     padding: 2px 6px;
     border-radius: 4px;
 }
@@ -267,9 +267,9 @@
 .danger-section {
     margin-top: 32px;
     padding: 24px;
-    border: 1px solid #f5c6cb;
+    border: 1px solid var(--error-bg);
     border-radius: 8px;
-    background: #fdf2f2;
+    background: color-mix(in srgb, var(--error-bg) 60%, var(--card-bg) 40%);
 }
 
 .danger-title {
@@ -336,7 +336,7 @@
     width: 100%;
     padding: 16px 20px;
     background: var(--bg-color);
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-soft);
     border-radius: 8px;
     cursor: pointer;
     display: flex;
@@ -344,12 +344,12 @@
     align-items: center;
     font-size: 1rem;
     font-weight: 600;
-    color: #202124;
+    color: var(--text-color);
     transition: background 0.2s;
 }
 
 .collapsible-header:hover {
-    background: #e8eaed;
+    background: var(--active-bg);
 }
 
 .collapsible-header.collapsed {
@@ -361,8 +361,8 @@
     overflow: hidden;
     transition: max-height 0.3s ease-out;
     padding: 16px;
-    background: white;
-    border: 1px solid #e0e0e0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
     border-top: none;
     border-radius: 0 0 8px 8px;
 }
@@ -385,15 +385,15 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: white;
-    border: 1px solid #e0e0e0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .proposal-item:hover {
-    background: #f1f3f4;
+    background: var(--hover-bg);
     border-color: var(--border-color);
 }
 
@@ -405,7 +405,7 @@
 
 .proposal-type {
     font-weight: 600;
-    color: #202124;
+    color: var(--text-color);
 }
 
 .proposal-graph {
@@ -421,18 +421,18 @@
 }
 
 .status-pending {
-    background: #fef7e0;
-    color: #b06000;
+    background: var(--warn-bg);
+    color: var(--warn-text);
 }
 
 .status-executed {
-    background: #e6f4ea;
-    color: #137333;
+    background: var(--success-bg);
+    color: var(--success-text);
 }
 
 .status-rejected {
-    background: #fce8e6;
-    color: #c5221f;
+    background: var(--error-bg);
+    color: var(--error-text);
 }
 
 .empty-message {
@@ -440,4 +440,272 @@
     color: var(--secondary-color);
     padding: 24px;
     margin: 0;
+}
+
+/* ── Settings Page ── */
+.settings-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.settings-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 2px 0 var(--shadow-color), 0 1px 3px 1px var(--shadow-soft);
+}
+
+.settings-card-muted {
+    background: var(--bg-color);
+    border-style: dashed;
+    box-shadow: none;
+}
+
+.settings-card-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-card-header h2 {
+    margin: 0 0 4px 0;
+    color: var(--text-color);
+    font-size: 1.15rem;
+}
+
+.settings-card-subtitle {
+    margin: 0;
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 12px 0;
+}
+
+.settings-row-text h3 {
+    margin: 0 0 4px 0;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.settings-row-text p {
+    margin: 0;
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.settings-row-control {
+    flex-shrink: 0;
+}
+
+/* Settings toggle button (re-uses the landing toggle's structure
+   for visual consistency, but lives inside a card instead of nav). */
+.settings-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 6px 16px 6px 8px;
+    color: var(--text-color);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    height: 40px;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    position: relative;
+}
+
+.settings-toggle-btn:hover:not(:disabled) {
+    background: var(--primary-pale);
+    border-color: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.settings-toggle-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.settings-toggle-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.settings-toggle-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: currentColor;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+/* Sun visible in dark mode (clicking returns to light), moon visible in light mode. */
+.settings-toggle-btn-icon-sun {
+    opacity: 0;
+    transform: rotate(45deg);
+    position: absolute;
+    pointer-events: none;
+    left: 14px;
+}
+.settings-toggle-btn-icon-moon {
+    opacity: 1;
+    transform: rotate(0);
+}
+.settings-toggle-btn.is-dark .settings-toggle-btn-icon-sun {
+    opacity: 1;
+    transform: rotate(0);
+    position: static;
+    pointer-events: auto;
+}
+.settings-toggle-btn.is-dark .settings-toggle-btn-icon-moon {
+    opacity: 0;
+    transform: rotate(-45deg);
+    position: absolute;
+    pointer-events: none;
+    left: 14px;
+}
+
+.settings-toggle-btn-track {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 20px;
+    background: var(--border-color);
+    border-radius: 999px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.settings-toggle-btn.is-dark .settings-toggle-btn-track {
+    background: var(--primary-color);
+}
+
+.settings-toggle-btn-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: var(--card-bg);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px var(--shadow-color);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.settings-toggle-btn.is-dark .settings-toggle-btn-thumb {
+    transform: translateX(14px);
+    background: var(--card-bg);
+}
+
+.settings-toggle-btn-label {
+    min-width: 80px;
+    text-align: left;
+}
+
+/* Settings loading spinner */
+.settings-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--secondary-color);
+}
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    display: inline-block;
+    animation: settings-spin 0.8s linear infinite;
+}
+
+@keyframes settings-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .settings-toggle-btn {
+        align-self: flex-start;
+    }
+}
+
+/* ── Settings card footer (Save / Discard / Refresh) ── */
+.settings-card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.settings-dirty-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--primary-pale);
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--primary-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.settings-card-footer {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.settings-actions .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.btn-icon {
+    font-weight: 500;
+}
+
+.settings-save-status {
+    font-size: 0.9rem;
+    margin-left: auto;
+}
+
+.settings-save-status-ok {
+    color: var(--success-color, #2e7d32);
+}
+
+.settings-save-status-err {
+    color: var(--error-color, #d93025);
 }

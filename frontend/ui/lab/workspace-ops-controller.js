@@ -77,12 +77,12 @@ class WorkspaceOpsController {
         };
 
         if (!nodeData.title) {
-            this.stateManager.customAlert('Node title is required');
+            this.stateManager.showAlert('Node title is required');
             return;
         }
 
         if (!nodeData.id || nodeData.id <= 0 || typeof nodeData.id !== 'number') {
-            this.stateManager.customAlert('Valid node ID is required');
+            this.stateManager.showAlert('Valid node ID is required');
             return;
         }
 
@@ -129,17 +129,17 @@ class WorkspaceOpsController {
 
         // Validate
         if (!domainData.title) {
-            this.stateManager.customAlert('Domain title is required');
+            this.stateManager.showAlert('Domain title is required');
             throw new Error('Domain title is required');
         }
 
         if (!domainData.id || domainData.id <= 0 || typeof domainData.id !== 'number') {
-            this.stateManager.customAlert('Valid domain ID is required');
+            this.stateManager.showAlert('Valid domain ID is required');
             throw new Error('Valid domain ID is required');
         }
 
         if (domainData.parentId <= 0 || typeof domainData.parentId !== 'number') {
-            this.stateManager.customAlert('Invalid parent domain ID');
+            this.stateManager.showAlert('Invalid parent domain ID');
             throw new Error('Invalid parent domain ID');
         }
 
@@ -188,12 +188,12 @@ class WorkspaceOpsController {
         
         // Validate form
         if (!nodeData.title) {
-            this.stateManager.customAlert('Node title is required');
+            this.stateManager.showAlert('Node title is required');
             return;
         }
         
         if (!nodeData.id || nodeData.id <= 0 || typeof nodeData.id !== 'number') {
-            this.stateManager.customAlert('Valid node ID is required');
+            this.stateManager.showAlert('Valid node ID is required');
             return;
         }
         
@@ -235,12 +235,12 @@ class WorkspaceOpsController {
         
         // Validate form
         if (!domainData.title) {
-            this.stateManager.customAlert('Domain title is required');
+            this.stateManager.showAlert('Domain title is required');
             return;
         }
         
         if (!domainData.id || domainData.id <= 0 || typeof domainData.id !== 'number') {
-            this.stateManager.customAlert('Valid domain ID is required');
+            this.stateManager.showAlert('Valid domain ID is required');
             return;
         }
         
@@ -265,7 +265,7 @@ class WorkspaceOpsController {
      */
     deleteNode(nodeId) {
         // Show dialog via state manager
-        this.stateManager.customConfirm(
+        this.stateManager.showConfirm(
             'Are you sure you want to delete this node?',
             (confirmed) => {
                 if (confirmed) {
@@ -281,7 +281,7 @@ class WorkspaceOpsController {
      */
     deleteDomain(domainId) {
         // Show dialog via state manager
-        this.stateManager.customConfirm(
+        this.stateManager.showConfirm(
             'Are you sure you want to delete this domain and all its contents?',
             (confirmed) => {
                 if (confirmed) {
@@ -401,7 +401,7 @@ class WorkspaceOpsController {
         if (node) {
             const parentDomain = this.stateManager.state.domains.find(d => d.id === node.domainId);
             if (parentDomain && parentDomain._isDeleted) {
-                this.stateManager.customAlert('Cannot restore node: parent domain is marked for deletion');
+                this.stateManager.showAlert('Cannot restore node: parent domain is marked for deletion');
                 return;
             }
         }
@@ -439,7 +439,7 @@ class WorkspaceOpsController {
                 this.elements.addDomain.parentId.value = commonParent;
             } else {
                 this.elements.addDomain.parentId.value = null;
-                this.stateManager.customAlert('No common parent found for selected items. Domain will be at root level, Override the parent in next modal if you wish to change this.');
+                this.stateManager.showAlert('No common parent found for selected items. Domain will be at root level, Override the parent in next modal if you wish to change this.');
             }
         }
         
@@ -487,11 +487,11 @@ class WorkspaceOpsController {
 
         if (!versionLabel) {
             // Show alert via state manager
-            this.stateManager.customAlert('Version label is required');
+            this.stateManager.showAlert('Version label is required');
             return;
         }
         if (!this.databaseStateManager) {
-            this.stateManager.customAlert('Database management orchestration is not available.');
+            this.stateManager.showAlert('Database management orchestration is not available.');
             return;
         }
 
@@ -503,7 +503,7 @@ class WorkspaceOpsController {
             
             // Show confirmation dialog for overwrites
             if (overwrite) {
-                this.stateManager.customConfirm(
+                this.stateManager.showConfirm(
                     'Are you sure you want to overwrite the existing snapshot? This will replace all data.',
                     async (confirmed) => {
                         if (confirmed) {
@@ -512,9 +512,9 @@ class WorkspaceOpsController {
                                 // Keep workspace synced to canonical saved snapshot
                                 this.stateManager.loadSnapshot(savedSnapshot);
                                 // Show success alert
-                                this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.currentSnapshotUuid}).`);
+                                this.stateManager.showAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.currentSnapshotUuid}).`);
                             } catch (error) {
-                                this.stateManager.customAlert(`Save Error: ${error.message}`);
+                                this.stateManager.showAlert(`Save Error: ${error.message}`);
                             } finally {
                                 this.stateManager.setLoading(false);
                             }
@@ -532,9 +532,9 @@ class WorkspaceOpsController {
             // Keep workspace synced to canonical saved snapshot
             this.stateManager.loadSnapshot(savedSnapshot);
             // Show success alert
-            this.stateManager.customAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.currentSnapshotUuid}).`);
+            this.stateManager.showAlert(`Snapshot saved successfully (UUID: ${savedSnapshot.currentSnapshotUuid}).`);
         } catch (error) {
-            this.stateManager.customAlert(`Save Error: ${error.message}`);
+            this.stateManager.showAlert(`Save Error: ${error.message}`);
         } finally {
             this.stateManager.setLoading(false);
         }
@@ -545,7 +545,7 @@ class WorkspaceOpsController {
      */
     handleResetWorkspace() {
         // Show confirm dialog via state manager
-        this.stateManager.customConfirm(
+        this.stateManager.showConfirm(
             'Are you sure you want to reset the workspace? This will refetch the snapshot from the database and clear all changes in the current workspace. If this graph was imported from a file, the database may not have it, or have a different version.',
             async (confirmed) => {
                 if (confirmed) {
@@ -554,7 +554,7 @@ class WorkspaceOpsController {
                         // Load initial data to sync with database
                         this.stateManager.loadInitialData();
                     } catch (error) {
-                        this.stateManager.customAlert(`Error resetting workspace: ${error.message}`);
+                        this.stateManager.showAlert(`Error resetting workspace: ${error.message}`);
                     } finally {
                         // Load initial data to sync with database
                         this.stateManager.loadInitialData();
@@ -570,7 +570,7 @@ class WorkspaceOpsController {
      */
     handleClearWorkspace() {
         // Show confirm dialog via state manager
-        this.stateManager.customConfirm(
+        this.stateManager.showConfirm(
             'Are you sure you want to clear the workspace? All unsaved changes will be lost.',
             (confirmed) => {
                 if (confirmed) {
@@ -604,7 +604,7 @@ class WorkspaceOpsController {
         const overwrite = overwriteToggleElement ? overwriteToggleElement.checked : false;
 
         if (!versionLabel) {
-            this.stateManager.customAlert('Version label is required for export');
+            this.stateManager.showAlert('Version label is required for export');
             return;
         }
 
@@ -647,15 +647,15 @@ class WorkspaceOpsController {
             const bytes = new Uint8Array(await file.arrayBuffer());
 
             // Show confirmation dialog before replacing workspace
-            this.stateManager.customConfirm(
+            this.stateManager.showConfirm(
                 `Are you sure you want to import "${file.name}"? This will replace the current workspace with all unsaved changes lost.`,
                 async (confirmed) => {
                     if (!confirmed) return;
                     try {
                         await this.stateManager.importFromFile(bytes);
-                        this.stateManager.customAlert(`Imported successfully from ${file.name}`);
+                        this.stateManager.showAlert(`Imported successfully from ${file.name}`);
                     } catch (error) {
-                        this.stateManager.customAlert(`Import Error: ${error.message}`);
+                        this.stateManager.showAlert(`Import Error: ${error.message}`);
                     }
                 }
             );

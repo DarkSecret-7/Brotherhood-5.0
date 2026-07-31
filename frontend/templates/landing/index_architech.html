@@ -34,7 +34,7 @@ body{
   background:rgba(255,255,255,.07);border:1px solid rgba(138,180,248,.2);
   border-radius:20px;padding:6px 14px;margin-bottom:28px;
 }
-.status-dot{width:7px;height:7px;background:#4ade80;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px #4ade80;}
+.status-dot{width:7px;height:7px;background:var(--primary-color);border-radius:50%;flex-shrink:0;box-shadow:0 0 6px #4ade80;}
 .hero-status span{font-family:'Space Mono',monospace;font-size:11px;color:var(--primary-light);letter-spacing:1px;}
 .hero h1{
   font-family:'Playfair Display',serif;font-weight:900;
@@ -119,14 +119,13 @@ body{
   border:1px solid var(--border-color);border-radius:8px;overflow:hidden;
 }
 .feature-card{background:var(--card-bg);padding:28px 24px;transition:background .2s;}
-.feature-card:hover{background:var(--dark);cursor: pointer;}
-.feature-card:hover .feature-tag{background:#4285f4;color: var(--bg-color);}
-.feature-card:hover h3{color: var(--bg-color);}
+.feature-card:hover{background:var(--primary-pale);}
+.feature-card:hover .feature-tag{background:var(--primary-hover);color: var(--bg-color);}
 .feature-tag{
   display:inline-block;background:var(--primary-pale);
   font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;
   color:var(--primary-color);padding:3px 9px;border-radius:3px;margin-bottom:12px;
-  text-transform:uppercase;
+  text-transform:uppercase; transition: background-color 0.4s ease
 }
 .feature-card h3{
   font-family:'Playfair Display',serif;font-size:17px;font-weight:700;
@@ -141,35 +140,38 @@ body{
 .live-dot{width:5px;height:5px;background:#4ade80;border-radius:50%;}
 
 /* ── GALLERY ── */
-.gallery-section{background:var(--dark);padding:72px 40px;}
+.gallery-section{background:var(--secondary-color);padding:72px 40px;}
 .gallery-inner{max-width:1100px;margin:0 auto;}
-.gallery-section .label{color:var(--primary-light);}
+.gallery-section .label{color:color-mix(in srgb, var(--primary-color) 40%, var(--card-bg));}
 .gallery-section h2{
   font-family:'Playfair Display',serif;font-size:clamp(26px,4vw,42px);
-  color:#fff;margin-bottom:14px;
+  color:var(--bg-color);margin-bottom:14px;
 }
-.gallery-section .section-lead{color:rgba(255,255,255,.55);}
+.gallery-section .section-lead{color:color-mix(in srgb, var(--primary-color) 40%, var(--bg-color) 60%);opacity:.65;}
 .gallery-preview{
   display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:36px;
 }
 .gallery-card{
-  background:rgba(255,255,255,.05);
-  border:1px solid rgba(138,180,248,.15);
+  background:var(--card-bg);
+  border:1px solid var(--border-color);
   border-radius:6px;padding:22px;text-decoration:none;
   transition:background .2s,border-color .2s;
 }
-.gallery-card:hover{background:rgba(26,115,232,.15);border-color:rgba(138,180,248,.35);}
+.gallery-card:hover{
+  background: color-mix(in srgb, var(--primary-pale) 50%, var(--card-bg) 50%);
+  border-color: var(--primary-hover);
+}
 .gc-label{
   font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;
-  color:var(--primary-light);opacity:.7;margin-bottom:9px;text-transform:uppercase;
+  color:var(--primary-color);opacity:.8;margin-bottom:9px;text-transform:uppercase;
 }
-.gc-title{font-family:'Playfair Display',serif;font-size:16px;color:#fff;margin-bottom:7px;font-weight:700;}
-.gc-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.5;}
+.gc-title{font-family:'Playfair Display',serif;font-size:16px;color:var(--text-color);margin-bottom:7px;font-weight:500;}
+.gc-desc{font-size:13px;color:var(--secondary-color);line-height:1.5;opacity:.6;}
 .gc-footer{
   margin-top:14px;padding-top:12px;border-top:1px solid rgba(138,180,248,.1);
   display:flex;justify-content:space-between;align-items:center;
 }
-.gc-footer span{font-size:12px;color:rgba(255,255,255,.28);}
+.gc-footer span{font-size:12px;color:var(--primary-light);}
 .gc-arrow{font-size:14px;color:var(--primary-light);}
 .gallery-cta{margin-top:28px;}
 
@@ -256,6 +258,7 @@ body{
   .status-col{align-items: center;}
 }
 </style>
+<script src="/frontend/utils/theme.js" defer></script>
 </head>
 <body>
 
@@ -274,6 +277,22 @@ body{
     <a href="#about" onclick="toggleNav()">About</a>
     <a href="https://github.com/DarkSecret-7/The-Brotherhood-Project" target="_blank" onclick="toggleNav()">GitHub</a>
     <a href="/landing/contact">Contact</a>
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false" onclick="toggleTheme()">
+      <span class="theme-toggle-icon theme-toggle-icon-sun" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+      </span>
+      <span class="theme-toggle-icon theme-toggle-icon-moon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </span>
+      <span class="theme-toggle-track" aria-hidden="true">
+        <span class="theme-toggle-thumb"></span>
+      </span>
+    </button>
     <a href="/dashboard" class="nav-cta">Open Workspace →</a>
   </div>
 </nav>

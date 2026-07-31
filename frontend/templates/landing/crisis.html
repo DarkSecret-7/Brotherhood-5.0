@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="/css/landing_styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="/ui/landing/landing.js"></script>
+    <script src="/frontend/utils/theme.js" defer></script>
 </head>
 <body>
     <!-- ═══ NAV ═══ -->
@@ -45,6 +46,22 @@
         <a href="#about">About</a>
         <a href="https://github.com/DarkSecret-7/The-Brotherhood-Project" target="_blank">GitHub</a>
         <a href="/landing/contact">Contact</a>
+        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false" onclick="toggleTheme()">
+            <span class="theme-toggle-icon theme-toggle-icon-sun" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+                </svg>
+            </span>
+            <span class="theme-toggle-icon theme-toggle-icon-moon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </span>
+            <span class="theme-toggle-track" aria-hidden="true">
+                <span class="theme-toggle-thumb"></span>
+            </span>
+        </button>
         <a href="/dashboard" class="nav-cta">Open Workspace →</a>
     </div>
     </nav>

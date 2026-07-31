@@ -368,7 +368,7 @@ class DatabaseStateManager {
      * Show custom alert
      * @param {string} message - Alert message
      */
-    customAlert(message) {
+    showAlert(message) {
         return this.showDialog({ type: 'alert', title: 'Alert', message });
     }
 
@@ -376,7 +376,7 @@ class DatabaseStateManager {
      * Show custom confirm dialog
      * @param {string} message - Confirm message
      */
-    customConfirm(message) {
+    showConfirm(message) {
         return this.showDialog({ type: 'confirm', title: 'Confirm', message });
     }
 

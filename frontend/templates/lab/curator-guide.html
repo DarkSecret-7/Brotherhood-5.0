@@ -27,11 +27,13 @@
     <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
     <style>
         .doc-content { line-height: 1.6; }
-        .doc-content h2 { margin-top: 40px; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; color: #1a73e8; }
-        .doc-content h3 { margin-top: 30px; color: #202124; }
+        .doc-content h1 { color: var(--primary-color); }
+        .doc-content h2 { margin-top: 40px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; color: var(--primary-color); }
+        .doc-content h3 { margin-top: 30px; color: var(--primary-light); }
         .doc-content ul, .doc-content ol { padding-left: 20px; margin-bottom: 15px; }
         .doc-content li { margin-bottom: 8px; }
-        .doc-content code { background: #f1f3f4; padding: 3px 6px; border-radius: 4px; font-family: 'Consolas', 'Courier New', Courier, monospace; color: #c7254e; font-size: 0.9em; }
+        /* Code blocks with almost-complementary color */
+        .doc-content code { background: color-mix(in srgb, var(--bg-color) 20%, var(--disabled-fg)); padding: 3px 6px; border-radius: 4px; font-family: 'Consolas', 'Courier New', Courier, monospace; color: hsl(from var(--primary-color) calc(h + 160) s l); font-size: 0.9em; }
         .doc-content table {
             width: 100%;
             border-collapse: collapse;
@@ -65,6 +67,7 @@
             margin-bottom: 20px;
         }
     </style>
+    <script src="/frontend/utils/theme.js" defer></script>
 </head>
 <body>
     <div class="header">

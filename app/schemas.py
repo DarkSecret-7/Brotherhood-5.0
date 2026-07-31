@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -459,3 +459,36 @@ class GraphAuthorshipRead(GraphAuthorshipBase):
     
     class Config:
         from_attributes = True
+
+# --- User Settings ---
+
+# Strict schemas: extra fields are rejected (whitelist handled in service).
+# The dict shape `{ setting_key: setting_value }` is the public contract.
+# New settings require an explicit edit in app/services/settings.py
+# and an update of the frontend transformer.
+
+class UserSettingRead(BaseModel):
+    """Read shape for a single persisted setting (used internally / debug)."""
+    setting_key: str
+    setting_value: str
+    user_uuid: UUID
+    last_updated: Optional[datetime] = None
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+class UserSettingBulkRead(BaseModel):
+    """Return shape for GET /dashboard/settings. The `settings` field is a
+    flat `key -> string value` dictionary so the frontend can
+    `Object.entries` straight into localStorage."""
+    settings: Dict[str, str]
+
+    model_config = ConfigDict(extra="forbid")
+
+class UserSettingBulkUpdate(BaseModel):
+    """Body shape for POST /dashboard/settings. Replaces/upserts the supplied
+    keys for the current user. Only the keys whitelisted in
+    app.services.settings.SettingService are accepted; others are
+    rejected with 400."""
+    settings: Dict[str, str]
+
+    model_config = ConfigDict(extra="forbid")

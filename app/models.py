@@ -279,3 +279,25 @@ class AuthorshipInvitation(Base):
     graph = relationship("GraphSnapshot", backref="authorship_invitations")
     initiator = relationship("User", foreign_keys=[initiator_id], backref="sent_invitations")
     recipient = relationship("User", foreign_keys=[recipient_id], backref="received_invitations")
+
+class UserSetting(Base):
+    """
+    Per-user key/value preference store. Only one row per (user, key);
+    the set of legal keys is enforced in app/services/settings.py so
+    the table can grow without leaking new fields to the client.
+    """
+    __tablename__ = "user_settings"
+    __table_args__ = (
+        UniqueConstraint("user_id", "setting_key", name="uq_user_setting_key"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_uuid = Column(UUID(as_uuid=True), nullable=False, index=True)
+    setting_key = Column(String(64), nullable=False, index=True)
+    setting_value = Column(String, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    user = relationship("User", backref="settings")

@@ -122,41 +122,46 @@ class DatabaseManager {
                 modal.style.display = state.modals.globalImport ? 'flex' : 'none';
             }
         }
+        
+        this.renderDialog(state);
+    }
 
-        // Handle dialog modal
-        if (state.modals.dialog !== undefined) {
-            const modal = document.getElementById('dialogModal');
-            const dialog = state.dialog;
-            if (modal) {
-                modal.style.display = state.modals.dialog ? 'flex' : 'none';
-                
-                // Update dialog content
-                if (state.modals.dialog) {
-                    document.getElementById('dialog-title').textContent = dialog.title;
-                    document.getElementById('dialog-body').textContent = dialog.message;
-                    
-                    const inputContainer = document.getElementById('dialog-input-container');
-                    const inputEl = document.getElementById('dialog-input');
-                    const cancelBtn = document.getElementById('dialog-cancel-btn');
-                    const confirmBtn = document.getElementById('dialog-confirm-btn');
-                    
-                    if (dialog.type === 'prompt') {
-                        inputContainer.style.display = 'block';
-                        inputEl.value = dialog.defaultValue || '';
-                        cancelBtn.style.display = 'inline-block';
-                    } else if (dialog.type === 'confirm') {
-                        inputContainer.style.display = 'none';
-                        cancelBtn.style.display = 'inline-block';
-                    } else {
-                        inputContainer.style.display = 'none';
-                        cancelBtn.style.display = 'none';
-                    }
-                    
-                    confirmBtn.textContent = dialog.confirmText || 'OK';
-                    cancelBtn.textContent = dialog.cancelText || 'Cancel';
-                }
-            }
+    renderDialog(state) {
+        if (state.modals.dialog == null) return;
+
+        const modal = document.getElementById('dialogModal');
+        if (!modal) return;
+
+        const dialog = state.dialog;
+        if (!state.modals.dialog) {
+            modal.style.display = 'none';
+            return;
         }
+        modal.style.display = 'flex';
+        
+        // Update dialog content
+        document.getElementById('dialog-title').textContent = dialog.title;
+        document.getElementById('dialog-body').textContent = dialog.message;
+        
+        const inputContainer = document.getElementById('dialog-input-container');
+        const inputEl = document.getElementById('dialog-input');
+        const cancelBtn = document.getElementById('dialog-cancel-btn');
+        const confirmBtn = document.getElementById('dialog-confirm-btn');
+        
+        if (dialog.type === 'prompt') {
+            inputContainer.style.display = 'block';
+            inputEl.value = dialog.defaultValue || '';
+            cancelBtn.style.display = 'inline-block';
+        } else if (dialog.type === 'confirm') {
+            inputContainer.style.display = 'none';
+            cancelBtn.style.display = 'inline-block';
+        } else {
+            inputContainer.style.display = 'none';
+                cancelBtn.style.display = 'none';
+            }
+            
+        confirmBtn.textContent = dialog.confirmText || 'OK';
+        cancelBtn.textContent = dialog.cancelText || 'Cancel';
     }
 
     async refreshSnapshots(force = false) {
@@ -461,7 +466,7 @@ class DatabaseManager {
 
     async triggerDeleteProposal(proposalHash, authorship = false) {
         // Wrapper for deleteProposal with confirmation
-        const confirm = await this.stateManager.customConfirm('Are you sure you want to delete this proposal?');
+        const confirm = await this.stateManager.showConfirm('Are you sure you want to delete this proposal?');
         if (!confirm) return;
         await this.deleteProposal(proposalHash, authorship);
     }
@@ -477,10 +482,10 @@ class DatabaseManager {
                 else this.fetchAndRenderJoinRequest(graphUuid);
                 this.closeProposalDetailModal();
 
-                this.stateManager.customAlert('Successful deletion: Proposal deleted successfully!');
+                this.stateManager.showAlert('Successful deletion: Proposal deleted successfully!');
             }
         } catch (err) {
-            this.stateManager.customAlert('Error deleting proposal: ' + err.message);
+            this.stateManager.showAlert('Error deleting proposal: ' + err.message);
         }
     }
 
@@ -489,7 +494,7 @@ class DatabaseManager {
         const proposal = this.stateManager.getPendingProposals().find(p => p.publicHash === proposalHash);
         const lastVote = proposal.consensus.remainingVotes <= 1;
         if (lastVote) {
-            const confirm = await this.stateManager.customConfirm('This is the last vote, the proposal will be immediately executed or rejected. Are you sure?');
+            const confirm = await this.stateManager.showConfirm('This is the last vote, the proposal will be immediately executed or rejected. Are you sure?');
             if (!confirm) return;
         }
 
@@ -514,10 +519,10 @@ class DatabaseManager {
                 this.fetchAndRenderProposals(graphUuid);
                 // this.fetchAndRenderJoinRequest(graphUuid);   // Do NOT fetch join request because user is an author
                 
-                this.stateManager.customAlert(result.message);
+                this.stateManager.showAlert(result.message);
             }
         } catch (err) {
-            this.stateManager.customAlert('Error submitting vote: ' + err.message);
+            this.stateManager.showAlert('Error submitting vote: ' + err.message);
         }
     }
 
@@ -543,13 +548,13 @@ class DatabaseManager {
 
         const confirmMsg = `STOP! This will clear your current workspace and load snapshot "${displayLabel}" (UUID: ${snapshotUuid}). Continue?`;
         
-        const confirmed = await this.stateManager.customConfirm(confirmMsg);
+        const confirmed = await this.stateManager.showConfirm(confirmMsg);
         if (confirmed) {
             try {
                 await this.stateManager.fetchSnapshotToWorkspace(snapshotUuid);
                 window.location.href = '/lab/workspace';
             } catch (err) {
-                this.stateManager.customAlert('Error fetching snapshot: ' + err.message);
+                this.stateManager.showAlert('Error fetching snapshot: ' + err.message);
             }
         }
     }
@@ -560,11 +565,11 @@ class DatabaseManager {
         
         try {
             await this.stateManager.saveGraphChanges(newLabel, isPublic);
-            this.stateManager.customAlert('Changes saved successfully!');
+            this.stateManager.showAlert('Changes saved successfully!');
             this.closeGraphActionModal();
             this.refreshSnapshots(true);
         } catch (err) {
-            this.stateManager.customAlert('Error saving changes: ' + err.message);
+            this.stateManager.showAlert('Error saving changes: ' + err.message);
         }
     }
 
@@ -581,7 +586,7 @@ class DatabaseManager {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            this.stateManager.customAlert('Export failed: ' + err.message);
+            this.stateManager.showAlert('Export failed: ' + err.message);
         }
     }
 
@@ -589,20 +594,20 @@ class DatabaseManager {
         const fileInput = document.getElementById('import-file-input');
         
         if (!fileInput || fileInput.files.length === 0) {
-            this.stateManager.customAlert('Please select a .knw file.');
+            this.stateManager.showAlert('Please select a .knw file.');
             return;
         }
         
         const file = fileInput.files[0];
         
-        const confirmed = await this.stateManager.customConfirm('WARNING: This will completely replace the current graph with the imported file. Are you sure?');
+        const confirmed = await this.stateManager.showConfirm('WARNING: This will completely replace the current graph with the imported file. Are you sure?');
         if (confirmed) {
             try {
                 await this.stateManager.importGraph(file);
-                this.stateManager.customAlert('Graph overwritten successfully!');
+                this.stateManager.showAlert('Graph overwritten successfully!');
                 this.closeGraphActionModal();
             } catch (err) {
-                this.stateManager.customAlert('Import error: ' + err.message);
+                this.stateManager.showAlert('Import error: ' + err.message);
             }
         }
     }
@@ -611,14 +616,14 @@ class DatabaseManager {
         // TODO: Implement custom confirmation based on number of collaborators
         // Show warning if graph has collaborator and notify user of making a proposal, instead of direct deletion
 
-        const confirmed = await this.stateManager.customConfirm('PERMANENT DELETE! Are you sure you want to remove this graph?');
+        const confirmed = await this.stateManager.showConfirm('PERMANENT DELETE! Are you sure you want to remove this graph?');
         if (confirmed) {
             try {
                 await this.stateManager.deleteGraph();
                 this.closeGraphActionModal();
                 this.refreshSnapshots(true);
             } catch (err) {
-                this.stateManager.customAlert('Error deleting graph: ' + err.message);
+                this.stateManager.showAlert('Error deleting graph: ' + err.message);
             }
         }
     }
@@ -626,23 +631,23 @@ class DatabaseManager {
     async triggerJoinGraph() {
         const snapshot = this.stateManager.getCurrentGraphActionSnapshot();
         if (!snapshot) {
-            this.stateManager.customAlert('No graph selected.');
+            this.stateManager.showAlert('No graph selected.');
             return;
         }
 
-        const confirmed = await this.stateManager.customConfirm('Request to join this graph as a collaborator?');
+        const confirmed = await this.stateManager.showConfirm('Request to join this graph as a collaborator?');
         if (confirmed) {
             try {
                 const result = await this.authorshipApiService.joinGraph(snapshot.uuid);
                 if (result.success) {
-                    this.stateManager.customAlert('Join request submitted successfully!');
+                    this.stateManager.showAlert('Join request submitted successfully!');
                     this.fetchAndRenderJoinRequest(snapshot.uuid);
                 } else {
                     console.warn(result);
-                    this.stateManager.customAlert('Join request failed: ' + result.detail);
+                    this.stateManager.showAlert('Join request failed: ' + result.detail);
                 }
             } catch (err) {
-                this.stateManager.customAlert('Error: ' + err.message);
+                this.stateManager.showAlert('Error: ' + err.message);
             }
         }
     }
@@ -650,32 +655,32 @@ class DatabaseManager {
     async triggerInviteUser() {
         const snapshot = this.stateManager.getCurrentGraphActionSnapshot();
         if (!snapshot) {
-            this.stateManager.customAlert('No graph selected.');
+            this.stateManager.showAlert('No graph selected.');
             return;
         }
 
         const targetUserUuid = document.getElementById('invite-user-uuid-input').value.trim();
         if (!targetUserUuid) {
-            this.stateManager.customAlert('Please enter a user UUID.');
+            this.stateManager.showAlert('Please enter a user UUID.');
             return;
         }
 
-        const confirmed = await this.stateManager.customConfirm('Invite this user to collaborate on the graph?');
+        const confirmed = await this.stateManager.showConfirm('Invite this user to collaborate on the graph?');
         if (confirmed) {
             try {
                 const result = await this.authorshipApiService.inviteToGraph(snapshot.uuid, targetUserUuid);
                 console.log(result);
                 if (result.success) {
                     if (result.direct) {
-                        this.stateManager.customAlert('Collaboration invitation sent successfully');
+                        this.stateManager.showAlert('Collaboration invitation sent successfully');
                     } else {
-                        this.stateManager.customAlert('Invite proposal created successfully!');
+                        this.stateManager.showAlert('Invite proposal created successfully!');
                     }
                     document.getElementById('invite-user-uuid-input').value = '';
                     this.fetchAndRenderProposals(snapshot.uuid);
                 }
             } catch (err) {
-                this.stateManager.customAlert('Error: ' + err.message);
+                this.stateManager.showAlert('Error: ' + err.message);
             }
         }
     }
@@ -700,7 +705,7 @@ class DatabaseManager {
         const overwrite = document.getElementById('global-import-overwrite').checked;
 
         if (!fileInput || fileInput.files.length === 0) {
-            this.stateManager.customAlert('Please select a .knw file.');
+            this.stateManager.showAlert('Please select a .knw file.');
             return;
         }
 
@@ -708,11 +713,11 @@ class DatabaseManager {
         
         try {
             await this.stateManager.globalImportGraph(file, overwrite);
-            this.stateManager.customAlert('Graph imported successfully!');
+            this.stateManager.showAlert('Graph imported successfully!');
             this.closeGlobalImportModal();
             this.refreshSnapshots(true);
         } catch (err) {
-            this.stateManager.customAlert('Import error: ' + err.message);
+            this.stateManager.showAlert('Import error: ' + err.message);
         }
     }
 }

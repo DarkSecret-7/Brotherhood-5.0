@@ -151,6 +151,15 @@ async def dashboard_proposals(request: Request):
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "proposals.html"),
         headers=secure_headers)
 
+@app.get("/dashboard/settings")
+async def dashboard_settings(request: Request):
+    redirect_response = utils.check_token(request)
+    if redirect_response:
+        return redirect_response
+
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "templates", "dashboard", "settings.html"),
+        headers=secure_headers)
+
 # Academia routes
 @app.get("/academia")
 async def academia_index(request: Request):

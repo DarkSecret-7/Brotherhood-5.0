@@ -483,13 +483,22 @@ class LabUIController {
                         <span class="tree-item-title ${isDeleted ? 'deleted-title' : ''}">${this.escapeHtml(domain.title)}</span>
                         ${domain.description ? `<span class="tree-item-description">${this.escapeHtml(domain.description)}</span>` : ''}
                     </div>
-                        ${domain.parentId && !isDeleted ? 
-                            `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">Eject</button>` : ''}
-                        ${!isDeleted && hasSelections && validityCheck ? 
-                            `<button class="btn btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">Move</button>` : ''}
-                        ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">Edit</button>` : ''}
-                        ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">Delete</button>` : ''}
-                        ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreDomain(${domain.id})">Restore</button>` : ''}
+                    <div class="tree-item-actions" onclick="event.stopPropagation()">
+                        ${domain.parentId && !isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectDomain(${domain.id})" title="Eject Domain">
+                            <span class="btn-text">Eject</span><span class="btn-icon">➡️</span>
+                        </button>` : ''}
+                        ${!isDeleted && hasSelections && validityCheck ? `<button class="btn btn-primary btn-small" onclick="labUIController.moveSelectedToDomain(${domain.id})" title="Move Selected">
+                            <span class="btn-text">Move</span><span class="btn-icon">✅</span>
+                        </button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editDomain(${domain.id})">
+                            <span class="btn-text">Edit</span><span class="btn-icon">✏️</span>
+                        </button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteDomain(${domain.id})">
+                            <span class="btn-text">Delete</span><span class="btn-icon">❌</span>
+                        </button>` : ''}
+                        ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreDomain(${domain.id})">
+                            <span class="btn-text">Restore</span><span class="btn-icon">↪️</span>
+                        </button>` : ''}
                     </div>
                 </div>
                 <div class="tree-item-children" style="display: ${isCollapsed ? 'none' : 'block'};">
@@ -536,11 +545,20 @@ class LabUIController {
                         ${node.assessable ? '<span class="assessable-badge">A</span>' : ''}
                     </div>
                     <div class="tree-item-actions" onclick="event.stopPropagation()">
-                        ${node.domainId && !isDeleted ? 
-                            `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">Eject</button>` : ''}
-                        ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">Edit</button>` : ''}
-                        ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">Delete</button>` : ''}
-                        ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreNode(${node.id})">Restore</button>` : ''}
+                        ${node.domainId && !isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.ejectNode(${node.id})" title="Eject Node">
+                            <span class="btn-text">Eject</span><span class="btn-icon">➡️</span>
+                        </button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.editNode(${node.id})">
+                            <span class="btn-text">Edit</span><span class="btn-icon">✏️</span>
+                        </button>` : ''}
+                        ${!isDeleted ? `<button class="btn btn-danger btn-small" onclick="workspaceOpsController.deleteNode(${node.id})">
+                            <span class="btn-text">Delete</span>
+                            <span class="btn-icon">❌</span>
+                        </button>` : ''}
+                        ${isDeleted ? `<button class="btn btn-secondary btn-small" onclick="workspaceOpsController.restoreNode(${node.id})">
+                            <span class="btn-text">Restore</span>
+                            <span class="btn-icon">↪️</span>
+                        </button>` : ''}
                     </div>
                 </div>
                 <div class="tree-item-details">
@@ -710,7 +728,7 @@ class LabUIController {
      */
     updateErrorDisplay(error) {
         if (error) {
-            this.stateManager.customAlert(error);
+            this.stateManager.showAlert(error);
         }
     }
 
@@ -1059,7 +1077,7 @@ class LabUIController {
                 }
                 
                 if (forceUpdate && validation.error) {
-                    this.stateManager.customAlert(validation.error);
+                    this.stateManager.showAlert(validation.error);
                 }
             }
         } catch (error) {
@@ -1172,7 +1190,7 @@ class LabUIController {
         const fragmentEnd = document.getElementById('source-end')?.value.trim();
         
         if (!title) {
-            this.stateManager.customAlert('Source title is required');
+            this.stateManager.showAlert('Source title is required');
             return;
         }
         
