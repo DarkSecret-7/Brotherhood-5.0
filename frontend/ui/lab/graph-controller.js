@@ -204,7 +204,7 @@ class GraphController {
             this.visualizer = new GraphVisualizer(this.elements.graphContainer, {
                 onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
                 onPathwayClick: (edgeData) =>
-                    this.handlePathwayClick1(edgeData),
+                    this.handlePathwayClick(edgeData),
                 // Legacy edge-click hook
                 onEdgeClick: () => {},
                 onPositionChange: (nodeId, position) => this.handleNodePositionChange(nodeId, position),

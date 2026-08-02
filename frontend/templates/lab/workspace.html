@@ -41,9 +41,9 @@
                 </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                <div style="margin-bottom: 6px;"><a href="/landing" style="text-decoration: none; font-weight: 600; color: #1a73e8;">Home</a></div>
-                <div><span id="status-dot" class="btn-icon" style="color: #34a853;">●</span><span class="btn-text"> Connected to Backend</span></div>
+            <div class="header-right">
+                <div><a href="/landing" style="font-weight: 600;">Home</a></div>
+                <div><span id="status-dot" class="btn-icon" style="color: #34a853;">●</span><span class="btn-text"><span id="status-dot" style="color: #34a853;">●</span> Connected to Backend</span></div>
             </div>
         </div>
         <div class="lab-main">
@@ -308,7 +308,7 @@
     <div id="editDomainModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Edit Domain <span id="edit-domain-id-display"></span></h2>
+                <h2>Edit Domain</h2>
                 <span class="close" onclick="labUIController.closeModal('editDomain')">&times;</span>
             </div>
             <div class="form-group">
@@ -385,12 +385,12 @@
                     <!-- Read-only fields -->
                     <div class="form-group">
                         <label>Bibliography Hash</label>
-                        <input type="text" id="source-bib-hash" readonly style="background: #f5f5f5; color: #666;">
+                        <input type="text" id="source-bib-hash" readonly disabled>
                     </div>
                 </div>
                 <!-- Right Side: Source Fragment -->
                 <div style="flex: 1; padding-left: 10px;">
-                    <h3 style="margin-top: 0; color: #5f6368; font-size: 0.9em;">Source Fragment</h3>
+                    <h3 style="margin-top: 0; font-size: 0.9em;">Source Fragment</h3>
                     <div class="form-group">
                         <label>Fragment Start</label>
                         <input type="text" id="source-start" placeholder="Page/Time">
@@ -402,11 +402,11 @@
                     <!-- Read-only fields -->
                     <div class="form-group">
                         <label>Source UUID</label>
-                        <input type="text" id="source-uuid" readonly style="background: #f5f5f5; color: #666; font-size: 0.85em;">
+                        <input type="text" id="source-uuid" readonly disabled>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+            <div class="modal-footer">
                 <button id="btn-delete-source" class="btn btn-danger btn-small" onclick="labUIController.deleteCurrentSource()" style="display: none;">Delete</button>
                 <div>
                     <button class="btn btn-secondary" onclick="labUIController.closeSourceModal()">Cancel</button>
@@ -446,18 +446,18 @@
                 </div>
                 <div class="form-group">
                     <label>AI Model</label>
-                    <select id="llm-model-select" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <select id="llm-model-select">
                         <option value="" disabled>Loading models...</option>
                     </select>
                 </div>
-                <div id="llm-selection-reminder" class="form-group" style="display: none; padding: 10px; background: #e8f4f8; border-radius: 4px; border-left: 3px solid #0288d1;">
-                    <span style="font-size: 14px; color: #01579b;">
+                <div id="llm-selection-reminder" class="form-group">
+                    <span>
                         <strong>ℹ️ Selection Active:</strong> Only <span id="llm-selected-count">0</span> selected node(s) will be used as context.
                     </span>
                 </div>
                 <button class="btn btn-primary" onclick="labUIController.queryLLM()">Get Suggestions</button>
                 
-                <div id="llm-loading" style="display: none; margin-top: 20px; text-align: center; color: #5f6368;">
+                <div id="llm-loading" style="display: none;">
                     <p>Thinking... 🤖</p>
                 </div>
                 
@@ -476,7 +476,7 @@
                 <span class="close" onclick="labUIController.closeMetadataModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div id="metadata-content" style="margin-top: 20px;">
+                <div id="metadata-content">
                     <!-- Metadata will be injected here -->
                 </div>
             </div>
@@ -493,11 +493,11 @@
         <a href="/lab/database" class="side-panel-link">Database Management</a>
         <a href="/lab/curator-guide" class="side-panel-link">Curator Guide</a>
         <!-- Add a horizontal line dividing the outer links from the inner ones -->
-        <hr class="side-panel-break">
+        <hr class="break">
         <a href="/academia" class="side-panel-link-outer">Academia <span>↗</span></a>
         <a href="/dashboard" class="side-panel-link-outer">Dashboard <span>↗</span></a>
         <a href="/landing" class="side-panel-link-outer">Home <span>↗</span></a>
-        <a href="#" onclick="logout()" class="side-panel-link-outer" style="color: #d93025;">Logout</a>
+        <a href="#" onclick="logout()" class="side-panel-link-outer btn-danger">Logout</a>
     </div>
 
     <!-- Load new frontend architecture scripts -->

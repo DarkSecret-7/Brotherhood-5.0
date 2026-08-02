@@ -35,16 +35,6 @@ class DatabaseManager {
     }
 
     initializeEventListeners() {
-        // Add event listeners for modal triggers if they exist
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'global-import-btn') {
-                this.openGlobalImportModal();
-            }
-            if (e.target.id === 'refresh-btn') {
-                this.refreshSnapshots(true);
-            }
-        });
-
         // Dialog button handlers using event delegation
         document.addEventListener('click', (e) => {
             // Close button (X) click
@@ -201,7 +191,6 @@ class DatabaseManager {
         
         for (let i = 0; i < snapshots.length; i++) {
             const s = snapshots[i];
-            console.log(s);
             
             const createdDate = s.createdAt ? s.createdAt.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Unknown';
             const updatedDate = s.lastUpdated ? s.lastUpdated.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Unknown';
@@ -240,9 +229,14 @@ class DatabaseManager {
         if (!snapshot) return;
         
         this.stateManager.setCurrentGraphActionSnapshot(snapshot);
+
+        // Get Author info
+        const currentUserUuid = localStorage.getItem('user_uuid');
+        const isAuthor = snapshot.authors && snapshot.authors.some(author => author.uuid === currentUserUuid);
         
         // Set Graph Name
         document.getElementById('graph-action-label-input').value = snapshot.versionLabel || ('v' + snapshot.uuid);
+        document.getElementById('graph-action-label-input').disabled = !isAuthor;
         
         // Set Info
         document.getElementById('graph-action-uuid').textContent = snapshot.uuid;
@@ -266,11 +260,9 @@ class DatabaseManager {
         
         // Set Public Toggle
         document.getElementById('graph-action-public-toggle').checked = snapshot.isPublic || false;
+        document.getElementById('graph-action-public-toggle').disabled = !isAuthor;
         
         // Set Collaboration Section
-        const currentUserUuid = localStorage.getItem('user_uuid');
-        const isAuthor = snapshot.authors && snapshot.authors.some(author => author.uuid === currentUserUuid);
-        
         const inviteSection = document.getElementById('collaboration-invite');
         const joinSection = document.getElementById('collaboration-join');
         const pendingSection = document.getElementById('pending-section');

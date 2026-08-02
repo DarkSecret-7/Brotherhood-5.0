@@ -37,6 +37,19 @@ class AuthorshipService:
             created_at=db_authorship.created_at
         )
 
+    def _convert_to_read_schema_invitation(db_invitation: models.AuthorshipInvitation, initiator_username: str = None, recipient_username: str = None) -> schemas.AuthorshipInvitationRead:
+        """Convert database model to read schema for invitation"""
+        return schemas.AuthorshipInvitationRead(
+            public_hash=db_invitation.public_hash,
+            graph_uuid=db_invitation.graph_uuid,
+            initiator_uuid=db_invitation.initiator_uuid,
+            recipient_uuid=db_invitation.recipient_uuid,
+            created_at=db_invitation.created_at,
+            invitation_status=db_invitation.invitation_status,
+            initiator_username=initiator_username,
+            recipient_username= recipient_username,
+        )
+
     @staticmethod
     def get_snapshot_authors(db: Session, snapshot_uuid: UUID) -> List[schemas.GraphAuthorshipRead]:
         """Get all authors for a snapshot using UUID"""
@@ -132,7 +145,7 @@ class AuthorshipService:
         )
         db.commit()
         db.refresh(invitation)
-        return AuthorshipService._convert_to_read_schema(invitation, None)
+        return AuthorshipService._convert_to_read_schema_invitation(invitation, inviter.username, target_user.username)
 
     @staticmethod
     def respond_to_invitation(

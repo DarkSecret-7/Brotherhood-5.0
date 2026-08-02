@@ -887,12 +887,6 @@ class LabUIController {
         if (editFormElements.localId) editFormElements.localId.value = form.localId || '';
         if (editFormElements.title) editFormElements.title.value = form.title || '';
         if (editFormElements.description) editFormElements.description.value = form.description || '';
-        
-        // Update domain ID display in modal header
-        const domainIdDisplay = document.getElementById('edit-domain-id-display');
-        if (domainIdDisplay) {
-            domainIdDisplay.textContent = `#${form.localId}`;
-        }
     }
 
     /**
@@ -959,16 +953,15 @@ class LabUIController {
                 'Authors': state.authors.map(author => author.username).join(', ')
             };
             
-            let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">';
+            let html = '';
             for (const [key, value] of Object.entries(metadata)) {
                 html += `
-                    <div style="padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                        <div style="font-weight: 600; color: #5f6368; font-size: 0.9em; margin-bottom: 5px;">${key}</div>
-                        <div style="word-break: break-all; font-family: monospace; font-size: 0.85em;">${value}</div>
+                    <div class="metadata-item">
+                        <div>${key}</div>
+                        <div>${value}</div>
                     </div>
                 `;
             }
-            html += '</div>';
             
             metadataContent.innerHTML = html;
         }
@@ -1417,7 +1410,7 @@ class LabUIController {
             container.innerHTML = '';
             
             if (sources.length === 0) {
-                container.innerHTML = '<span style="color: #9aa0a6; font-size: 0.9em;">No sources linked.</span>';
+                container.innerHTML = '<span style="font-size: 0.9em;">No sources linked.</span>';
                 return;
             }
             

@@ -64,7 +64,7 @@
 }
 
 .version-badge {
-    background: var(--primary-pale);
+    background: var(--active-bg);
     color: var(--primary-color);
     padding: 4px 10px;
     border-radius: 20px;
@@ -543,13 +543,16 @@ tr.selected-row td {
     background-color: var(--primary-pale) !important;
 }
 
-/* Login Page Footer */
-.login-footer {
-    margin-top: 40px;
-    text-align: center;
-    font-size: 0.9em;
-    color: var(--text-muted);
-    padding-bottom: 20px;
+.header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    @media (min-width: 768px) {
+        div:first-child {
+            margin-bottom: 6px;
+        }
+    }
 }
 
 /* Toggle Switch */
@@ -559,6 +562,12 @@ tr.selected-row td {
     width: 50px;
     height: 24px;
 }
+.switch:has(checkbox.disabled) {
+    .slider.round {
+        background-color: var(--disabled-bg);
+        cursor: not-allowed;
+    }
+}
 .switch input {
     opacity: 0;
     width: 0;
@@ -567,6 +576,7 @@ tr.selected-row td {
 .slider {
     position: absolute;
     cursor: pointer;
+    container-type: size;
     top: 0;
     left: 0;
     right: 0;
@@ -574,7 +584,7 @@ tr.selected-row td {
     background-color: var(--border-color);
     -webkit-transition: .4s;
     transition: .4s;
-    border-radius: 34px;
+    border-radius: 50cqh;
 }
 .slider:before {
     position: absolute;
@@ -595,12 +605,12 @@ input:focus + .slider {
     box-shadow: 0 0 1px var(--primary-color);
 }
 input:checked + .slider:before {
-    -webkit-transform: translateX(26px);
-    -ms-transform: translateX(26px);
-    transform: translateX(26px);
+    -webkit-transform: translateX(max(0px, calc(100cqw - 100cqh)));
+    -ms-transform: translateX(max(0px, calc(100cqw - 100cqh)));
+    transform: translateX(max(0px, calc(100cqw - 100cqh)));
 }
 .slider.round {
-    border-radius: 34px;
+    border-radius: 50cqh;
 }
 .slider.round:before {
     border-radius: 50%;
@@ -663,7 +673,23 @@ input:checked + .slider:before {
     top: 20px;
 }
 
-/* LLM Results Styling */
+/* LLM Modal */
+#llm-selection-reminder {
+    padding: 10px;
+    background-color: var(--secondary-color);
+
+    border-radius: 4px;
+    border-left: 4px solid var(--primary-color);
+    font-size: 0.8em;
+    color: var(--primary-pale);
+}
+
+#llm-loading {
+    margin-top: 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
 .llm-toolbar {
     margin-bottom: 15px;
     padding: 10px;
@@ -716,6 +742,35 @@ input:checked + .slider:before {
 .llm-suggestion-description {
     margin-bottom: 10px;
     color: var(--text-muted);
+}
+
+#metadata-content {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.metadata-item {
+    padding: 10px;
+    background: var(--card-bg);
+    border-radius: 4px;
+    
+    div {
+        font-size: 0.9em;
+    }
+
+    div:first-child {
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+}
+
+.node-draft-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
 }
 
 /* Tree Item Styling (Nested tree lists) */
@@ -901,6 +956,53 @@ input:checked + .slider:before {
     position: relative;
 }
 
+/* Graph Action Modal */
+
+#graphActionModal {
+    .modal-body-section.metadata-section {
+        line-height: 1.8;
+        border-left: 1px solid var(--primary-color);
+        padding-left: 12px;
+    }
+
+    .button-group {
+        margin-top: 12px;
+        gap: 6px;
+    }
+
+       h3 {
+        margin-bottom: 4px;
+    }
+
+    h4 {
+        margin-bottom: 2px;
+    }
+
+    .save-button {
+        margin: 12px 0;
+        width: 100%;
+    }
+
+    .danger-section {
+        h3 {
+            color: var(--error-color);
+        }
+
+        p {
+            color: color-mix(in srgb, var(--error-color) 30%, var(--secondary-color));
+        }
+    }
+
+    .graph-modal-danger-zone-warning {
+        margin-top: 10px;
+        padding: 12px;
+        background: var(--warn-bg);
+        color: var(--warn-text);
+        border: 1px solid var(--error-color);
+        border-radius: 4px;
+    }
+}
+
 /* Pending Proposals Styles */
 .proposal-item {
     display: flex;
@@ -1000,14 +1102,37 @@ input:checked + .slider:before {
     line-height: 1.3;
 }
 
-.node-draft-buttons {
-        display: flex;
-        flex-direction: row;
-        gap: 10px;
-        align-items: center;
+#global-import-file {
+    cursor: pointer;
+}
+
+/* Target and style the actual "Choose File" button */
+#global-import-file::file-selector-button {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s ease-in-out;
+}
+
+/* Add a hover effect */
+#global-import-file::file-selector-button:hover {
+    background-color: var(--primary-color);
 }
 
 @media (max-width: 768px) {
+    /* header right */
+    .header-right {
+        flex-direction: row;
+
+        div:nth-child(2) {
+            margin-left: 10px;
+        }
+    }
+
     /* Turn off 'hover-for-visibility' on node buttons */
     .tree-item-actions {
         opacity: 1;
@@ -1092,6 +1217,11 @@ input:checked + .slider:before {
     }
 
     @media (max-width: 300px) {
+        /* get rid of header right */
+        .header-right {
+            display: none !important;
+        }
+
         /* Hide action buttons again in too narrow screens */
         .tree-item-actions {
             opacity: 0;

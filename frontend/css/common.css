@@ -190,6 +190,19 @@ footer {
     font-size: 0.9em;
 }
 
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+/* Now a general break on any hr element */
+.break {
+    border: 0;
+    height: 1px;
+    background-image: linear-gradient(to right, var(--border-soft), var(--text-color), var(--border-soft));
+    margin: 20px 0;
+}
+
 /* Link */
 .footer-copy > a {
     color: var(--primary-color);
@@ -362,13 +375,6 @@ footer {
     opacity: 1;
 }
 
-.side-panel-break {
-    border: 0;
-    height: 1px;
-    background-image: linear-gradient(to right, var(--border-soft), var(--text-color), var(--border-soft));
-    margin: 20px 0;
-}
-
 .side-panel-close {
     position: absolute;
     top: 15px;
@@ -480,6 +486,26 @@ footer {
     margin-bottom: 16px;
 }
 
+.checkbox-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 8px;
+    width: 100%;
+
+    label {
+        width: auto;
+        margin: 0;
+    }
+
+    input {
+        margin: 0;
+        user-select: none;
+        width: auto;
+    }
+}
+
 label {
     display: block;
     font-weight: 500;
@@ -513,6 +539,12 @@ input:focus, textarea:focus, select:focus {
 
 textarea {
     resize: vertical;
+}
+
+.warn-text {
+    color: var(--warn-color);
+    background-color: var(--warn-bg);
+    width: 100%;
 }
 
 /* Buttons */
@@ -611,6 +643,15 @@ textarea {
     opacity: 0.7;
 }
 
+/* Displays a text/label/input with a button beside it */
+.txt-btn-line {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* Table Styles */
 table {
     width: 100%;
@@ -694,6 +735,9 @@ tr:hover td {
 }
 
 .close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
     color: var(--secondary-color);
     font-size: 28px;
     font-weight: bold;
@@ -709,6 +753,18 @@ tr:hover td {
 
 .modal-body {
     margin-bottom: 20px;
+}
+
+.modal-body-section {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+.modal-body-section.metadata-section {
+    line-height: 1.8;
+    border-left: 1px solid var(--primary-color);
+    padding-left: 12px;
 }
 
 .modal-footer {

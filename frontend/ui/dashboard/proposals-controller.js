@@ -203,6 +203,7 @@ class ProposalsController {
 
         if (isInvitation) {
             // Show Accept/Decline buttons only while still Pending
+            inviteSection.style.display = 'block';
             if (isPending) {
                 invitationRespondSection.style.display = 'block';
             }

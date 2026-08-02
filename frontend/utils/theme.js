@@ -93,6 +93,37 @@
     }
 
     /**
+     * A lightweight function to fetch server side settings.
+     * Use instead of settingsController.loadAndSyncSettings(), which syncs state as well.
+     */
+    async function fetchTheme() {
+        const backendPayload = await window.settingsApiService.getSettings();
+        const frontendSettings = window.settingsTransformer.transformSettingsFromBackend(backendPayload);
+
+        const isDark = frontendSettings.darkMode;
+        if (typeof isDark !== 'boolean') return;
+
+        return isDark ? 'dark' : 'light';
+    }
+
+    /**
+     * Apply the theme from the server. If the server returns a theme, persist it to localStorage.
+     * Swallows any error.
+     */
+    async function applyServerTheme() {
+        try {
+            const theme = await fetchTheme();
+            if (theme) {
+                applyTheme(theme);
+                persistSetting(theme === 'dark');
+            }
+        } catch (e) {
+            console.warn('Failed to apply server theme:', e);
+            // Swallow
+        }
+    }
+
+    /**
      * Persist a theme choice to localStorage. Used by the public
      * `window.__theme.set/toggle` API exposed above so that any
      * future code (landing page toggle, settings page) can update
@@ -107,9 +138,20 @@
         }
     }
 
+    /**
+     * Export limited public API.
+     */
+    function exportFunctions() {
+        window.themeUtils = {
+            applyServerTheme
+        }
+    }
+
     // Apply immediately so the first paint uses the correct theme.
     // Persist the theme choice to localStorage.
     var theme = resolveTheme();
     applyTheme(theme);
     persistSetting(theme === 'dark');
+
+    exportFunctions();
 })();

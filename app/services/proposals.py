@@ -226,6 +226,9 @@ class ProposalService:
         # Create consent record
         consent = ProposalService.create_consent(db, response)
 
+        # Update consensus again after creating the consent record
+        consensus = ProposalService.get_consensus(db, proposal)
+
         # Execute action depending on proposal_type and consensus
         print(consensus[0], consensus[0].remaining_votes, consensus[0].yes_count, consensus[0].no_count)
         if consensus[0].remaining_votes < 1:
@@ -245,7 +248,7 @@ class ProposalService:
         return {"success": True, "message": "Response recorded", "response": consent}
 
     @staticmethod
-    def execute_proposal(db: Session, proposal: schemas.ProposalRead) -> bool:
+    def execute_proposal(db: Session, proposal: schemas.ProposalRead) -> None:
         """Execute a proposal with business logic"""
         if proposal.proposal_type == "Join":
             services.authorship.AuthorshipService.add_author(db, proposal.graph_uuid, proposal.proposer_uuid)
@@ -258,8 +261,10 @@ class ProposalService:
 
         if proposal.proposal_type == "Delete":
             crud.snapshots.delete_snapshot_by_uuid(db, proposal.graph_uuid)
-
-        return ProposalService.update_proposal_status(db, proposal.public_hash, "Executed")
+        else:
+            # Proposals are automatically deleted when snapshot is deleted
+            # So update proposal status only when it was not a delete execution
+            ProposalService.update_proposal_status(db, proposal.public_hash, "Executed")
 
     @staticmethod
     def get_consensus(db: Session, proposal: schemas.ProposalBase) -> tuple[schemas.Consensus, dict]:
@@ -419,10 +424,18 @@ class ProposalService:
         """Get proposal by hash with authorization check for graph authors"""
         db_proposal = crud.proposals.get_proposal_by_hash(db, proposal_hash)
         if not db_proposal:
-            return ValueError("Proposal not found")
+            raise ValueError("Proposal not found")
         
         # Check if user is an author of the graph
         authors = crud.access_control.get_authorship_by_graph_uuid(db, db_proposal.graph_uuid)
+        if not authors:
+            # Search for graph to check if graph does not exist or authorship does not exist
+            snapshot = crud.snapshots.get_snapshot_by_uuid(db, db_proposal.graph_uuid)
+            if not snapshot:
+                raise ValueError("Graph not found")
+            else:
+                raise ValueError("No authors found, no possible proposals")
+
         author_uuids = [a.user_uuid for a in authors]
         
         if user_uuid not in author_uuids and user_uuid != db_proposal.proposer_uuid:
@@ -436,6 +449,14 @@ class ProposalService:
         """Get proposals for a graph with authorization check"""
         # Check if user is an author of the graph
         authors = crud.access_control.get_authorship_by_graph_uuid(db, graph_uuid)
+        if not authors:
+            # Search for graph to check if graph does not exist or authorship does not exist
+            snapshot = crud.snapshots.get_snapshot_by_uuid(db, graph_uuid)
+            if not snapshot:
+                raise ValueError("Graph not found")
+            else:
+                raise ValueError("No authors found, no possible proposals")
+
         author_uuids = [a.user_uuid for a in authors]
         
         if user_uuid not in author_uuids:

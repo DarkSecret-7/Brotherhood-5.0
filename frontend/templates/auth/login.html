@@ -43,6 +43,13 @@
             color: var(--secondary-color);
             margin: 0;
         }
+        .login-footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-muted);
+            padding-bottom: 20px;
+        }
         .error-message {
             background: #f8d7da;
             color: #721c24;
@@ -108,7 +115,7 @@
     <script src="/frontend/api/auth/auth-api-service.js"></script>
     <script src="/frontend/api/settings/settings-api-service.js"></script>
     <script src="/frontend/transformer/settings/settings-transformer.js"></script>
-    <script src="/frontend/ui/dashboard/settings-controller.js"></script>
+    <script src="/frontend/utils/theme.js"></script>
     <script src="/frontend/transformer/auth/auth-transformer.js"></script>
 
     <script>
@@ -138,17 +145,16 @@
                 // Store the token
                 localStorage.setItem('access_token', response.access_token);
 
-                // Sync the device's theme with the server's preference.
-                // Fire-and-forget: per spec we never block login on a settings fetch failure
-                // The Settings page does its own refresh and the user can always re-save.
-                try {
-                    await settingsController.loadAndSyncSettings();
-                } catch (error) {
-                    console.warn('Settings sync with server failed:', error);
-                }
-
                 // Show success message
                 messageContainer.innerHTML = '<div class="success-message">Login successful! Redirecting...</div>';
+
+                // Sync the device's theme with the server's preference using theme.js
+                try {
+                    await window.themeUtils.applyServerTheme();
+                } catch (error) {
+                    console.warn('Failed to apply server theme:', error);
+                    // Swallow
+                }
                 
                 // Redirect to dashboard after a short delay
                 setTimeout(() => {

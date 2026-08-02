@@ -130,6 +130,7 @@ class SettingsController {
 
             // Apply settings to local storage and state
             this._applySettingsToLocal(frontendSettings);
+            this._applySettingsToDocument(frontendSettings);
             this.stateManager.setSettings(frontendSettings);
             
             return frontendSettings;
@@ -153,13 +154,29 @@ class SettingsController {
         try {
             return await this.loadSettings();
         } catch (e) {
+            console.warn('Settings sync with server failed:', e);
             return null;
         }
     }
 
     /**
-     * Apply the frontend-shaped settings object to the localstorage only,
-     * Does not apply it to document attributes or state,
+     * Apply settings to document attributes separately here.
+     * Only applies handpicked keys where applicable.
+     * MAY GENERALISE LATER
+     * @param {Object|null} frontendSettings - Output of settingsTransformer
+     * @private
+     */
+    _applySettingsToDocument(frontendSettings) {
+        try {
+            const darkMode = Boolean(frontendSettings.darkMode);
+            document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+        } catch (e) {
+            console.error('Failed to apply settings to document attributes', e);
+        }
+    }
+
+    /**
+     * Apply settings to local storage separately here.
      * Agonostic about keys and does not have logic.
      *
      * @param {Object|null} frontendSettings - Output of settingsTransformer

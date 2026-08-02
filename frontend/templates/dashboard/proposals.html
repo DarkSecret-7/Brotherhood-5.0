@@ -144,11 +144,11 @@
         <a href="/dashboard/profile" class="side-panel-link">Profile</a>
         <a href="/dashboard/proposals" class="side-panel-link active">Proposals</a>
         <a href="/dashboard/settings" class="side-panel-link">Settings</a>
-        <hr class="side-panel-break">
+        <hr class="break">
         <a href="/academia" class="side-panel-link-outer">Academia <span>↗</span></a>
         <a href="/lab" class="side-panel-link-outer">Curator Lab <span>↗</span></a>
         <a href="/landing" class="side-panel-link-outer">Home <span>↗</span></a>
-        <a href="#" onclick="logout()" class="side-panel-link-outer" style="color: #d93025;">Logout</a>
+        <a href="#" onclick="logout()" class="side-panel-link-outer btn-danger">Logout</a>
     </div>
 
     <!-- Proposal Detail Modal -->
@@ -159,61 +159,58 @@
                 <span class="close" onclick="proposalsController.closeProposalDetailModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #5f6368;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <div class="modal-body-section metadata-section">
+                    <div class="txt-btn-line">
                         <strong>Type:</strong> <span id="proposal-detail-type"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Hash:</strong> <span id="proposal-detail-hash" style="font-size: 0.85em; word-break: break-all;"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Created:</strong> <span id="proposal-detail-time"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Initiator:</strong> <span id="proposal-detail-initiator"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Target:</strong> <span id="proposal-detail-target"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Graph:</strong> <span id="proposal-detail-graph"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Status:</strong> <span id="proposal-detail-status"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Consensus:</strong> <span id="proposal-detail-consensus"></span>
                     </div>
                 </div>
 
-                <div id="proposal-detail-vote-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #5f6368;">Cast your vote:</p>
-                    <div style="display: flex; gap: 10px; justify-content: center;">
+                <div id="proposal-detail-vote-section" class="modal-body-section" style="display: none;">
+                    <h3>Vote</h3>
+                    <div class="button-group">
                         <button id="proposal-detail-approve-btn" class="btn btn-primary btn-small" onclick="proposalsController.voteProposal(1)">&#10003; Approve</button>
                         <button id="proposal-detail-reject-btn" class="btn btn-danger btn-small" onclick="proposalsController.voteProposal(-1)">&#10007; Reject</button>
                     </div>
                 </div>
 
-                <div id="proposal-detail-delete-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #5f6368;">Delete this proposal:</p>
+                <div id="proposal-detail-delete-section" class="modal-body-section" style="display: none;">
+                    <h3>Actions</h3>
                     <button class="btn btn-danger btn-small" onclick="proposalsController.deleteProposal()">Delete Proposal</button>
                 </div>
 
-                <div id="proposal-detail-invite-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #5f6368;">This is an invite proposal sent to you.</p>
-                </div>
-
-                <div id="proposal-detail-invitation-respond-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #5f6368;">Respond to this invitation:</p>
-                    <div style="display: flex; gap: 10px; justify-content: center;">
-                        <button class="btn btn-success btn-small" onclick="proposalsController.respondToInvitation(true)">&#10003; Accept</button>
-                        <button class="btn btn-danger btn-small" onclick="proposalsController.respondToInvitation(false)">&#10007; Decline</button>
+                <div id="proposal-detail-invite-section" class="modal-body-section" style="display: none;">
+                    <h3>This is an invite proposal sent to you.</h3>
+                    <div id="proposal-detail-invitation-respond-section">
+                        <div class="button-group" style="justify-content: center;">
+                            <button class="btn btn-success btn-small" onclick="proposalsController.respondToInvitation(true)">&#10003; Accept</button>
+                            <button class="btn btn-danger btn-small" onclick="proposalsController.respondToInvitation(false)">&#10007; Decline</button>
+                        </div>
                     </div>
                 </div>
-
-                <div class="button-group" style="justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="proposalsController.closeProposalDetailModal()">Close</button>
-                </div>
+            </div>
+            <div class="button-group" style="justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="proposalsController.closeProposalDetailModal()">Close</button>
             </div>
         </div>
     </div>

@@ -27,7 +27,7 @@ class GraphSnapshot(Base):
     id = Column(Integer, primary_key=True, index=True)
     public_uuid = Column(UUID(as_uuid=True), unique=True, index=True, nullable=False, server_default=text("gen_random_uuid()"))
     base_uuid = Column(UUID(as_uuid=True), index=True, nullable=True)
-    base_snapshot_id = Column(Integer, ForeignKey("graph_snapshots.id"), index=True, nullable=True)
+    base_snapshot_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="SET NULL"), index=True, nullable=True)
     version_label = Column(String, unique=True, index=True, nullable=False)  # e.g. "v1", "Initial Draft"
     is_public = Column(Boolean, default=False, server_default=text('false'), nullable=False)
 
@@ -37,11 +37,11 @@ class GraphSnapshot(Base):
 
     # Relationships
     base_snapshot = relationship("GraphSnapshot", remote_side=[id], backref="derived_snapshots")
-    authors_ref = relationship("User", secondary="graph_authorship", back_populates="authored_snapshots")
-    nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan")
-    domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan")
-    redirects = relationship("NodeRedirect", back_populates="snapshot", cascade="all, delete-orphan")
-    bookmarks = relationship("Bookmark", back_populates="graph", cascade="all, delete-orphan")
+    authors_ref = relationship("User", secondary="graph_authorship", back_populates="authored_snapshots")       # Do not allow passive deletes to retain graphs without authorship
+    nodes = relationship("Node", back_populates="snapshot", cascade="all, delete-orphan", passive_deletes=True)
+    domains = relationship("Domain", back_populates="snapshot", cascade="all, delete-orphan", passive_deletes=True)
+    redirects = relationship("NodeRedirect", back_populates="snapshot", cascade="all, delete-orphan", passive_deletes=True)
+    bookmarks = relationship("Bookmark", back_populates="graph", cascade="all, delete-orphan", passive_deletes=True)
 
     # Properties
     @property
@@ -66,9 +66,6 @@ class GraphAuthorship(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     user_uuid = Column(UUID(as_uuid=True), nullable=False, server_default=text("gen_random_uuid()"))
     role = Column(String, nullable=True)
-
-    # graph = relationship("GraphSnapshot", back_populates="authors_ref")
-    # user = relationship("User", back_populates="created_snapshots")
 
 class NodeRedirect(Base):
     __tablename__ = "node_redirects"
@@ -105,7 +102,7 @@ class Node(Base):
 
     snapshot = relationship("GraphSnapshot", back_populates="nodes")
     domain = relationship("Domain", back_populates="node_objects")
-    source_frags = relationship("SourceFragment", back_populates="node", cascade="all, delete-orphan")
+    source_frags = relationship("SourceFragment", back_populates="node", cascade="all, delete-orphan", passive_deletes=True)
 
 class SourceFragment(Base):
     __tablename__ = "source_fragments"
@@ -133,7 +130,7 @@ class Bibliography(Base):
     bib_type = Column(String, nullable=False) # e.g. "PDF", "Video", "Other"
     url = Column(String, nullable=True)
 
-    source_frags = relationship("SourceFragment", back_populates="bibliography", cascade="all, delete-orphan")
+    source_frags = relationship("SourceFragment", back_populates="bibliography", cascade="all, delete-orphan", passive_deletes=True)
 
 class Domain(Base):
     __tablename__ = "domains"
@@ -150,7 +147,7 @@ class Domain(Base):
 
     snapshot = relationship("GraphSnapshot", back_populates="domains")
     node_objects = relationship("Node", back_populates="domain")
-    sub_domains = relationship("Domain", backref=backref("parent", remote_side=[id]))
+    sub_domains = relationship("Domain", backref=backref("parent", remote_side=[id], passive_deletes=True), cascade="all, delete")
 
 class User(Base):
     __tablename__ = "users"
@@ -173,8 +170,8 @@ class User(Base):
     profile_image = Column(String, nullable=True)  # Store base64 or URL
 
     # Relationships
-    bookmarks = relationship("Bookmark", back_populates="user")
-    authored_snapshots = relationship("GraphSnapshot", secondary="graph_authorship", back_populates="authors_ref")
+    bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
+    authored_snapshots = relationship("GraphSnapshot", secondary="graph_authorship", back_populates="authors_ref", passive_deletes=True)
 
 class Bookmark(Base):
     __tablename__ = "bookmarks"
@@ -206,8 +203,8 @@ class Capability(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     public_hash = Column(String(64), unique=True, index=True, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    graph_id = Column(Integer, ForeignKey("graph_snapshots.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    graph_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="SET NULL"), index=True, nullable=True)        # Keep NULL for deleted graphs
     user_uuid = Column(UUID(as_uuid=True), nullable=False)        # No FK, just user's uuid at the time of assessment
     graph_uuid = Column(UUID(as_uuid=True), nullable=False)        # No FK, just graph's uuid at the time of assessment
 
@@ -218,7 +215,7 @@ class Capability(Base):
     assessment_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     assessed_nodes = Column(JSONB, nullable=False)      # JSONB of assessed nodes
 
-    user = relationship("User", backref="capabilities")
+    user = relationship("User", backref=backref("capabilities", cascade="all, delete-orphan", passive_deletes=True))
     graph = relationship("GraphSnapshot", backref="capabilities")
 
 class GraphProposal(Base):
@@ -241,10 +238,10 @@ class GraphProposal(Base):
     target_graph_id = Column(Integer, ForeignKey("graph_snapshots.id", ondelete="CASCADE"), index=True, nullable=True)    # Target graph for merge request, remains null otherwise
     target_graph_uuid = Column(UUID(as_uuid=True), nullable=True)        # No FK, just target graph's uuid at the time of proposal
 
-    proposer = relationship("User", foreign_keys=[proposer_id], backref="proposals")
-    target_user = relationship("User", foreign_keys=[target_user_id], backref="received_proposals")
-    graph = relationship("GraphSnapshot", foreign_keys=[graph_id], backref="proposals")
-    target_graph = relationship("GraphSnapshot", foreign_keys=[target_graph_id], backref="received_proposals")
+    proposer = relationship("User", foreign_keys=[proposer_id], backref=backref("proposals", cascade="all, delete-orphan", passive_deletes=True))
+    target_user = relationship("User", foreign_keys=[target_user_id], backref=backref("received_proposals", cascade="all, delete-orphan", passive_deletes=True))
+    graph = relationship("GraphSnapshot", foreign_keys=[graph_id], backref=backref("proposals", cascade="all, delete-orphan", passive_deletes=True))
+    target_graph = relationship("GraphSnapshot", foreign_keys=[target_graph_id], backref=backref("received_proposals", cascade="all, delete-orphan", passive_deletes=True))
 
 class ProposalConsent(Base):
     __tablename__ = "proposal_consents"
@@ -259,8 +256,8 @@ class ProposalConsent(Base):
     user_vote = Column(Integer, nullable=False)              # e.g. 1 for approve, -1 for reject
 
     # Relationships
-    proposal = relationship("GraphProposal", backref="consents")
-    user = relationship("User", backref="consents")
+    proposal = relationship("GraphProposal", backref=backref("consents", cascade="all, delete-orphan", passive_deletes=True))
+    user = relationship("User", backref=backref("consents", cascade="all, delete-orphan", passive_deletes=True))
 
 class AuthorshipInvitation(Base):
     __tablename__ = "authorship_invitations"
@@ -276,9 +273,9 @@ class AuthorshipInvitation(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     invitation_status = Column(String(32), nullable=False, server_default='Pending')                    # 'Pending' | 'Accepted' | 'Rejected'
 
-    graph = relationship("GraphSnapshot", backref="authorship_invitations")
-    initiator = relationship("User", foreign_keys=[initiator_id], backref="sent_invitations")
-    recipient = relationship("User", foreign_keys=[recipient_id], backref="received_invitations")
+    graph = relationship("GraphSnapshot", backref=backref("authorship_invitations", cascade="all, delete-orphan", passive_deletes=True))
+    initiator = relationship("User", foreign_keys=[initiator_id], backref=backref("sent_invitations", cascade="all, delete-orphan", passive_deletes=True))
+    recipient = relationship("User", foreign_keys=[recipient_id], backref=backref("received_invitations", cascade="all, delete-orphan", passive_deletes=True))
 
 class UserSetting(Base):
     """
@@ -299,5 +296,5 @@ class UserSetting(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
-    user = relationship("User", backref="settings")
+    
+    user = relationship("User", backref=backref("settings", cascade="all, delete-orphan", passive_deletes=True))

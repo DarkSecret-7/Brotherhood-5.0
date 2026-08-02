@@ -45,10 +45,10 @@
             <div class="section-header">
                 <h2>Saved Graphs</h2>
                 <div style="display: flex; gap: 10px;">
-                    <button id="global-import-btn" class="btn btn-primary btn-small">
+                    <button id="global-import-btn" class="btn btn-primary btn-small" onclick="databaseManager.openGlobalImportModal();">
                         <span class="btn-text">Import Graph (.knw)</span><span class="btn-icon">📥</span>
                     </button>
-                    <button id="refresh-btn" class="btn btn-secondary btn-small">
+                    <button id="refresh-btn" class="btn btn-secondary btn-small" onclick="databaseManager.refreshSnapshots(true);">
                         <span class="btn-text">Refresh List</span><span class="btn-icon">🔄</span>
                     </button>
                 </div>
@@ -63,104 +63,111 @@
     <!-- Graph Action Modal -->
     <div id="graphActionModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 15px; padding-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                    <h2 style="margin: 0; font-size: 1.8em; color: #202124;">Manage Graph</h2>
-                    <span class="close" onclick="databaseManager.closeGraphActionModal()" style="font-size: 2em; line-height: 0.8;">&times;</span>
+            <div class="modal-header">
+                <div>
+                    <h2>Manage Graph</h2>
+                    <span class="close" onclick="databaseManager.closeGraphActionModal()">&times;</span>
                 </div>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label style="display: block; color: #202124; margin-bottom: 5px;">Graph Name</label>
-                    <input type="text" id="graph-action-label-input" style="width: 100%; padding: 10px; font-size: 1.1em; border: 1px solid #dadce0; border-radius: 4px;" placeholder="Graph Name">
+                    <label>Graph Name</label>
+                    <input type="text" id="graph-action-label-input" placeholder="Graph Name">
                 </div>
 
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #5f6368;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <div class="modal-body-section metadata-section">
+                    <div class="txt-btn-line">
                         <strong>UUID:</strong> <span id="graph-action-uuid"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <div class="txt-btn-line">
                         <strong>Created:</strong> <span id="graph-action-created"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <div class="txt-btn-line">
                         <strong>Updated:</strong> <span id="graph-action-updated"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <div class="txt-btn-line">
                         <strong>Authors:</strong> <span id="graph-action-author"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between;">
+                    <div class="txt-btn-line">
                         <strong>Nodes:</strong> <span id="graph-action-nodes"></span>
                     </div>
                 </div>
 
-                <h3 style="margin-bottom: 10px; color: #1a73e8;">Actions</h3>
-                <div style="display: flex; gap: 10px;">
-                    <button id="graph-action-fetch" class="btn btn-primary btn-small">Fetch</button>
-                </div>
-
-                <h3 style="margin-bottom: 10px; color: #1a73e8;">Visibility</h3>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
-                    <div>
-                        <strong style="display: block; color: #202124;">Public Access</strong>
-                        <span style="font-size: 0.9em; color: #5f6368;">Make this graph visible in the public gallery.</span>
+                <div class="modal-body-section">
+                    <h3>Actions</h3>
+                    <div class="button-group">
+                        <button id="graph-action-fetch" class="btn btn-primary btn-small">Fetch</button>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="graph-action-public-toggle">
-                        <span class="slider round"></span>
-                    </label>
                 </div>
 
-                <button id="graph-action-save-btn" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 1em; margin-bottom: 20px;" onclick="databaseManager.saveGraphChanges()">Save Changes</button>
+                <div class="modal-body-section">
+                    <h3>Visibility</h3>
+                    <div class="txt-btn-line">
+                        <div>
+                            <strong>Public Access</strong>
+                            <span>Make this graph visible in the public gallery.</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="graph-action-public-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
 
-                <div id="collaboration-section" style="margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 10px; color: #1a73e8;">Collaboration</h3>
+                <button id="graph-action-save-btn" class="btn btn-primary save-button" onclick="databaseManager.saveGraphChanges()">Save Changes</button>
+
+                <hr class="break">
+
+                <div id="collaboration-section" class="modal-body-section">
+                    <h3>Collaboration</h3>
                     <div id="collaboration-invite" style="display: none;">
-                        <p style="margin: 0 0 10px 0; color: #5f6368;">Invite another user to collaborate on this graph.</p>
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                            <input type="text" id="invite-user-uuid-input" style="flex: 1; padding: 10px; font-size: 0.9em; border: 1px solid #dadce0; border-radius: 4px;" placeholder="Enter user UUID">
+                        <p>Invite another user to collaborate on this graph.</p>
+                        <div class="txt-btn-line">
+                            <input type="text" id="invite-user-uuid-input" placeholder="Enter user UUID">
                             <button class="btn btn-primary btn-small" onclick="databaseManager.triggerInviteUser()">Invite</button>
                         </div>
                     </div>
-                    <div id="collaboration-join" style="display: none;">
-                        <p style="margin: 0 0 10px 0; color: #5f6368;">Request to join this graph as a collaborator.</p>
-                        <div id="collaboration-join-actions" style="display: flex; gap: 10px;">
+                    <div id="collaboration-join" class="txt-btn-line" style="display: none;">
+                        <p>Request to join this graph as a collaborator.</p>
+                        <div id="collaboration-join-actions">
                             <button class="btn btn-primary btn-small" onclick="databaseManager.triggerJoinGraph()">Join Graph</button>
                         </div>
                     </div>
                 </div>
-                <div id="pending-section" style="display: none;">
-                    <h3 style="margin-bottom: 10px; color: #1a73e8;">Pending Proposals</h3>
-                    <div id="pending-proposals-list" style="margin-bottom: 20px;">
-                            <p style="color: #5f6368; margin: 0;">Loading...</p>
+                
+                <div id="pending-section" class="modal-body-section">
+                    <h3>Pending Proposals</h3>
+                    <div id="pending-proposals-list">
+                            <p>Loading...</p>
                     </div>
                 </div>
 
-                <h3 style="margin-bottom: 10px; color: #1a73e8;">Export</h3>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #5f6368;">Download this graph as a .knw file.</p>
-                    <button class="btn btn-primary btn-small" onclick="databaseManager.triggerExportGraph()">Download .knw</button>
-                </div>
-                
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                
-                <h3 style="margin-bottom: 10px; color: #d93025;">Danger Zone</h3>
-                
-                <!-- Temporarily Disabled
-                <div style="margin-bottom: 20px;">
-                    <h4 style="font-size: 1em; margin-bottom: 8px;">Overwrite Graph</h4>
-                    <p style="font-size: 0.9em; color: #5f6368; margin-bottom: 10px;">Upload a .knw file to <strong>permanently replace</strong> this graph.</p>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="file" id="import-file-input" accept=".knw" style="flex: 1; font-size: 0.9em;">
-                        <button class="btn btn-danger btn-small" onclick="databaseManager.triggerImportGraph()">Overwrite</button>
+                <div class="modal-body-section">
+                    <h3>Export</h3>
+                    <div class="txt-btn-line">
+                        <p>Download this graph as a .knw file.</p>
+                        <button class="btn btn-primary btn-small" onclick="databaseManager.triggerExportGraph()">Download .knw</button>
                     </div>
-                </div>-->
+                </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="modal-body-section danger-section">
+                    <h3>Danger Zone</h3>
+                    
+                    <!-- Temporarily Disabled
                     <div>
-                        <h4 style="font-size: 1em; margin-bottom: 4px;">Delete Graph</h4>
-                        <p style="font-size: 0.9em; color: #5f6368; margin: 0;">This action cannot be undone.</p>
+                        <h4>Overwrite Graph</h4>
+                        <p>Upload a .knw file to <strong>permanently replace</strong> this graph.</p>
+                        <div>
+                            <input type="file" id="import-file-input" accept=".knw">
+                            <button class="btn btn-danger btn-small" onclick="databaseManager.triggerImportGraph()">Overwrite</button>
+                        </div>
+                    </div>-->
+                            
+                    <label class="graph-modal-danger-zone-warning">⚠️ <strong>Warning:</strong> These actions cannot be undone.</label>
+                    <div class="txt-btn-line">
+                        <p>Delete Graph</p>
+                        <button class="btn btn-danger btn-small" onclick="databaseManager.triggerDeleteGraph()">Delete</button>
                     </div>
-                    <button class="btn btn-danger btn-small" onclick="databaseManager.triggerDeleteGraph()">Delete</button>
                 </div>
             </div>
         </div>
@@ -168,26 +175,24 @@
 
     <!-- Global Import Modal -->
     <div id="globalImportModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content">
             <div class="modal-header">
                 <h2>Import Graph</h2>
                 <span class="close" onclick="databaseManager.closeGlobalImportModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom: 20px; color: #5f6368;">
+                <h3>
                     Upload a .knw file to add a new graph to the database.
-                </p>
+                </h3>
                 
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select File (.knw)</label>
-                    <input type="file" id="global-import-file" accept=".knw" style="width: 100%; padding: 10px; border: 1px dashed #ccc; background: #f8f9fa; border-radius: 4px;">
+                <div class="form-group">
+                    <label>Select File (.knw)</label>
+                    <input type="file" id="global-import-file" accept=".knw">
                 </div>
                 
-                <div class="form-group" style="margin-bottom: 25px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="global-import-overwrite" style="width: auto; margin: 0;">
-                        <label for="global-import-overwrite" style="margin: 0; user-select: none;">Overwrite if a graph with the same version label exists</label>
-                    </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="global-import-overwrite">
+                    <label for="global-import-overwrite">Overwrite if a graph with the same version label exists</label>
                 </div>
                 
                 <div class="button-group" style="justify-content: flex-end;">
@@ -206,50 +211,49 @@
                 <span class="close" onclick="databaseManager.closeProposalDetailModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #5f6368;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <div class="modal-body-section metadata-section">
+                    <div class="txt-btn-line">
                         <strong>Type:</strong> <span id="proposal-detail-type"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Hash:</strong> <span id="proposal-detail-hash" style="font-size: 0.85em; word-break: break-all;"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Created:</strong> <span id="proposal-detail-time"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Initiator:</strong> <span id="proposal-detail-initiator"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Target:</strong> <span id="proposal-detail-target"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Status:</strong> <span id="proposal-detail-status"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div class="txt-btn-line">
                         <strong>Consensus:</strong> <span id="proposal-detail-consensus"></span>
                     </div>
                 </div>
 
-                <div id="proposal-detail-vote-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #5f6368;">Cast your vote:</p>
-                    <div style="display: flex; gap: 10px; justify-content: center;">
+                <div id="proposal-detail-vote-section" class="modal-body-section">
+                    <h3>Vote</h3>
+                    <div class="button-group" style="justify-content: center;">
                         <button id="proposal-detail-approve-btn" class="btn btn-primary btn-small" onclick="databaseManager.voteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash, 1)">&#10003; Approve</button>
                         <button id="proposal-detail-reject-btn" class="btn btn-danger btn-small" onclick="databaseManager.voteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash, -1)">&#10007; Reject</button>
                     </div>
                 </div>
 
-                <div id="proposal-detail-delete-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #5f6368;">Delete this proposal:</p>
+                <div id="proposal-detail-delete-section" class="modal-body-section" style="display: none;">
+                    <h3>Actions</h3>
                     <button class="btn btn-danger btn-small" onclick="databaseManager.deleteProposal(databaseManager.stateManager.getCurrentProposalDetail().publicHash)">Delete Proposal</button>
                 </div>
 
-                <div id="proposal-detail-invite-section" style="display: none; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #5f6368;">This is an invite proposal sent to you.</p>
+                <div id="proposal-detail-invite-section" class="modal-body-section" style="display: none;">
+                    <p>This is invite proposal sent to you.</p>
                 </div>
-
-                <div class="button-group" style="justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="databaseManager.closeProposalDetailModal()">Close</button>
-                </div>
+            </div>
+            <div class="button-group" style="justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="databaseManager.closeProposalDetailModal()">Close</button>
             </div>
         </div>
     </div>
@@ -261,11 +265,11 @@
         <a href="/lab/database" class="side-panel-link">Database Management</a>
         <a href="/lab/curator-guide" class="side-panel-link">Curator Guide</a>
         <!-- Add a horizontal line dividing the outer links from the inner ones -->
-        <hr class="side-panel-break">
+        <hr class="break">
         <a href="/academia" class="side-panel-link-outer">Academia <span>↗</span></a>
         <a href="/dashboard" class="side-panel-link-outer">Dashboard <span>↗</span></a>
         <a href="/landing" class="side-panel-link-outer">Home <span>↗</span></a>
-        <a href="#" onclick="logout()" class="side-panel-link-outer" style="color: #d93025;">Logout</a>
+        <a href="#" onclick="logout()" class="side-panel-link-outer btn-danger">Logout</a>
     </div>
 
     <!-- Load frontend architecture scripts -->
