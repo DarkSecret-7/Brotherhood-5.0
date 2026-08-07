@@ -1123,6 +1123,57 @@ input:checked + .slider:before {
     background-color: var(--primary-color);
 }
 
+.graph-context-menu {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px 0 8px;
+    box-shadow: 0 2px 4px var(--shadow-soft);
+}
+
+.context-menu-item {
+    padding: 4px 8px;
+    border: .5px solid var(--border-soft);
+    cursor: pointer;
+    font-size: 0.75em;
+    transition: all 0.2s;
+}
+
+.context-menu-item:hover {
+    font-weight: bold;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.graph-helper-text {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+#prerequisite-adding-helper-text,
+#prerequisite-removing-helper-text {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translate(-50%, 0px);
+    color: var(--text-color);
+    background-color: var(--success-bg);
+    border: 1px solid var(--success-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    z-index: 1500;
+    display: none;
+}
+
+#prerequisite-removing-helper-text {
+    background-color: var(--error-bg);
+    border-color: var(--error-color);
+}
+
 @media (max-width: 768px) {
     /* header right */
     .header-right {

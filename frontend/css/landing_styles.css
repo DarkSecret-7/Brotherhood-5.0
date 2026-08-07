@@ -435,6 +435,14 @@ footer{background:var(--dark);padding:44px 40px 28px;}
     font-size: 1rem;
 }
 
+/* Contacts */
+.landing-contact-form {
+    background: var(--active-bg);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px var(--shadow-color);
+}
+
 /* Side Visuals */
 .side-visual {
     height: 100%;

@@ -380,9 +380,9 @@ class GraphVisualizer {
             // vis.js node id has the "domain-" prefix.
             const domainId = GraphUtils.parseCollapsedDomainNodeId(visNodeId);
             if (domainId !== null) {
-                this.options.onDomainClick(domainId);
+                this.options.onDomainClick(params.event.srcEvent, domainId);
             } else {
-                this.options.onNodeClick(visNodeId);
+                this.options.onNodeClick(params.event.srcEvent, visNodeId);
             }
             return;
         }
@@ -415,7 +415,7 @@ class GraphVisualizer {
         // Trigger click on the deepest domain, or unfocus if no domain clicked
         const deepestDomainId = this.getDeepestDomainId(params);
         if (deepestDomainId !== null) {
-            this.options.onDomainClick(parseInt(deepestDomainId, 10));
+            this.options.onDomainClick(params.event.srcEvent, parseInt(deepestDomainId, 10));
         } else {
             // Clicked empty space
             this.options.onUnfocus();

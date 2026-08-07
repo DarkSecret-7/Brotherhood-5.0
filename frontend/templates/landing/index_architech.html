@@ -157,8 +157,12 @@ body{
   border-radius:6px;padding:22px;text-decoration:none;
   transition:background .2s,border-color .2s;
 }
+:root[data-theme="dark"] .gallery-card {
+  --mix: 15%;
+}
 .gallery-card:hover{
-  background: color-mix(in srgb, var(--primary-pale) 50%, var(--card-bg) 50%);
+  --mix: 30%;
+  background: color-mix(in srgb, var(--primary-color) var(--mix), var(--card-bg));
   border-color: var(--primary-hover);
 }
 .gc-label{

@@ -26,7 +26,7 @@
     --primary-color: #1a73e8;
     --primary-hover: #1557b0;
     --primary-light: #5170a1;
-    --primary-pale: #92bce1;
+    --primary-pale: #84b8e6;
 
     /* Semantic state */
     --secondary-color: #636c77;
@@ -114,8 +114,8 @@
     --dark-fg-mute: rgba(255, 255, 255, 0.32);
 
     /* Effects */
-    --shadow-color: rgba(0, 0, 0, 0.5);
-    --shadow-soft:  rgba(0, 0, 0, 0.3);
+    --shadow-color: rgba(78, 78, 76, 0.5);
+    --shadow-soft:  rgba(78, 78, 76, 0.3);
     --shadow-modal: rgba(0, 0, 0, 0.6);
     --scrim:        rgba(0, 0, 0, 0.7);
     --focus-ring:   rgba(138, 180, 248, 0.3);
@@ -124,13 +124,14 @@
 /* Respect OS preference when no explicit theme has been set. */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
-        /* Brand */
-        --primary-color: #8ab4f8;
-        --primary-hover: #a8c7fa;
-        --primary-light: #8ab4f8;
-        --primary-pale:  #1f3a5f;
+        /* Brand – teal for AA contrast on dark surfaces */
+        --primary-color: #2e8364;
+        --primary-hover: #2ea86f;
+        --primary-light: #B0E4CC;
+        --primary-pale:  #163f31;
 
-        --secondary-color: #9aa0a6;
+        /* Semantic state */
+        --secondary-color: #96a8a6;
         --error-color:     #f28b82;
         --error-bg:        #3a2a2a;
         --error-text:      #f28b82;
@@ -141,12 +142,14 @@
         --warn-bg:         #3a3520;
         --warn-text:       #fdd663;
 
-        --bg-color:  #1a2120;
-        --card-bg:   #2a3131;
-        --nav-bg:    #232a2a;
-        --hover-bg:  #394747;
-        --active-bg: #394b4a;
+        /* Surfaces (dark) */
+        --bg-color:  #1a1d21;   /* Page background */
+        --card-bg:   #2a2d31;   /* Cards, modals, inputs */
+        --nav-bg:    #23262a;   /* Header / nav background */
+        --hover-bg:  #2f3236;   /* Subtle surface on hover */
+        --active-bg: #353a40;   /* Active/selected surface */
 
+        /* Text & borders */
         --text-color:   #e8eaed;
         --text-muted:   #9aa0a6;
         --border-color: #3c4043;
@@ -154,13 +157,15 @@
         --disabled-bg:  #3c4043;
         --disabled-fg:  #6b7280;
 
+        /* Footer / dark surfaces */
         --dark:         #1a1d21;
         --dark-fg:      rgba(255, 255, 255, 0.92);
         --dark-fg-soft: rgba(255, 255, 255, 0.6);
         --dark-fg-mute: rgba(255, 255, 255, 0.32);
 
-        --shadow-color: rgba(0, 0, 0, 0.5);
-        --shadow-soft:  rgba(0, 0, 0, 0.3);
+        /* Effects */
+        --shadow-color: rgba(78, 78, 76, 0.5);
+        --shadow-soft:  rgba(78, 78, 76, 0.3);
         --shadow-modal: rgba(0, 0, 0, 0.6);
         --scrim:        rgba(0, 0, 0, 0.7);
         --focus-ring:   rgba(138, 180, 248, 0.3);
@@ -360,7 +365,7 @@ a {
     transition: background-color 0.2s, color 0.2s;
 }
 
-.side-panel-link-outer:hover {
+.side-panel-link-outer:not(.btn-danger):hover {
     background-color: var(--hover-bg);
     color: var(--text-color);
 }
@@ -539,6 +544,21 @@ input:focus, textarea:focus, select:focus {
 
 textarea {
     resize: vertical;
+}
+
+/* Hack to customise autofill styles for form, textarea, select */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--primary-pale) inset !important;
+  -webkit-text-fill-color: var(--text-color) !important;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 .warn-text {

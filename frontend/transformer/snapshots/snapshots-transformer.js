@@ -174,11 +174,8 @@ class SnapshotsTransformer {
             }
         });
 
-        // Cycle detection. We hand the cycle detector a temporary edge
-        // list built from the pathways; we DO NOT keep this list around
-        // as `graphState.edges`. Cycles themselves are stored as node-id
-        // sequences.
-        if (window.ExpressionUtils) {
+        // Cycle detection. NO NEED TO HANDLE
+        /*if (window.ExpressionUtils) {
             const tempEdges = [];
             nodePathways.forEach((pathways, targetId) => {
                 pathways.forEach(pathway => {
@@ -191,7 +188,7 @@ class SnapshotsTransformer {
             nodeCycles.forEach(nodeCycle => {
                 cycles.push(nodeCycle.slice());
             });
-        }
+        }*/
 
         // Generate default positions for nodes without stored positions
         if (window.ExpressionUtils) {

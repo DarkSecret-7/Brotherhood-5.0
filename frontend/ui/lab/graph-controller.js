@@ -22,9 +22,10 @@
  * Handles data management, DNF transformation, and graph operations
  */
 class GraphController {
-    constructor(stateManager) {
+    constructor(stateManager, opsController = null) {
         this.stateManager = stateManager;
-        
+        this.opsController = opsController;
+
         // Graph elements
         this.elements = {
             graphContainer: document.getElementById('graph-container'),
@@ -38,6 +39,7 @@ class GraphController {
         };
         
         // Graph state
+        // TODO: Replace with authorative state from stateManager
         this.graphState = {
             nodes: [],
             cycles: [],
@@ -46,6 +48,12 @@ class GraphController {
 
         // Track active pathway index for each node (local to graph controller)
         this.nodePathwayIndex = new Map();
+
+        // Prerequisite adding states
+        this.addingPrerequisiteId = null;
+        this.removingPrerequisiteId = null;
+        this.addAlpha = false;
+        this.removeAlpha = false;
         
         this.initializeElements();
         this.bindEventListeners();
@@ -115,20 +123,163 @@ class GraphController {
         }
     }
 
+    beginAddPrerequisite(nodeId, alpha = false) {
+        // Reset existing operations
+        this.removingPrerequisiteId = null;
+        this.removeAlpha = false;
+        document.getElementById('prerequisite-removing-helper-text').style.display = 'none';
+
+        this.addingPrerequisiteId = nodeId;
+        this.addAlpha = alpha;
+        document.getElementById('prerequisite-adding-helper-text').style.display = 'block';
+    }
+
+    finishAddPrerequisite(nodeId, alpha = false) {
+        // If not adding a prerequisite, return
+        if (!this.addingPrerequisiteId) throw new Error('Not adding a prerequisite');
+        if (nodeId === this.addingPrerequisiteId) throw new Error('Cannot add a node as a prerequisite to itself');
+
+        if (alpha) {
+            // If alpha, add to all pathways
+            node.pathways.forEach(pathway => {
+                if (!pathway.includes(nodeId)) pathway.push(nodeId);
+            });
+        } else {
+            // Get current pathway
+            const node = this.graphState.nodes.find(node => node.id === this.addingPrerequisiteId);
+            if (!node) throw new Error('Node not found');
+            const pathwayIndex = this.nodePathwayIndex.get(this.addingPrerequisiteId) || 0;
+            if (pathwayIndex >= node.pathways?.length && node.pathways?.length > 0) throw new Error('Pathway index out of range');
+            // Could have no pathways yet
+            const pathway = node.pathways?.[pathwayIndex] || [];
+
+            // Add selected node
+            if (pathway.includes(nodeId)) throw new Error('Node already in pathway');
+            
+            pathway.push(nodeId);
+            node.pathways[pathwayIndex] = pathway;
+            console.log(pathway);
+        }
+        console.log(node.pathways);
+
+        const prerequisites = ExpressionUtils.convertPathwaysToExpression(node.pathways);
+        const simplifiedPrerequisites = ExpressionUtils.simplifyPrerequisitesInBrowser(prerequisites, this.addingPrerequisiteId, this.graphState.nodes);
+        console.log(prerequisites, simplifiedPrerequisites);
+
+        // Update node
+        this.stateManager.updateNode(this.addingPrerequisiteId, { prerequisites: simplifiedPrerequisites });
+    }
+
+    beginRemovePrerequisite(nodeId, alpha = false) {
+        // Reset existing operations
+        this.addingPrerequisiteId = null;
+        this.addAlpha = false;
+        document.getElementById('prerequisite-adding-helper-text').style.display = 'none';
+
+        this.removingPrerequisiteId = nodeId;
+        this.removeAlpha = alpha;
+        document.getElementById('prerequisite-removing-helper-text').style.display = 'block';
+    }
+
+    finishRemovePrerequisite(nodeId, alpha = false) {
+        // If not removing a prerequisite, return
+        if (!this.removingPrerequisiteId) throw new Error('Not removing a prerequisite');
+        if (nodeId === this.removingPrerequisiteId) throw new Error('Cannot remove a node as a prerequisite to itself');
+
+        // Get node
+        const node = this.graphState.nodes.find(node => node.id === this.removingPrerequisiteId);
+        if (!node) throw new Error('Node not found');
+        if (alpha) {
+            // If alpha, remove selected node from ALL pathways
+            node.pathways.forEach(pathway => {
+                if (pathway.includes(nodeId)) {
+                    const index = pathway.indexOf(nodeId);
+                    pathway.splice(index, 1);
+                }
+            });
+        } else {
+            // Get current pathway
+            const pathwayIndex = this.nodePathwayIndex.get(this.removingPrerequisiteId) || 0;
+            if (pathwayIndex >= node.pathways?.length || node.pathways?.length <= 0) throw new Error('Pathway index out of range');
+            const pathway = node.pathways?.[pathwayIndex];
+            if (!pathway) throw new Error('Pathway not found');
+            if (!pathway.includes(nodeId)) throw new Error('Node not in pathway');
+            
+            // Remove selected node
+            const index = pathway.indexOf(nodeId);
+            if (index !== -1) {
+                pathway.splice(index, 1);
+            }
+
+            node.pathways[pathwayIndex] = pathway;
+            console.log(pathway);
+        }
+        console.log(node.pathways);
+        
+        const prerequisites = ExpressionUtils.convertPathwaysToExpression(node.pathways);
+        const simplifiedPrerequisites = ExpressionUtils.simplifyPrerequisitesInBrowser(prerequisites, this.removingPrerequisiteId, this.graphState.nodes);
+        console.log(prerequisites, simplifiedPrerequisites);
+        
+        // Update node
+        this.stateManager.updateNode(this.removingPrerequisiteId, { prerequisites: simplifiedPrerequisites });
+    }
+
     /**
      * Handle node click
+     * @param {MouseEvent} event - Click event
      * @param {number} nodeId - Node ID
      */
-    async handleNodeClick(nodeId) {
-        // Clear only node highlights (edge highlights are independent)
-        this.visualizer.assignable.highlightedNodes.clear();
+    async handleNodeClick(event, nodeId) {
+        // Check if adding prerequisite     
+        if (this.addingPrerequisiteId != null) {
+            try {
+                this.finishAddPrerequisite(nodeId, this.addAlpha);
+            } catch (error) {
+                console.error('Error adding prerequisite:', error);
+            } finally {
+                console.log('Node ', nodeId, ' added as prerequisite to node ', this.addingPrerequisiteId);
+            }
+            
+            // Reset
+            this.addingPrerequisiteId = null;
+            document.getElementById('prerequisite-adding-helper-text').style.display = 'none';
+
+            // Unfocus and skip rest of the normal click handling
+            this.handleUnfocus();
+            return;
+        }
+        
+        // Check if removing prerequisite     
+        if (this.removingPrerequisiteId != null) {
+            try {
+                this.finishRemovePrerequisite(nodeId, this.removeAlpha);
+            } catch (error) {
+                console.error('Error removing prerequisite:', error);
+            } finally {
+                console.log('Node ', nodeId, ' removed as a prerequisite to node ', this.removingPrerequisiteId);
+            }
+            
+            // Reset
+            this.removingPrerequisiteId = null;
+            document.getElementById('prerequisite-removing-helper-text').style.display = 'none';
+
+            // Unfocus and skip rest of the normal click handling
+            this.handleUnfocus();
+            return;
+        }
+        
+        // Unfocus first
+        this.handleUnfocus();
         
         // Highlight clicked node
         this.visualizer.assignable.highlightedNodes.add(nodeId);
+
+        // Open context menu
+        this.openNodeContextMenu(event, nodeId);
         
         // Re-render to apply highlight
         this.updateVisualization();
-                
+        
         console.log('Node clicked and highlighted:', nodeId);
     }
 
@@ -137,6 +288,9 @@ class GraphController {
      * @param {Object} edgeData - Edge data of the form {source: {id, type}, target: {id, type}}
      */
     handlePathwayClick(edgeData) {
+        // Unfocus first
+        this.handleUnfocus();
+
         const { pathways, referenceIndex } = this.visualizer.getUniqueEdgeContribution(edgeData, true);
 
         // If no available pathways, return
@@ -158,14 +312,18 @@ class GraphController {
 
     /**
      * Handle domain hull click
+     * @param {MouseEvent} event - Click event
      * @param {number} domainId - Domain ID
      */
-    handleDomainClick(domainId) {
-        // Clear any existing domain highlights
-        this.visualizer.assignable.highlightedDomains.clear();
+    handleDomainClick(event, domainId) {
+        // Unfocus first
+        this.handleUnfocus();
 
         // Highlight clicked domain
         this.visualizer.assignable.highlightedDomains.add(domainId);
+        
+        // Open context menu
+        this.openDomainContextMenu(event, domainId);
 
         // Re-render to apply highlight
         this.updateVisualization();
@@ -173,12 +331,98 @@ class GraphController {
         console.log('Domain clicked and highlighted:', domainId);
     }
 
+    /**
+     * Open node context menu
+     * @param {MouseEvent} event - Click event
+     * @param {number} nodeId - Node ID
+     */
+    openNodeContextMenu(event, nodeId) {
+        // A dictionary of title and function pairs
+        const contextMenuItems = {
+            'Edit Node': () => { this.opsController.editNode(nodeId); this.handleUnfocus(); },
+            'Delete Node': () => { this.opsController.deleteNode(nodeId); this.handleUnfocus(); },
+            'Add Prerequisite': () => this.beginAddPrerequisite(nodeId, false),
+            'Remove Prerequisite': () => this.beginRemovePrerequisite(nodeId, false)
+            // Alpha moves will be added later
+        };
+
+        // Build context menu with html
+        this.buildContextMenu(event.clientX, event.clientY, contextMenuItems);
+    }
+    
+    /**
+     * Open domain context menu
+     * @param {MouseEvent} event - Click event
+     * @param {number} domainId - Domain ID
+     */
+    openDomainContextMenu(event, domainId) {
+        // A dictionary of title and function pairs
+        const contextMenuItems = {
+            'Edit Domain': () => { this.opsController.editDomain(domainId); this.handleUnfocus(); },
+            'Delete Domain': () => { this.opsController.deleteDomain(domainId); this.handleUnfocus(); }
+        };
+
+        // Collapse/Expand domain
+        const domain = this.graphState.domains.find(d => d.id === domainId);
+        if (domain) {
+            const collapseTitle = domain.isCollapsed ? 'Expand Domain' : 'Collapse Domain';
+            contextMenuItems[collapseTitle] = () => { this.stateManager.toggleDomainCollapse(domainId); this.handleUnfocus(); };
+        }
+
+        // Build context menu with html
+        this.buildContextMenu(event.clientX, event.clientY, contextMenuItems);
+    }
+
+    /**
+     * Build context menu with html
+     * @param {number} x - X position of the context menu
+     * @param {number} y - Y position of the context menu
+     * @param {Dictionary} contextMenuItems - Dictionary of title and function pairs
+     */
+    buildContextMenu(x, y, contextMenuItems) {
+        // Destroy any existing context menu, only one at a time is allowed
+        this.destroyContextMenu();
+
+        const contextMenu = document.createElement('div');
+        contextMenu.classList.add('graph-context-menu');
+        Object.keys(contextMenuItems).forEach(title => {
+            const menuItem = document.createElement('div');
+            menuItem.classList.add('context-menu-item');
+            menuItem.textContent = title;
+
+            // Add click event listener with automatic unfocusing
+            menuItem.addEventListener('click', () => contextMenuItems[title]());
+            contextMenu.appendChild(menuItem);
+        });
+
+        // Set position
+        const parentPosition = this.elements.graphContainer.getBoundingClientRect();
+        contextMenu.style.left = `${x - parentPosition.left}px`;
+        contextMenu.style.top = `${y - parentPosition.top}px`;
+
+        // Show context menu
+        contextMenu.style.display = 'flex';
+
+        // Append to graph container
+        this.elements.graphContainer.appendChild(contextMenu);
+    }
+
+    /**
+     * Destroy any existing context menu
+     */
+    destroyContextMenu() {
+        const contextMenuMenus = document.querySelectorAll('.graph-context-menu');
+        contextMenuMenus.forEach(menu => menu.remove());
+    }
     
     /**
      * Update graph data from state manager
      */
     updateGraphData() {
         // Get graph data from state manager (already built by transformer)
+        console.log(this.stateManager.state.graphState, this.graphState);
+        console.log(this.nodePathwayIndex);
+        
         const graphState = this.stateManager.state.graphState;
 
         // Update local graph state
@@ -202,13 +446,13 @@ class GraphController {
             console.log('GraphController: Creating new GraphVisualizer');
             // Import and create visualizer (will be created separately)
             this.visualizer = new GraphVisualizer(this.elements.graphContainer, {
-                onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
+                onNodeClick: (event, nodeId) => this.handleNodeClick(event, nodeId),
                 onPathwayClick: (edgeData) =>
                     this.handlePathwayClick(edgeData),
                 // Legacy edge-click hook
                 onEdgeClick: () => {},
                 onPositionChange: (nodeId, position) => this.handleNodePositionChange(nodeId, position),
-                onDomainClick: (domainId) => this.handleDomainClick(domainId),
+                onDomainClick: (event, domainId) => this.handleDomainClick(event, domainId),
                 onUnfocus: () => this.handleUnfocus(),
             });
 
@@ -248,9 +492,20 @@ class GraphController {
      * Handle unfocus, clears all highlights
      */
     handleUnfocus() {
+        // Clear all highlights
         this.visualizer.assignable.highlightedPathways.clear();
         this.visualizer.assignable.highlightedNodes.clear();
         this.visualizer.assignable.highlightedDomains.clear();
+        
+        // Context menu
+        this.destroyContextMenu();
+        
+        // Operations
+        this.addingPrerequisiteId = null;
+        document.getElementById('prerequisite-adding-helper-text').style.display = 'none';
+        this.removingPrerequisiteId = null;
+        document.getElementById('prerequisite-removing-helper-text').style.display = 'none';
+
         this.updateVisualization();
     }
 

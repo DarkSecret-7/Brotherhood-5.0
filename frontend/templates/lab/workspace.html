@@ -146,9 +146,15 @@
                         </div>
                     </div>
                     
-                    <div id="graph-visualizer" style="display: block;">
+                    <div id="graph-visualizer" style="display: block; position: relative;">
+                        <p id="prerequisite-adding-helper-text" class="graph-helper-text">
+                            Click on a node to add the node as the prerequisite for the selected node.
+                        </p>
+                        <p id="prerequisite-removing-helper-text" class="graph-helper-text" style="display: none;">
+                            Click on a node to remove the node as the prerequisite for the selected node.
+                        </p>
                         <div id="graph-container" style="display: block; height: 600px;"></div>
-                        <p style="font-size: 0.8em; color: #5f6368; margin-top: 8px;">
+                        <p class="graph-helper-text">
                             Arrows point from <strong>prerequisite</strong> to <strong>dependent</strong> node.
                         </p>
                     </div>
@@ -557,7 +563,7 @@
             // Load initial data first
             stateManager.loadInitialData().then(() => {
                 // Initialize graph controller AFTER initial data is loaded
-                const graphController = new GraphController(stateManager);
+                const graphController = new GraphController(stateManager, opsController);
                 window.graphController = graphController;
             });
         });
