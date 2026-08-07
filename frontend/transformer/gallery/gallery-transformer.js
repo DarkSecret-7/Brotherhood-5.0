@@ -153,9 +153,9 @@ class GalleryTransformer {
         if (!backendPrereq) return '';
         if (typeof backendPrereq === 'string') return backendPrereq;
         if (typeof backendPrereq === 'object') {
-            // Convert tree structure to string using ExpressionUtils
-            if (window.ExpressionUtils) {
-                return window.ExpressionUtils.treeToPrerequisiteString(backendPrereq);
+            // Convert tree structure to string using ASTUtils
+            if (window.ASTUtils) {
+                return window.ASTUtils.astToExpr(backendPrereq);
             }
         }
         return '';
@@ -243,9 +243,9 @@ class GalleryTransformer {
         // Second pass: extract DNF pathways from the backend tree and
         // store them as arrays of prereq node ids.
         backendNodes.forEach(node => {
-            if (node.prerequisite && window.ExpressionUtils) {
+            if (node.prerequisite && window.PrerequisiteUtils) {
                 // Extract DNF pathways directly from tree structure
-                const dnfPathways = window.ExpressionUtils.extractPathwaysFromTree(node.prerequisite);
+                const dnfPathways = window.PrerequisiteUtils.extractPathwaysFromAst(node.prerequisite);
                 nodePathways.set(
                     node.local_id,
                     dnfPathways.map(p => Array.isArray(p) ? p.slice() : [])
@@ -253,11 +253,12 @@ class GalleryTransformer {
             }
         });
 
+        // TODO: enable cycle detection if needed
         // Cycle detection. We hand the cycle detector a temporary edge
         // list built from the pathways; we DO NOT keep this list around
         // as `graphState.edges`. Cycles themselves are stored as node-id
         // sequences.
-        if (window.ExpressionUtils) {
+        /*if (window.ExpressionUtils) {
             const tempEdges = [];
             nodePathways.forEach((pathways, targetId) => {
                 pathways.forEach(pathway => {
@@ -270,11 +271,12 @@ class GalleryTransformer {
             nodeCycles.forEach(nodeCycle => {
                 cycles.push(nodeCycle.slice());
             });
-        }
+        }*/
 
         // Generate default positions for nodes without stored positions
-        if (window.ExpressionUtils) {
-            const algorithmicPositions = window.ExpressionUtils.generateDefaultPositions(backendNodes, {
+        if (window.GraphUtils) {
+            // moved to GraphUtils
+            const algorithmicPositions = window.GraphUtils.generateDefaultPositions(backendNodes, {
                 width: 800,
                 height: 600,
                 layout: 'hierarchical'

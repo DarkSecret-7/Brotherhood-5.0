@@ -1,68 +1,264 @@
-/*
- * This file is part of The Brotherhood Project
- *
- * Copyright (C) 2026  The Brotherhood Project Developers
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+/**
+ * All the prerequisite utils, this is the api
  */
+class PrerequisiteUtils {
+    /**
+     * Performs a transitive reduction based on the context given
+     * @param {int} nodeId - The id of the node
+     * @param {string} prerequisite - The prerequisite expression
+     * @param {Map<int, List<list<int>>} contextNodes - The context nodes, where the key is the node id and the value is the pathways
+     * @param {Map<int, List<int>>} extraContext - Extra context in the form of node id -> node id who mentions it can be provided for faster reduction
+     * @returns {string} - The simplified prerequisite expression
+     */
+    static simplifyPrerequisite(nodeId, prerequisite, contextNodes, extraContext = null) {
+        // 1. Normalise and validate expression
+        const parsedPrerequisite = this.parseExpression(prerequisite, new Set(contextNodes.keys()));
+
+        // 2. Convert to DNF and extract pathways
+        const pathways = this.extractPathways(parsedPrerequisite);
+
+        // 3. Map the hypergraph
+        const hyperarcs = HypergraphUtils.mapHyperarcs(contextNodes);
+
+        // 4. Extract extra context if given
+        const extractedContext = extraContext != null ? HypergraphUtils.extractContext(extraContext, contextNodes) : null;
+
+        // 5. Do a fixed-point hypergraph transitive reduction
+        const reducedHyperarcs = HypergraphUtils.performTransitiveReduction(nodeId, pathways, hyperarcs, extractedContext);
+
+        // 6. Convert back to expression
+        const reducedDnf = reducedHyperarcs.map(set => Array.from(set).sort((a,b)=>a-b));
+        const simplifiedPrerequisite = ExpressionUtils.dnfToExpr(reducedDnf);
+
+        return simplifiedPrerequisite;
+    }
+
+    /**
+     * A wrapper for parsing into dnf and returning in the right shape
+     * @param {string} expr 
+     * @returns {List<List<int>>}
+     */
+    static extractPathways(expr) {
+        const dnf = ExpressionUtils.exprToDnf(expr);
+        return HypergraphUtils.extractPaths(dnf);
+    }
+
+    /**
+     * A wrapper for parsing into dnf and returning in the right shape
+     * @param {Object} ast - The AST node
+     * @returns {List<List<int>>}
+     */
+    static extractPathwaysFromAst(ast) {
+        const dnf = ASTUtils.astToDnf(ast);
+        return HypergraphUtils.extractPaths(dnf);
+    }
+
+    /**
+     * Parses an expression, validates it and returns the normalised version
+     * @param {string} expression - The expression to parse
+     * @param {Set<int>} nodeIds - Set of node IDs in the expression for reference
+     * @returns {string} - The normalised expression
+     */
+    static parseExpression(expression, nodeIds) {
+        const normalisedExpression = ExpressionUtils.normalizeExpression(expression);
+        if (!ExpressionUtils.validateExpression(normalisedExpression, nodeIds))
+            throw new Error("Invalid expression");
+
+        // TODO: IMPLEMENT CYCLE CHECKING
+
+        return normalisedExpression;
+    }
+}
 
 /**
- * Expression Utilities - Handles DNF transformation and prerequisite parsing
- * Provides utilities for working with logical expressions in graph data structures
+ * AST utilities: convert an n‑ary AST (operators 'and'/'or' with an `args` array)
+ * into DNF (array of clauses, each clause is an array of integer literals).
  */
+class ASTUtils {
+    /**
+     * Check if a node is a leaf (has a 'node' key).
+     * @param {Object|number} node 
+     * @returns {boolean}
+     */
+    static isLeaf(node) {
+        return typeof node === 'object' && node !== null && 'node' in node;
+    }
 
+    /**
+     * Recursively convert an AST node to DNF.
+     * Supported node shapes:
+     *   - { node: number }
+     *   - { and: [child, ...] }
+     *   - { or: [child, ...] }
+     * @param {Object|number} node 
+     * @returns {Array<Array<number>>} Raw DNF (duplicates allowed).
+     */
+    static toDnf(node) {
+        // Allow plain numbers for convenience (converted to { node: num } internally)
+        if (typeof node === 'number') {
+            return [[node]];
+        }
+
+        if (this.isLeaf(node)) {
+            return [[node.node]];
+        }
+
+        if ('or' in node) {
+            let clauses = [];
+            for (const child of node.or) {
+                clauses.push(...this.toDnf(child));
+            }
+            return clauses;
+        }
+
+        if ('and' in node) {
+            // Start with an empty conjunction (neutral element for AND)
+            let result = [[]];
+            for (const child of node.and) {
+                const childDnf = this.toDnf(child);
+                const newResult = [];
+                for (const clause of result) {
+                    for (const childClause of childDnf) {
+                        newResult.push(clause.concat(childClause));
+                    }
+                }
+                result = newResult;
+            }
+            return result;
+        }
+
+        throw new Error('Invalid AST node: must have "node", "and", or "or" key');
+    }
+
+    /**
+     * Converts an AST into DNF with deduplication and sorting.
+     * @param {Object|number} ast 
+     * @returns {Array<Array<number>>}
+     */
+    static astToDnf(ast) {
+        let raw = this.toDnf(ast);
+
+        // Clean up: remove duplicate literals inside each clause, sort, and remove duplicate clauses
+        const cleaned = raw.map(clause => {
+            const unique = Array.from(new Set(clause));
+            unique.sort((a, b) => a - b);
+            return unique;
+        });
+
+        const seen = new Set();
+        const result = [];
+        for (const clause of cleaned) {
+            const key = JSON.stringify(clause);
+            if (!seen.has(key)) {
+                seen.add(key);
+                result.push(clause);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Converts a DNF array back into an AST in the { node, and, or } format.
+     * @param {Array<Array<number>>} dnf 
+     * @returns {Object}
+     */
+    static dnfToAst(dnf) {
+        if (!Array.isArray(dnf) || dnf.length === 0) {
+            throw new Error('Invalid DNF: must be a non‑empty array of clauses');
+        }
+
+        // Build an AND node for each clause (or a single literal)
+        const clauseNodes = dnf.map(clause => {
+            if (!Array.isArray(clause) || clause.length === 0) {
+                throw new Error('Invalid clause: must be a non‑empty array of integers');
+            }
+            // If only one literal, return { node: ... }
+            if (clause.length === 1) {
+                return { node: clause[0] };
+            }
+            // Otherwise create an AND node with all literals as children
+            return { and: clause.map(num => ({ node: num })) };
+        });
+
+        // If only one clause, return that node directly
+        if (clauseNodes.length === 1) {
+            return clauseNodes[0];
+        }
+
+        // Otherwise, combine all clauses under an OR node
+        return { or: clauseNodes };
+    }
+
+    /**
+     * Convert an AST back to a string expression with minimal parentheses.
+     * @param {Object} ast 
+     * @param {string} parentOp - Parent operator ('and' or 'or'), or null for root.
+     * @returns {string}
+     */
+    static astToExpr(ast, parentOp = null) {
+        // Handle leaf nodes
+        if (this.isLeaf(ast)) {
+            return ast.node.toString();
+        }
+
+        // Determine operator and children
+        let op, children;
+        if ('and' in ast) {
+            op = 'and';
+            children = ast.and;
+        } else if ('or' in ast) {
+            op = 'or';
+            children = ast.or;
+        } else {
+            throw new Error('Invalid AST node: must have "node", "and", or "or" key');
+        }
+
+        const opStr = op === 'and' ? ' AND ' : ' OR ';
+        const childStrings = children.map(child => {
+            let str = this.astToExpr(child, op);
+            // Parenthesise if child is a compound node with a different operator
+            // AND children with OR parent need parens; OR children with AND parent need parens.
+            // Also, if the child has a single operand, it's effectively a leaf, so no parens needed.
+            const childIsCompound = this.isCompound(child);
+            if (childIsCompound && this.getOp(child) !== op) {
+                str = '(' + str + ')';
+            }
+            return str;
+        });
+
+        let expr = childStrings.join(opStr);
+        // Wrap entire expression if parent exists and has higher precedence
+        if (parentOp === 'and' && op === 'or') {
+            expr = '(' + expr + ')';
+        }
+        return expr;
+    }
+
+    /**
+     * Check if an AST node is compound (has 'and' or 'or').
+     * @param {Object} node 
+     * @returns {boolean}
+     */
+    static isCompound(node) {
+        return typeof node === 'object' && node !== null && ('and' in node || 'or' in node);
+    }
+
+    /**
+     * Get the operator of a compound node, or null if leaf.
+     * @param {Object} node 
+     * @returns {string|null}
+     */
+    static getOp(node) {
+        if ('and' in node) return 'and';
+        if ('or' in node) return 'or';
+        return null;
+    }
+}
+
+/**
+ * Expression utilities: parse a boolean string into an n‑ary AST and convert to DNF.
+ */
 class ExpressionUtils {
-    /**
-     * Extract node IDs from prerequisite expression
-     * @param {string} prerequisites - Prerequisite expression
-     * @returns {Array} Array of node IDs
-     */
-    static extractNodeIdsFromPrerequisites(prerequisites) {
-        if (!prerequisites) {
-            return [];
-        }
-        const parsed = this.parsePrerequisites(prerequisites);
-        return parsed.isValid ? parsed.nodeIds : [];
-    }
-
-    /**
-     * Parse prerequisite expression to extract node IDs and validate structure
-     * @param {string} expression - Prerequisite expression (e.g., "(1 AND 2) OR 3")
-     * @returns {Object} Parsed expression with node IDs and structure
-     */
-    static parsePrerequisites(expression) {
-        if (!expression || typeof expression !== 'string') {
-            return { nodeIds: [], structure: null, isValid: false };
-        }
-
-        // Normalize the expression - handle case insensitivity and operator variations
-        const cleaned = this.normalizeExpression(expression);
-        
-        // Extract all node IDs (numbers) from the expression
-        const nodeIds = this.extractNodeIds(cleaned);
-        
-        // Basic validation
-        const isValid = this.validateExpression(cleaned, nodeIds);
-        
-        return {
-            nodeIds,
-            structure: cleaned,
-            isValid,
-            originalExpression: expression
-        };
-    }
-
     /**
      * Normalize expression by handling case insensitivity and operator variations
      * @param {string} expression - Raw expression
@@ -107,11 +303,11 @@ class ExpressionUtils {
     /**
      * Validate expression structure
      * @param {string} expression - Expression to validate (should be normalized)
-     * @param {Array} nodeIds - Node IDs found in expression
+     * @param {Set<int>} nodeIds - Set of node IDs in the expression for reference
      * @returns {boolean} Whether expression is valid
      */
     static validateExpression(expression, nodeIds) {
-        if (!expression || nodeIds.length === 0) {
+        if (!expression || nodeIds.size === 0) {
             return false;
         }
 
@@ -168,647 +364,23 @@ class ExpressionUtils {
             }
         }
 
+        const { hasNonExistentNodes } = this.checkForNonExistentNodes(expression, nodeIds);
+        if (hasNonExistentNodes) {
+            return false;
+        }
+
         return true;
-    }
-
-    /**
-     * Convert expression to Disjunctive Normal Form (DNF)
-     * @param {string} expression - Logical expression
-     * @returns {Array} Array of DNF pathways (each pathway is an array of node IDs)
-     */
-    static convertToDNF(expression) {
-        if (!expression || expression.trim() === '') return [];
-
-        try {
-            // Parse string to tree, then extract pathways from tree
-            // This ensures consistent handling between backend (tree) and frontend (string)
-            const tree = this.parsePrerequisiteToTree(expression);
-            if (!tree) return [];
-            return this.extractPathwaysFromTree(tree);
-        } catch (error) {
-            console.warn('Failed to convert to DNF:', error);
-            return [];
-        }
-    }
-
-    /**
-     * Extract DNF pathways directly from a tree structure (backend format)
-     * Works with tree structures like: {node: 1}, {and: [{node: 1}, {node: 2}]}, {or: [...]}
-     * @param {Object} tree - Tree structure from backend (JSONB)
-     * @returns {Array} Array of pathways (each pathway is array of node IDs)
-     */
-    static extractPathwaysFromTree(tree) {
-        if (!tree) return [];
-
-        // Leaf node: {node: id}
-        if (tree.node !== undefined) {
-            return [[tree.node]];
-        }
-
-        // AND operation: {and: [left, right]}
-        if (tree.and && Array.isArray(tree.and)) {
-            // Start with single empty pathway
-            let combinedPathways = [[]];
-
-            for (const part of tree.and) {
-                const partPathways = this.extractPathwaysFromTree(part);
-                // Cartesian product: combine each existing pathway with each part pathway
-                const newPathways = [];
-                for (const existingPath of combinedPathways) {
-                    for (const partPath of partPathways) {
-                        newPathways.push([...existingPath, ...partPath]);
-                    }
-                }
-                combinedPathways = newPathways;
-            }
-            return combinedPathways;
-        }
-
-        // OR operation: {or: [left, right]}
-        if (tree.or && Array.isArray(tree.or)) {
-            const allPathways = [];
-            for (const part of tree.or) {
-                const partPathways = this.extractPathwaysFromTree(part);
-                allPathways.push(...partPathways);
-            }
-            return allPathways;
-        }
-
-        return [];
-    }
-
-    /**
-     * Extract node IDs from a tree structure
-     * @param {Object} tree - Tree structure from backend
-     * @returns {Set} Set of node IDs
-     */
-    static extractNodeIdsFromTree(tree) {
-        const ids = new Set();
-        if (!tree) return ids;
-
-        if (tree.node !== undefined) {
-            ids.add(tree.node);
-        }
-
-        if (tree.and && Array.isArray(tree.and)) {
-            for (const part of tree.and) {
-                const partIds = this.extractNodeIdsFromTree(part);
-                partIds.forEach(id => ids.add(id));
-            }
-        }
-
-        if (tree.or && Array.isArray(tree.or)) {
-            for (const part of tree.or) {
-                const partIds = this.extractNodeIdsFromTree(part);
-                partIds.forEach(id => ids.add(id));
-            }
-        }
-
-        return ids;
-    }
-
-    /**
-     * Split expression by operator while respecting parentheses
-     * @param {string} expression - Expression to parse
-     * @param {string} operator - Operator to split by
-     * @returns {Array} Parts of the expression
-     */
-    static splitByOperator(expression, operator) {
-        const parts = [];
-        let current = '';
-        let depth = 0;
-
-        const tokens = expression.split(/\s+/);
-
-        for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i];
-
-            // Track parentheses depth BEFORE processing the token
-            // This handles cases where parentheses are attached to tokens like "(1" or "2)"
-            let tokenDepthChange = 0;
-            for (const char of token) {
-                if (char === '(') tokenDepthChange++;
-                else if (char === ')') tokenDepthChange--;
-            }
-
-            // Check if this token is the operator at top level (depth === 0 before any changes)
-            // The operator must be a standalone token (not part of a larger token with parens)
-            if (token === operator && depth === 0 && tokenDepthChange === 0) {
-                // Found operator at top level - split here
-                if (current.trim()) {
-                    parts.push(current.trim());
-                }
-                current = '';
-            } else {
-                current += (current ? ' ' : '') + token;
-            }
-
-            // Update depth after processing
-            depth += tokenDepthChange;
-        }
-
-        if (current.trim()) {
-            parts.push(current.trim());
-        }
-
-        return parts;
-    }
-
-    /**
-     * Build graph edges from DNF pathways
-     * @param {Array} pathways - Array of DNF pathways
-     * @returns {Array} Array of edge objects
-     */
-    static buildEdgesFromPathways(pathways) {
-        const edges = [];
-        const edgeKeySet = new Set(); // To avoid duplicate edges
-        
-        for (const pathway of pathways) {
-            if (pathway.length < 2) continue; // No edges for single-node pathways
-            
-            // Create edges from each prerequisite to the dependent node
-            // In a pathway like [1, 2, 3], edges are 1->3 and 2->3 (3 depends on 1 and 2)
-            const dependentNode = pathway[pathway.length - 1];
-            const prerequisites = pathway.slice(0, -1);
-            
-            for (const prereqNode of prerequisites) {
-                const edgeKey = `${prereqNode}-${dependentNode}`;
-                if (!edgeKeySet.has(edgeKey)) {
-                    edges.push({
-                        from: prereqNode,
-                        to: dependentNode,
-                        arrows: 'to',
-                        pathway: pathway.join(' AND ') // Track which pathway this edge belongs to
-                    });
-                    edgeKeySet.add(edgeKey);
-                }
-            }
-        }
-        
-        return edges;
-    }
-
-    /**
-     * Detect cycles in graph using DFS
-     * @param {Array} nodes - Array of node objects
-     * @param {Array} edges - Array of edge objects
-     * @returns {Array} Array of cycles found
-     */
-    static detectCycles(nodes, edges) {
-        const cycles = [];
-        const visited = new Set();
-        const recursionStack = new Set();
-        const nodeMap = new Map(nodes.map(n => [n.id, n]));
-        
-        // Build adjacency list
-        const adjacencyList = new Map();
-        nodes.forEach(node => adjacencyList.set(node.id, []));
-        edges.forEach(edge => {
-            if (adjacencyList.has(edge.from)) {
-                adjacencyList.get(edge.from).push(edge.to);
-            }
-        });
-        
-        // DFS cycle detection
-        const dfs = (nodeId, path) => {
-            if (recursionStack.has(nodeId)) {
-                // Cycle detected
-                const cycleStart = path.indexOf(nodeId);
-                const cycle = path.slice(cycleStart);
-                cycles.push(cycle);
-                return;
-            }
-            
-            if (visited.has(nodeId)) return;
-            
-            visited.add(nodeId);
-            recursionStack.add(nodeId);
-            path.push(nodeId);
-            
-            const neighbors = adjacencyList.get(nodeId) || [];
-            for (const neighbor of neighbors) {
-                dfs(neighbor, [...path]);
-            }
-            
-            recursionStack.delete(nodeId);
-        };
-        
-        nodes.forEach(node => {
-            if (!visited.has(node.id)) {
-                dfs(node.id, []);
-            }
-        });
-        
-        return cycles;
-    }
-
-    /**
-     * Perform transitive reduction on graph edges
-     * @param {Array} nodes - Array of node objects
-     * @param {Array} edges - Array of edge objects
-     * @returns {Array} Reduced edges
-     */
-    static transitiveReduction(nodes, edges) {
-        const nodeIds = new Set(nodes.map(n => n.id));
-        const edgeSet = new Set();
-        
-        // Build adjacency matrix for reachability
-        const reachability = new Map();
-        nodes.forEach(node => {
-            reachability.set(node.id, new Set());
-        });
-        
-        // Initialize direct edges
-        edges.forEach(edge => {
-            if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
-                reachability.get(edge.from).add(edge.to);
-            }
-        });
-        
-        // Compute transitive closure using Floyd-Warshall
-        for (const k of nodes) {
-            for (const i of nodes) {
-                for (const j of nodes) {
-                    if (reachability.get(i.id).has(k.id) && 
-                        reachability.get(k.id).has(j.id)) {
-                        reachability.get(i.id).add(j.id);
-                    }
-                }
-            }
-        }
-        
-        // Keep only direct edges (remove transitive edges)
-        const reducedEdges = [];
-        edges.forEach(edge => {
-            if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
-                // Check if this is a direct edge (no intermediate node)
-                let isDirect = true;
-                const fromReachable = reachability.get(edge.from);
-                
-                for (const intermediate of nodes) {
-                    if (intermediate.id !== edge.from && 
-                        intermediate.id !== edge.to &&
-                        fromReachable.has(intermediate.id) &&
-                        reachability.get(intermediate.id).has(edge.to)) {
-                        isDirect = false;
-                        break;
-                    }
-                }
-                
-                if (isDirect) {
-                    reducedEdges.push(edge);
-                }
-            }
-        });
-        
-        return reducedEdges;
-    }
-
-    /**
-     * Generate default positions for nodes using simple layout
-     * @param {Array} nodes - Array of node objects
-     * @param {Object} options - Layout options
-     * @returns {Map} Map of node ID to position object
-     */
-    static generateDefaultPositions(nodes, options = {}) {
-        const positions = new Map();
-        const {
-            width = 800,
-            height = 600,
-            margin = 80,
-            minNodeSpacing = 120,
-            layout = 'hierarchical'
-        } = options;
-
-        if (layout === 'hierarchical') {
-            // Prerequisite-aware hierarchical layout with domain clustering
-            const sortedNodes = [...nodes].sort((a, b) => a.id - b.id);
-            const levels = this.calculateLevels(sortedNodes);
-            const maxLevel = Math.max(...Object.values(levels));
-            const nodeMap = new Map(nodes.map(n => [n.id, n]));
-
-            // Calculate canvas size with generous spacing
-            const domainCount = new Set(nodes.map(n => n.domainId || 'none')).size;
-            const nodesPerLevelEstimate = Math.ceil(nodes.length / (maxLevel + 1));
-            const requiredWidth = Math.max(width, nodesPerLevelEstimate * minNodeSpacing * 2 + 2 * margin);
-            const requiredHeight = Math.max(height, (maxLevel + 1) * minNodeSpacing * 2 + 2 * margin);
-
-            // Assign random X positions to domain centers
-            const domainCenters = new Map();
-            const uniqueDomains = [...new Set(nodes.map(n => String(n.domainId || 'none')))];
-
-            uniqueDomains.forEach(domainId => {
-                const centerX = margin + Math.random() * (requiredWidth - 2 * margin);
-                domainCenters.set(domainId, centerX);
-            });
-
-            // Group nodes by level for vertical positioning
-            const levelGroups = {};
-            sortedNodes.forEach(node => {
-                const level = levels[node.id] ?? 0; // Default to level 0 if undefined
-                if (!levelGroups[level]) levelGroups[level] = [];
-                levelGroups[level].push(node);
-            });
-
-            // Position level by level (prerequisites above, dependents below)
-            Object.keys(levelGroups).sort((a, b) => a - b).forEach(level => {
-                const levelNum = parseInt(level);
-                const levelNodes = levelGroups[level];
-
-                // Calculate Y for this level with randomization
-                const baseY = margin + (levelNum + 0.5) * (requiredHeight - 2 * margin) / (maxLevel + 1);
-                const levelY = baseY + (Math.random() - 0.5) * (minNodeSpacing * 0.5);
-
-                // Group level nodes by domain
-                const domainGroups = {};
-                levelNodes.forEach(node => {
-                    const domainId = String(node.domainId || 'none');
-                    if (!domainGroups[domainId]) domainGroups[domainId] = [];
-                    domainGroups[domainId].push(node);
-                });
-
-                // Position nodes within each domain cluster
-                Object.keys(domainGroups).forEach(domainId => {
-                    const domainNodes = domainGroups[domainId];
-                    const domainCenterX = domainCenters.get(domainId);
-
-                    // Sort domain nodes by their prerequisite connections for logical ordering
-                    domainNodes.sort((a, b) => {
-                        const aPrereqs = this.getPrerequisiteSet(a);
-                        const bPrereqs = this.getPrerequisiteSet(b);
-
-                        // Count how many prerequisites each has in this domain
-                        const aLocalPrereqs = domainNodes.filter(n => aPrereqs.has(n.id)).length;
-                        const bLocalPrereqs = domainNodes.filter(n => bPrereqs.has(n.id)).length;
-
-                        // Nodes with more local prerequisites come first (left side)
-                        return bLocalPrereqs - aLocalPrereqs || Math.random() - 0.5;
-                    });
-
-                    // Spread nodes horizontally within domain with good spacing
-                    const clusterWidth = domainNodes.length * minNodeSpacing * 1.5;
-                    const startX = domainCenterX - clusterWidth / 2;
-
-                    domainNodes.forEach((node, index) => {
-                        // Base position with spacing
-                        const baseX = startX + (index + 0.5) * (clusterWidth / domainNodes.length);
-
-                        // Add random offset but maintain minimum spacing from neighbors
-                        const randomOffset = (Math.random() - 0.5) * (minNodeSpacing * 0.6);
-                        const x = baseX + randomOffset;
-
-                        // Vary Y slightly per node for organic feel
-                        const nodeY = levelY + (Math.random() - 0.5) * (minNodeSpacing * 0.4);
-
-                        positions.set(node.id, { x, y: nodeY });
-                    });
-                });
-            });
-        } else {
-            // Grid layout with minimum spacing
-            const cols = Math.ceil(Math.sqrt(nodes.length));
-            const rows = Math.ceil(nodes.length / cols);
-
-            const availableWidth = width - 2 * margin;
-            const availableHeight = height - 2 * margin;
-            const cellWidth = Math.max(minNodeSpacing, availableWidth / cols);
-            const cellHeight = Math.max(minNodeSpacing, availableHeight / rows);
-
-            // Recalculate canvas size if needed
-            const actualWidth = Math.max(width, cols * cellWidth + 2 * margin);
-            const actualHeight = Math.max(height, rows * cellHeight + 2 * margin);
-
-            nodes.forEach((node, index) => {
-                const col = index % cols;
-                const row = Math.floor(index / cols);
-
-                const x = margin + col * cellWidth + cellWidth / 2;
-                const y = margin + row * cellHeight + cellHeight / 2;
-
-                positions.set(node.id, { x, y });
-            });
-        }
-
-        return positions;
-    }
-
-    /**
-     * Get set of all prerequisite node IDs for a node
-     * @param {Object} node - Node object
-     * @returns {Set} Set of prerequisite node IDs
-     */
-    static getPrerequisiteSet(node) {
-        const prereqs = new Set();
-        if (node.prerequisites) {
-            const parsed = this.parsePrerequisites(node.prerequisites);
-            parsed.nodeIds.forEach(id => prereqs.add(id));
-        }
-        return prereqs;
-    }
-
-    /**
-     * Calculate hierarchical levels for nodes based on prerequisites
-     * @param {Array} nodes - Array of node objects
-     * @returns {Object} Map of node ID to level
-     */
-    static calculateLevels(nodes) {
-        const levels = {};
-        const nodeMap = new Map(nodes.map(n => [n.id, n]));
-        const inDegree = new Map();
-        
-        // Initialize in-degrees
-        nodes.forEach(node => {
-            inDegree.set(node.id, 0);
-            levels[node.id] = 0;
-        });
-        
-        // Calculate in-degrees from prerequisites
-        nodes.forEach(node => {
-            if (node.prerequisites) {
-                const parsed = this.parsePrerequisites(node.prerequisites);
-                parsed.nodeIds.forEach(prereqId => {
-                    if (inDegree.has(prereqId)) {
-                        inDegree.set(node.id, inDegree.get(node.id) + 1);
-                    }
-                });
-            }
-        });
-        
-        // Topological sort to assign levels
-        const queue = [];
-        nodes.forEach(node => {
-            if (inDegree.get(node.id) === 0) {
-                queue.push(node.id);
-                levels[node.id] = 0;
-            }
-        });
-        
-        while (queue.length > 0) {
-            const currentId = queue.shift();
-            const currentLevel = levels[currentId];
-            
-            // Find nodes that depend on current
-            nodes.forEach(node => {
-                if (node.prerequisites) {
-                    const parsed = this.parsePrerequisites(node.prerequisites);
-                    if (parsed.nodeIds.includes(currentId)) {
-                        levels[node.id] = Math.max(levels[node.id], currentLevel + 1);
-                        inDegree.set(node.id, inDegree.get(node.id) - 1);
-                        if (inDegree.get(node.id) === 0) {
-                            queue.push(node.id);
-                        }
-                    }
-                }
-            });
-        }
-        
-        return levels;
-    }
-
-    /**
-     * Build reachability map from node dependencies
-     * @param {Object} nodesDeps - Node dependencies mapping
-     * @returns {Object} Reachability map
-     */
-    static getReachability(nodesDeps) {
-        const reachability = {};
-
-        function getAncestors(nodeId, visited) {
-            if (reachability[nodeId]) return reachability[nodeId];
-            if (visited.has(nodeId)) return new Set();
-            visited.add(nodeId);
-            const ancestors = new Set();
-            const deps = nodesDeps[nodeId] || [];
-            deps.forEach(function(preId) {
-                ancestors.add(preId);
-                const more = getAncestors(preId, new Set(visited));
-                more.forEach(function(x) { ancestors.add(x); });
-            });
-            reachability[nodeId] = ancestors;
-            return ancestors;
-        }
-
-        Object.keys(nodesDeps).forEach(function(k) {
-            getAncestors(parseInt(k, 10), new Set());
-        });
-
-        return reachability;
-    }
-
-    /**
-     * Parse prerequisite expression into AST (for compatibility with legacy utils)
-     * @param {string} expression - Prerequisite expression (should be normalized)
-     * @returns {Object|null} Parsed AST or null if invalid
-     */
-    static parsePrerequisiteExpression(expression) {
-        if (!expression) return null;
-        
-        // Use normalized tokens - expression should already be normalized
-        const tokens = (expression || '').match(/\(|\)|\[|\]|\bAND\b|\bOR\b|,|\d+/gi) || [];
-        let pos = 0;
-
-        function parseOr() {
-            let node = parseAnd();
-            while (pos < tokens.length && String(tokens[pos]).toUpperCase() === 'OR') {
-                pos += 1;
-                const right = parseAnd();
-                if (node instanceof OpNode && node.op === 'OR') {
-                    node.children.push(right);
-                } else {
-                    node = new OpNode('OR', [node, right]);
-                }
-            }
-            return node;
-        }
-
-        function parseAnd() {
-            let node = parsePrimary();
-            while (pos < tokens.length && (String(tokens[pos]).toUpperCase() === 'AND' || tokens[pos] === ',')) {
-                pos += 1;
-                const right = parsePrimary();
-                if (node instanceof OpNode && node.op === 'AND') {
-                    node.children.push(right);
-                } else {
-                    node = new OpNode('AND', [node, right]);
-                }
-            }
-            return node;
-        }
-
-        function parsePrimary() {
-            if (pos >= tokens.length) return null;
-            const token = tokens[pos];
-            if (token === '(' || token === '[') {
-                pos += 1;
-                const node = parseOr();
-                // Expect matching closing bracket or parenthesis
-                if (pos < tokens.length && 
-                    ((token === '(' && tokens[pos] === ')') || 
-                     (token === '[' && tokens[pos] === ']'))) {
-                    pos += 1;
-                }
-                return node;
-            }
-            if (/^\d+$/.test(token)) {
-                pos += 1;
-                return new IdNode(parseInt(token, 10));
-            }
-            pos += 1;
-            return parsePrimary();
-        }
-
-        try {
-            return parseOr();
-        } catch (e) {
-            return null;
-        }
-    }
-
-    /**
-     * Simplify prerequisite expression using reachability analysis
-     * @param {string} expression - Prerequisite expression
-     * @param {Object} reachability - Reachability map
-     * @returns {string} Simplified expression
-     */
-    static simplifyPrerequisiteExpression(expression, reachability) {
-        if (!expression) return '';
-        const normalizedExpression = this.normalizeExpression(expression);
-        const tree = this.parsePrerequisiteExpression(normalizedExpression);
-        if (!tree) return expression;
-        const simplifiedTree = tree.simplify(reachability || {});
-        if (!simplifiedTree) return expression;
-        return simplifiedTree.toStr();
-    }
-
-    /**
-     * Simplify prerequisites in browser context
-     * @param {string} expression - Prerequisite expression
-     * @param {number} currentNodeId - Current node ID (to exclude from analysis)
-     * @param {Array} contextNodes - Context nodes for dependency analysis
-     * @returns {string} Simplified expression
-     */
-    static simplifyPrerequisitesInBrowser(expression, currentNodeId, contextNodes) {
-        const nodesDeps = {};
-        (contextNodes || []).forEach(function(node) {
-            if (!node || node.id == null) return;
-            if (currentNodeId && node.id === currentNodeId) return;
-            nodesDeps[node.id] = this.extractNodeIds(node.prerequisites || '');
-        }.bind(this));
-        
-        const reachability = this.getReachability(nodesDeps);
-        return this.simplifyPrerequisiteExpression(expression, reachability);
     }
 
     /**
      * Check if expression contains references to non-existent nodes
      * @param {string} expression - Prerequisite expression
-     * @param {Array} contextNodes - Context nodes to check against
+     * @param {Set<int>} contextNodes - Context nodes to check against
      * @returns {Object} Object with hasNonExistentNodes boolean and missingNodes array
      */
     static checkForNonExistentNodes(expression, contextNodes) {
         const nodeIds = this.extractNodeIds(expression);
-        const existingNodeIds = new Set((contextNodes || []).map(node => node.id));
-        const missingNodes = nodeIds.filter(id => !existingNodeIds.has(id));
+        const missingNodes = nodeIds.filter(id => !contextNodes.has(id));
         
         return {
             hasNonExistentNodes: missingNodes.length > 0,
@@ -816,262 +388,358 @@ class ExpressionUtils {
         };
     }
 
-    /**
-     * Validate expression and check for non-existent nodes
-     * @param {string} expression - Prerequisite expression
-     * @param {Array} contextNodes - Context nodes to check against
-     * @returns {Object} Validation result with detailed information
-     */
-    static validatePrerequisitesWithNodeCheck(expression, contextNodes) {
-        const basicValidation = this.parsePrerequisites(expression);
-        
-        if (!basicValidation.isValid) {
-            return {
-                isValid: false,
-                error: 'Invalid expression syntax',
-                nodeIds: basicValidation.nodeIds,
-                hasNonExistentNodes: false,
-                missingNodes: []
-            };
-        }
-        
-        const nodeCheck = this.checkForNonExistentNodes(expression, contextNodes);
-        
-        return {
-            isValid: !nodeCheck.hasNonExistentNodes,
-            error: nodeCheck.hasNonExistentNodes ? 
-                `References to non-existent nodes: ${nodeCheck.missingNodes.join(', ')}` : null,
-            nodeIds: basicValidation.nodeIds,
-            hasNonExistentNodes: nodeCheck.hasNonExistentNodes,
-            missingNodes: nodeCheck.missingNodes,
-            structure: basicValidation.structure
-        };
-    }
-
-    /**
-     * Parse prerequisite string into tree structure with logic gates
-     * @param {string} expression - Prerequisite expression (e.g., "1 AND 2")
-     * @returns {Object|null} Tree structure with logic gates
-     */
-    static parsePrerequisiteToTree(expression) {
-        if (!expression || expression.trim() === '') return null;
-        
-        const cleaned = this.normalizeExpression(expression);
-        
-        // Check if it's a simple node ID (just a number)
-        if (/^\d+$/.test(cleaned)) {
-            return { node: parseInt(cleaned) };
-        }
-        
-        // Parse complex expressions
-        return this.parseExpressionToTree(cleaned);
-    }
-
-    /**
-     * Parse expression recursively into tree structure
-     * @param {string} expression - Expression to parse
-     * @returns {Object} Tree structure
-     */
-    static parseExpressionToTree(expression) {
-        expression = expression.trim();
-        
-        // Handle parentheses
-        if (expression.startsWith('(') && expression.endsWith(')')) {
-            const inner = expression.slice(1, -1).trim();
-            if (this.isParenthesesBalanced(inner)) {
-                return this.parseExpressionToTree(inner);
+    static exprToDnf(expr) {
+        // Tokenizer (unchanged) ...
+        const tokens = [];
+        let i = 0;
+        expr = expr.toLowerCase();
+        while (i < expr.length) {
+            const ch = expr[i];
+            if (ch === ' ') { i++; continue; }
+            if (ch === '(' || ch === ')') { tokens.push(ch); i++; continue; }
+            if (ch >= '0' && ch <= '9') {
+                let num = '';
+                while (i < expr.length && expr[i] >= '0' && expr[i] <= '9') {
+                    num += expr[i];
+                    i++;
+                }
+                tokens.push(parseInt(num, 10));
+                continue;
             }
-        }
-        
-        // Split by OR (lowest precedence)
-        const orParts = this.splitByOperator(expression, 'OR');
-        if (orParts.length > 1) {
-            return {
-                or: orParts.map(part => this.parseExpressionToTree(part))
-            };
-        }
-        
-        // Split by AND (higher precedence)
-        const andParts = this.splitByOperator(expression, 'AND');
-        if (andParts.length > 1) {
-            return {
-                and: andParts.map(part => this.parseExpressionToTree(part))
-            };
-        }
-        
-        // Base case: single node ID
-        if (/^\d+$/.test(expression)) {
-            return { node: parseInt(expression) };
-        }
-        
-        // Fallback: return as-is if can't parse
-        return { expression: expression };
-    }
-
-    /**
-     * Check if parentheses are balanced
-     * @param {string} expression - Expression to check
-     * @returns {boolean} Whether parentheses are balanced
-     */
-    static isParenthesesBalanced(expression) {
-        let depth = 0;
-        for (const char of expression) {
-            if (char === '(') depth++;
-            if (char === ')') depth--;
-            if (depth < 0) return false;
-        }
-        return depth === 0;
-    }
-
-    /**
-     * Convert tree structure back to prerequisite string
-     * @param {Object} tree - Tree structure
-     * @param {string} parentOp - Parent operator (for parentheses handling)
-     * @returns {string} Prerequisite expression string
-     */
-    static treeToPrerequisiteString(tree, parentOp = null) {
-        if (!tree) return '';
-
-        if (tree.node !== undefined) {
-            return String(tree.node);
-        }
-
-        if (tree.expression) {
-            return tree.expression;
-        }
-
-        if (tree.and && Array.isArray(tree.and)) {
-            const parts = tree.and.map(part => this.treeToPrerequisiteString(part, 'and'));
-            const result = parts.join(' AND ');
-            // Wrap in parens if parent is OR (different operator needs parens)
-            return parentOp === 'or' ? `(${result})` : result;
-        }
-
-        if (tree.or && Array.isArray(tree.or)) {
-            const parts = tree.or.map(part => this.treeToPrerequisiteString(part, 'or'));
-            const result = parts.join(' OR ');
-            // Wrap in parens if parent is AND (different operator needs parens)
-            return parentOp === 'and' ? `(${result})` : result;
-        }
-
-        return '';
-    }
-}
-
-/**
- * ID Node - represents a single node ID in prerequisite expression
- */
-class IdNode {
-    constructor(idVal) {
-        this.idVal = idVal;
-    }
-    
-    simplify() { return this; }
-    
-    toStr() { return String(this.idVal); }
-    
-    getAllIds() { return new Set([this.idVal]); }
-}
-
-/**
- * Operation Node - represents AND/OR operations
- */
-class OpNode {
-    constructor(op, children) {
-        this.op = String(op || '').toUpperCase();
-        this.children = children || [];
-    }
-    
-    getAllIds() {
-        const ids = new Set();
-        this.children.forEach(function(child) {
-            if (!child) return;
-            child.getAllIds().forEach(function(x) { ids.add(x); });
-        });
-        return ids;
-    }
-    
-    simplify(reachability) {
-        const op = this.op;
-        const newChildren = this.children.map(function(c) { 
-            return c && c.simplify ? c.simplify(reachability) : c; 
-        }).filter(Boolean);
-
-        const flattened = [];
-        newChildren.forEach(function(child) {
-            if (child && child instanceof OpNode && child.op === op) {
-                flattened = flattened.concat(child.children);
-            } else {
-                flattened.push(child);
-            }
-        });
-
-        const finalChildren = [];
-        for (let i = 0; i < flattened.length; i++) {
-            const childI = flattened[i];
-            let isRedundant = false;
-            const idsI = childI.getAllIds();
-
-            for (let j = 0; j < flattened.length; j++) {
-                if (i === j) continue;
-                const childJ = flattened[j];
-                const idsJ = childJ.getAllIds();
-
-                if (op === 'AND') {
-                    let allCovered = true;
-                    idsI.forEach(function(idI) {
-                        let covered = false;
-                        idsJ.forEach(function(idJ) {
-                            const anc = reachability[idJ];
-                            if (idI === idJ || (anc && anc.has(idI))) covered = true;
-                        });
-                        if (!covered) allCovered = false;
-                    });
-                    if (allCovered) {
-                        isRedundant = true;
-                        break;
-                    }
+            if (ch >= 'a' && ch <= 'z') {
+                let word = '';
+                while (i < expr.length && expr[i] >= 'a' && expr[i] <= 'z') {
+                    word += expr[i];
+                    i++;
+                }
+                if (word === 'and' || word === 'or') {
+                    tokens.push(word);
                 } else {
-                    let allCoveredOr = true;
-                    idsJ.forEach(function(idJ) {
-                        let coveredOr = false;
-                        idsI.forEach(function(idI) {
-                            const anc2 = reachability[idI];
-                            if (idJ === idI || (anc2 && anc2.has(idJ))) coveredOr = true;
-                        });
-                        if (!coveredOr) allCoveredOr = false;
-                    });
-                    if (allCoveredOr) {
-                        isRedundant = true;
-                        break;
+                    throw new Error(`Unexpected token: ${word}`);
+                }
+                continue;
+            }
+            throw new Error(`Invalid character: ${ch}`);
+        }
+
+        // ----- Updated Parser (returns { node, and, or } directly) -----
+        let pos = 0;
+
+        function parseExpr() {
+            return parseOr();
+        }
+
+        function parseOr() {
+            let left = parseAnd();
+            const operands = [left];
+            while (pos < tokens.length && tokens[pos] === 'or') {
+                pos++; // consume 'or'
+                const right = parseAnd();
+                operands.push(right);
+            }
+            return operands.length === 1 ? operands[0] : { or: operands };
+        }
+
+        function parseAnd() {
+            let left = parsePrimary();
+            const operands = [left];
+            while (pos < tokens.length && tokens[pos] === 'and') {
+                pos++; // consume 'and'
+                const right = parsePrimary();
+                operands.push(right);
+            }
+            return operands.length === 1 ? operands[0] : { and: operands };
+        }
+
+        function parsePrimary() {
+            const token = tokens[pos];
+            if (typeof token === 'number') {
+                pos++;
+                return { node: token };
+            }
+            if (token === '(') {
+                pos++; // consume '('
+                const node = parseExpr();
+                if (tokens[pos] !== ')') {
+                    throw new Error('Expected closing parenthesis');
+                }
+                pos++; // consume ')'
+                return node;
+            }
+            throw new Error(`Unexpected token: ${token}`);
+        }
+
+        const ast = parseExpr();
+        if (pos !== tokens.length) {
+            throw new Error('Extra tokens after expression');
+        }
+
+        // Convert to DNF using the updated ASTUtils
+        return ASTUtils.astToDnf(ast);
+    }
+
+    /**
+     * Convert a DNF array back to a string expression.
+     * @param {Array<Array<number>>} dnf - The DNF representation.
+     * @returns {string} Expression string (e.g., "(1 AND 2) OR (3 AND 4)").
+     */
+    static dnfToExpr(dnf) {
+        const ast = ASTUtils.dnfToAst(dnf);
+        return ASTUtils.astToExpr(ast);
+    }
+
+    /**
+     * Convert a string expression to an AST.
+     * @param {string} expr - The expression string.
+     * @returns {Object} AST root node with 'op' and 'args' properties for each child AST node.
+     */
+    static exprToAst(expr) {
+        const dnf = this.exprToDnf(expr);
+        return ASTUtils.dnfToAst(dnf);
+    }
+}
+
+class HypergraphUtils {
+    /**
+     * Perform transitive reduction on a given node assuming the rest is already reduced
+     * @param {int} node 
+     * @param {List<Set<int>>} pathways 
+     * @param {Map<string, Set<int>>} hyperarcs 
+     * @param {Map<int, List<string>>} extraContext - Extra context in the form of node id -> plausible hyperarc names
+     * @returns {List<Set<int>>}
+     */
+    static performTransitiveReduction(node, pathways, hyperarcs, extraContext = null) {
+        const filteredPathways = this.filterWithTailDominance(pathways);
+        const reducedPathways = this.filterWithArcRedundancy(node, filteredPathways, hyperarcs, extraContext);
+
+        return reducedPathways;
+    }
+
+    /**
+     * Returns the actual hyperarc names instead of the node indices
+     * @param {Map<int, List<int>>} context 
+     * @param {Map<int, List<List<int>>>} nodes 
+     * @returns {Map<int, List<string>>}
+     */
+    static extractContext(context, nodes) {
+        const extractedContext = new Map();
+        
+        const extractHyperarcNames = (nodeId) => {
+            const pathwayCount = nodes.get(nodeId)?.length || 0;
+            const hyperarcs = [];
+            for (let i = 0; i < pathwayCount; i++) {
+                hyperarcs.push(`${nodeId}-${i}`);
+            }
+            return hyperarcs;
+        }
+
+        [...context.entries()].forEach(([nodeId, mentions]) => {
+            // Flattened names of all the hyperarcs going in to the nodes that mention this node
+            const hyperarcs = mentions.map(mention => extractHyperarcNames(mention)).flat();
+            extractedContext.set(nodeId, hyperarcs);
+        })
+
+        return extractedContext;
+    }
+
+    /**
+     * Add all the tailSets to the hyperarc map to the given node in the exact index
+     * @param {int} node 
+     * @param {dict<int, Set<int>> | List<Set<int>>>} tailSets 
+     * @param {Map<string, Set<int>>} hyperarcs 
+     */
+    static plantHyperarcs(node, tailSets, hyperarcs) {
+        // Two pipelines to handle the case where tailSets is a dict or a set
+        if (tailSets instanceof Array) {
+            tailSets.forEach((tailSet, index) => {
+                hyperarcs.set(`${node}-${index}`, tailSet);
+            })
+        } else {
+            [...tailSets.entries()].forEach(([index, tailSet]) => {
+                hyperarcs.set(`${node}-${index}`, tailSet);
+            })
+        }
+    }
+
+    /**
+     * Remove all the hyperarcs from the hyperarc map to the given node in the exact index
+     * @param {int} node 
+     * @param {List<int>} indices 
+     * @param {Map<string, Set<int>>} hyperarcs 
+     */
+    static removeHyperarcs(node, indices, hyperarcs) {
+        for (const index of indices) {
+            hyperarcs.delete(`${node}-${index}`);
+        }
+    }
+
+    /**
+     * Filter out the hyperarcs that are not essential using BBFS redundancy search
+     * @param {int} node 
+     * @param {List<Set<int>>} pathways 
+     * @param {Map<string, Set<int>>} hyperarcs 
+     * @param {Map<int, List<string>>} extraContext - Extra context in the form of node id -> plausible hyperarc names, checks all nodes if not given
+     * @returns {List<Set<int>>}
+     */
+    static filterWithArcRedundancy(node, pathways, hyperarcs, extraContext = null) {
+        // Keep a counter for cleaning the map up after the loop
+        const length = pathways.length;
+
+        const acceptedArcs = [];
+
+        // Add all the pathways to the hyperarc map
+        this.plantHyperarcs(node, pathways, hyperarcs);
+
+        for (let i = 0; i < length; i++) {
+            // Temporarily remove the current pathway
+            const sources = pathways.splice(i, 1)[0];
+
+            // Remove the current pathway from the hyperarc map
+            this.removeHyperarcs(node, [i], hyperarcs);
+
+            // Run a BFS search for the node
+            const isReachable = this.checkReachability_bbfs(sources, node, hyperarcs, extraContext);
+                
+            // Put this back whether or not it was essential because of index changes,
+            // We are returning the accepted arcs anyways. So we keep the old array unmodified.
+            pathways.splice(i, 0, sources);
+
+            // If not reachable, it was essential, accept it
+            if (!isReachable) {
+                acceptedArcs.push(sources);
+                // Plant back at the right index according to pathways
+                this.plantHyperarcs(node, new Map([[i, new Set(sources)]]), hyperarcs);
+            }
+        }
+
+        // Clean up the map by deleting up to the maximum index       
+        this.removeHyperarcs(node, Array.from({length: length}, (_, i) => i), hyperarcs);
+
+        return acceptedArcs;
+    }
+
+     /**
+     * Filter out the hyperarcs that are not essential using tail dominance
+     * @param {List<Set<int>>} hyperarcs 
+     * @returns {List<Set<int>>}
+     */
+    static filterWithTailDominance(hyperarcs) {
+        // Sort the hyperarcs by tail size in ascending order
+        hyperarcs.sort((a, b) => a.size - b.size);
+
+        const accepted = [];
+        // Filter out arc who are already tail domainated by an accepted arc
+        hyperarcs.forEach((hyperarc) => {
+            const isSubset = accepted.some(acceptedArc => acceptedArc.isSubsetOf(hyperarc));
+            if (!isSubset) {
+                accepted.push(hyperarc);
+            }
+        })
+        return accepted;
+    }
+    
+    /**
+     * Check if the target node is reachable from the sources using BBFS
+     * @param {Set<int>} sources 
+     * @param {int} target 
+     * @param {Map<string, Set<int>>} hyperarcs 
+     * @param {Map<int, List<string>>} extraContext - Extra context in the form of node id -> plausible hyperarc names, checks all nodes if not given
+     * @returns {boolean}
+     */
+    static checkReachability_bbfs(sources, target, hyperarcs, extraContext = null) {
+        // Convert the map to array for ease of use
+        const hyperarcsArray = [...hyperarcs.entries()];
+
+        // Initialise a counter for all hyperarcs
+        const counters = new Map(hyperarcsArray.map(([key, value]) => [key, value.size]));
+        const visited = new Set(sources);
+        const queue = [...sources];
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (current === target) {
+                return true;
+            }
+            // If extra context given then use the smaller set of plausible hyperarcs for that node, or use the entire graph
+            const smartContext = extraContext != null ? this.findHyperarcNames(extraContext.get(current), hyperarcs): null;
+            const plausibleHyperarcs = smartContext != null ? smartContext : hyperarcsArray;
+            plausibleHyperarcs.forEach(([key, value]) => {
+                // Could be null because the name could not be resolved,
+                // should not happen, but just in case
+                if (value == null) return;
+
+                // check if current is in the tail
+                if (value.has(current)) {
+                    // Decrement counter
+                    const count = counters.get(key);
+                    counters.set(key, count - 1);
+                    if (count === 1) {
+                        const tail = parseInt(key.split('-')[0]);
+                        if (!visited.has(tail)) {
+                            // Add tail to visited
+                            visited.add(tail);
+                            // Add tail to queue
+                            queue.push(tail);
+                        }
                     }
                 }
-            }
-
-            if (!isRedundant) finalChildren.push(childI);
+            });
         }
-
-        if (!finalChildren.length) return flattened.length ? flattened[0] : null;
-        if (finalChildren.length === 1) return finalChildren[0];
-        return new OpNode(op, finalChildren);
+        return false;
     }
-    
-    toStr() {
-        const op = this.op;
-        const parts = this.children.map(function(child) {
-            if (!child) return '';
-            const s = child.toStr();
-            // For simplicity, always use parentheses in output (brackets are normalized to parentheses)
-            if (child instanceof OpNode && child.op !== op) return '(' + s + ')';
-            return s;
-        }).filter(function(s) { return s; });
-        return parts.join(' ' + op + ' ');
+
+    /**
+     * Find the hyperarcs that have the given names and return the hyperarcs indexed to their names
+     * @param {List<string>} arcNames 
+     * @param {Map<string, Set<int>>} hyperarcs 
+     * @returns {Array<string, Set<int>> | null}
+     */
+    static findHyperarcNames(arcNames, hyperarcs) {
+        // guard clause
+        if (arcNames == null) return null;
+
+        return arcNames.map((arcName) => {
+            const arc = hyperarcs.get(arcName);
+            return arc ? [arcName, arc] : null
+        }).filter(item => item != null);
+    }
+
+    /**
+     * Pathways is a map from head to the list of hyperarcs going IN a node.
+     * Hyperarcs are uniquely identified by head and tail set id in pathways.
+     * @param {Map<int, List<List<int>>>} pathways 
+     * @returns {Map<string, Set<int>>}
+     */
+    static mapHyperarcs(pathways) {
+        const hyperarcs = new Map();
+        [...pathways.entries()].forEach(([head, tailSets]) => {           
+            tailSets.map((tailSet, id) => hyperarcs.set(`${head}-${id}`, new Set(tailSet)))
+        });
+        return hyperarcs;
+    }
+
+    /**
+     * Returns the pathways as list of sets
+     * @param {List<List<int>>} pathways 
+     * @returns {List<Set<int>>}
+     */
+    static extractPaths(pathways) {
+        const paths = [];
+        pathways.forEach((tailSet) => {
+            paths.push(new Set(tailSet));
+        })
+        return paths;
     }
 }
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ExpressionUtils;
+    module.exports = HypergraphUtils;
+    module.exports.ExpressionUtils = ExpressionUtils;
+    module.exports.ASTUtils = ASTUtils;
+    module.exports.PrerequisiteUtils = PrerequisiteUtils;
 } else {
+    window.HypergraphUtils = HypergraphUtils;
     window.ExpressionUtils = ExpressionUtils;
+    window.ASTUtils = ASTUtils;
+    window.PrerequisiteUtils = PrerequisiteUtils;
 }

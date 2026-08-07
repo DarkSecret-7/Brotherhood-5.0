@@ -585,6 +585,134 @@ class GraphUtils {
         
         return Array.from(remappedSources).sort().join('|');
     }
+
+    /**
+     * Generate default positions for nodes using simple layout
+     * @param {Array} nodes - Array of node objects
+     * @param {Object} options - Layout options
+     * @returns {Map} Map of node ID to position object
+     */
+    static generateDefaultPositions(nodes, options = {}) {
+        const positions = new Map();
+        const {
+            width = 800,
+            height = 600,
+            margin = 80,
+            minNodeSpacing = 120,
+            layout = 'hierarchical'
+        } = options;
+
+        if (layout === 'hierarchical') {
+            // Prerequisite-aware hierarchical layout with domain clustering
+            const sortedNodes = [...nodes].sort((a, b) => a.id - b.id);
+            const levels = this.calculateLevels(sortedNodes);
+            const maxLevel = Math.max(...Object.values(levels));
+            const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+            // Calculate canvas size with generous spacing
+            const domainCount = new Set(nodes.map(n => n.domainId || 'none')).size;
+            const nodesPerLevelEstimate = Math.ceil(nodes.length / (maxLevel + 1));
+            const requiredWidth = Math.max(width, nodesPerLevelEstimate * minNodeSpacing * 2 + 2 * margin);
+            const requiredHeight = Math.max(height, (maxLevel + 1) * minNodeSpacing * 2 + 2 * margin);
+
+            // Assign random X positions to domain centers
+            const domainCenters = new Map();
+            const uniqueDomains = [...new Set(nodes.map(n => String(n.domainId || 'none')))];
+
+            uniqueDomains.forEach(domainId => {
+                const centerX = margin + Math.random() * (requiredWidth - 2 * margin);
+                domainCenters.set(domainId, centerX);
+            });
+
+            // Group nodes by level for vertical positioning
+            const levelGroups = {};
+            sortedNodes.forEach(node => {
+                const level = levels[node.id] ?? 0; // Default to level 0 if undefined
+                if (!levelGroups[level]) levelGroups[level] = [];
+                levelGroups[level].push(node);
+            });
+
+            // Position level by level (prerequisites above, dependents below)
+            Object.keys(levelGroups).sort((a, b) => a - b).forEach(level => {
+                const levelNum = parseInt(level);
+                const levelNodes = levelGroups[level];
+
+                // Calculate Y for this level with randomization
+                const baseY = margin + (levelNum + 0.5) * (requiredHeight - 2 * margin) / (maxLevel + 1);
+                const levelY = baseY + (Math.random() - 0.5) * (minNodeSpacing * 0.5);
+
+                // Group level nodes by domain
+                const domainGroups = {};
+                levelNodes.forEach(node => {
+                    const domainId = String(node.domainId || 'none');
+                    if (!domainGroups[domainId]) domainGroups[domainId] = [];
+                    domainGroups[domainId].push(node);
+                });
+
+                // Position nodes within each domain cluster
+                Object.keys(domainGroups).forEach(domainId => {
+                    const domainNodes = domainGroups[domainId];
+                    const domainCenterX = domainCenters.get(domainId);
+
+                    // Sort domain nodes by their prerequisite connections for logical ordering
+                    domainNodes.sort((a, b) => {
+                        const aPrereqs = this.getPrerequisiteSet(a);
+                        const bPrereqs = this.getPrerequisiteSet(b);
+
+                        // Count how many prerequisites each has in this domain
+                        const aLocalPrereqs = domainNodes.filter(n => aPrereqs.has(n.id)).length;
+                        const bLocalPrereqs = domainNodes.filter(n => bPrereqs.has(n.id)).length;
+
+                        // Nodes with more local prerequisites come first (left side)
+                        return bLocalPrereqs - aLocalPrereqs || Math.random() - 0.5;
+                    });
+
+                    // Spread nodes horizontally within domain with good spacing
+                    const clusterWidth = domainNodes.length * minNodeSpacing * 1.5;
+                    const startX = domainCenterX - clusterWidth / 2;
+
+                    domainNodes.forEach((node, index) => {
+                        // Base position with spacing
+                        const baseX = startX + (index + 0.5) * (clusterWidth / domainNodes.length);
+
+                        // Add random offset but maintain minimum spacing from neighbors
+                        const randomOffset = (Math.random() - 0.5) * (minNodeSpacing * 0.6);
+                        const x = baseX + randomOffset;
+
+                        // Vary Y slightly per node for organic feel
+                        const nodeY = levelY + (Math.random() - 0.5) * (minNodeSpacing * 0.4);
+
+                        positions.set(node.id, { x, y: nodeY });
+                    });
+                });
+            });
+        } else {
+            // Grid layout with minimum spacing
+            const cols = Math.ceil(Math.sqrt(nodes.length));
+            const rows = Math.ceil(nodes.length / cols);
+
+            const availableWidth = width - 2 * margin;
+            const availableHeight = height - 2 * margin;
+            const cellWidth = Math.max(minNodeSpacing, availableWidth / cols);
+            const cellHeight = Math.max(minNodeSpacing, availableHeight / rows);
+
+            // Recalculate canvas size if needed
+            const actualWidth = Math.max(width, cols * cellWidth + 2 * margin);
+            const actualHeight = Math.max(height, rows * cellHeight + 2 * margin);
+
+            nodes.forEach((node, index) => {
+                const col = index % cols;
+                const row = Math.floor(index / cols);
+
+                const x = margin + col * cellWidth + cellWidth / 2;
+                const y = margin + row * cellHeight + cellHeight / 2;
+
+                positions.set(node.id, { x, y });
+            });
+        }
+
+        return positions;
+    }
 }
 
 // Export for use in other modules

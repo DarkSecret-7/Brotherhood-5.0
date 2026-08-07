@@ -162,12 +162,11 @@ class GraphController {
         }
         console.log(node.pathways);
 
-        const prerequisites = ExpressionUtils.convertPathwaysToExpression(node.pathways);
-        const simplifiedPrerequisites = ExpressionUtils.simplifyPrerequisitesInBrowser(prerequisites, this.addingPrerequisiteId, this.graphState.nodes);
-        console.log(prerequisites, simplifiedPrerequisites);
+        // Simply pass this to the state manager, it will validate and simplify it
+        const prerequisites = window.ExpressionUtils.dnfToExpr(node.pathways);
 
         // Update node
-        this.stateManager.updateNode(this.addingPrerequisiteId, { prerequisites: simplifiedPrerequisites });
+        this.stateManager.updateNode(this.addingPrerequisiteId, { prerequisites });
     }
 
     beginRemovePrerequisite(nodeId, alpha = false) {
@@ -216,12 +215,11 @@ class GraphController {
         }
         console.log(node.pathways);
         
-        const prerequisites = ExpressionUtils.convertPathwaysToExpression(node.pathways);
-        const simplifiedPrerequisites = ExpressionUtils.simplifyPrerequisitesInBrowser(prerequisites, this.removingPrerequisiteId, this.graphState.nodes);
-        console.log(prerequisites, simplifiedPrerequisites);
-        
+        // Simply pass this to the state manager, it will validate and simplify it
+        const prerequisites = window.ExpressionUtils.dnfToExpr(node.pathways);
+
         // Update node
-        this.stateManager.updateNode(this.removingPrerequisiteId, { prerequisites: simplifiedPrerequisites });
+        this.stateManager.updateNode(this.removingPrerequisiteId, { prerequisites });
     }
 
     /**
@@ -568,7 +566,7 @@ class GraphController {
                 prerequisites: node.prerequisites
             }));
 
-            const newPositions = ExpressionUtils.generateDefaultPositions(fullNodes, {
+            const newPositions = window.GraphUtils.generateDefaultPositions(fullNodes, {
                 width: 800,
                 height: 600,
                 layout: 'hierarchical'

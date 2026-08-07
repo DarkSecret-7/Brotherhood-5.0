@@ -235,7 +235,7 @@ class LabUIController {
             
             // Add blur event for auto-correction when unfocused
             this.elements.forms.newNode.prerequisite.addEventListener('blur', (e) => {
-                this.autoSimplifyPrerequisites(e.target, true);
+                this.autoSimplifyPrerequisites(e.target, true);;
             });
         }
         
@@ -988,18 +988,22 @@ class LabUIController {
         
         try {
             // Get current context nodes
-            const contextNodes = this.stateManager.state.nodes;
+            const nodeIds = this.stateManager.state.nodes.map(node => node.localId);
             
-            // Validate with node existence check
-            const validation = window.ExpressionUtils.validatePrerequisitesWithNodeCheck(value, contextNodes);
+            // Normalise and validate with node existence check
+            const validation = window.ExpressionUtils.validateExpression(
+                window.ExpressionUtils.normalizeExpression(value),
+                nodeIds
+            );
             
             // Update validation styling based on validation result
-            if (validation.isValid) {
+            if (validation) {
                 input.style.borderColor = '';
             } else {
                 input.style.borderColor = '#d93025';
                 // Could optionally show tooltip with error message here
-                console.log('Validation error:', validation.error);
+                console.log('Invalid expression. Please recheck.');
+                
             }
             
             // Hide helper text during typing (user can see it again on blur)
@@ -1015,19 +1019,20 @@ class LabUIController {
      * Auto-simplify prerequisites (only on blur events)
      * @param {HTMLElement} input - Prerequisites input element
      * @param {boolean} forceUpdate - Force update even if not valid (for blur events)
+     * @returns {boolean} - Whether the expression was simplified
      */
     autoSimplifyPrerequisites(input, forceUpdate = false) {
         const value = input.value.trim();
         if (!value) {
             this.hideSimplificationHelper(input);
             input.style.borderColor = '';
-            return;
+            return false;
         }
         
         // Check if utils are available
-        if (!window.ExpressionUtils) {
-            console.warn('ExpressionUtils not available');
-            return;
+        if (!window.ExpressionUtils || !window.ASTUtils || !window.HypergraphUtils) {
+            console.warn('Critical Utilities are not available. Auto-simplification is not possible.');
+            return false;
         }
         
         try {
@@ -1036,47 +1041,53 @@ class LabUIController {
             const contextNodes = this.stateManager.state.nodes;
             
             // First validate with node existence check
-            const validation = window.ExpressionUtils.validatePrerequisitesWithNodeCheck(value, contextNodes);
+            const nodeIds = new Set(contextNodes.map(node => node.id));
+            const validation = window.ExpressionUtils.validateExpression(value, nodeIds);
             
             // Only simplify if there are no non-existent nodes and the expression is syntactically valid
-            if (validation.isValid && !validation.hasNonExistentNodes) {
-                // Simplify the expression using the new function
-                const simplified = window.ExpressionUtils.simplifyPrerequisitesInBrowser(
-                    value, 
-                    currentNodeId, 
-                    contextNodes
-                );
-                
-                // Update if expression was simplified
-                if (simplified !== value) {
-                    input.value = simplified;
-                    this.hideSimplificationHelper(input);
-                } else {
-                    // Show helper that no simplification was possible
-                    this.showSimplificationHelper(input, 'Expression already optimized');
+            if (validation) {
+                // Simplify the expression using the statemanager
+                try {
+                    const simplified = this.stateManager.processPrerequisites(value, currentNodeId);
+
+                    // Update if expression was simplified
+                    if (simplified !== value) {
+                        input.value = simplified;
+                        this.hideSimplificationHelper(input);
+                    } else {
+                        // Show helper that no simplification was possible
+                        this.showSimplificationHelper(input, 'Expression already optimized');
+                    }
+                    
+                    // Clear validation styling for valid expressions
+                    input.style.borderColor = '';
+
+                    // Announce that this prerequisite has already been simplified
+                    return true;
+                } catch (error) {
+                    console.error('Error simplifying prerequisites:', error);
+                    this.stateManager.showAlert('Error processing expression');
+                    return false;
                 }
-                
-                // Clear validation styling for valid expressions
-                input.style.borderColor = '';
             } else {
                 // Show red border for invalid expressions or those with non-existent nodes
                 input.style.borderColor = '#d93025';
                 
                 // Show helper explaining why simplification wasn't possible
-                if (validation.hasNonExistentNodes) {
-                    this.showSimplificationHelper(input, `Cannot simplify: missing nodes ${validation.missingNodes.join(', ')}`);
-                } else {
+                if (!validation) {
                     this.showSimplificationHelper(input, 'Cannot simplify: invalid expression syntax');
                 }
                 
-                if (forceUpdate && validation.error) {
-                    this.stateManager.showAlert(validation.error);
+                if (forceUpdate && !validation) {
+                    this.stateManager.showAlert('Invalid expression syntax');
                 }
+                return false;
             }
         } catch (error) {
             console.error('Error simplifying prerequisites:', error);
             input.style.borderColor = '#d93025';
             this.showSimplificationHelper(input, 'Error processing expression');
+            return false;
         }
     }
 

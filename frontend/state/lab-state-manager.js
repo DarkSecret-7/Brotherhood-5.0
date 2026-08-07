@@ -530,42 +530,19 @@ class LabStateManager {
      * @param {number} nodeId - Current node ID for simplification context
      * @returns {string} Processed prerequisite expression
      */
-    processPrerequisites(prerequisites, nodeId = null) {
+    processPrerequisites(prerequisites, nodeId) {
         let processedPrerequisites = prerequisites || '';
-        if (window.ExpressionUtils && processedPrerequisites.trim()) {
+        if (window.PrerequisiteUtils && processedPrerequisites.trim()) {
             try {
-                // Validate with node existence check first
-                const validation = window.ExpressionUtils.validatePrerequisitesWithNodeCheck(
-                    processedPrerequisites, 
-                    this.state.nodes
+                // Process directly and look for errors from the utils
+                const pathwayMap = new Map(this.state.graphState.nodes.map(node => [node.id, node.pathways]));
+                const mentionsMap = new Map(this.state.nodes.map(node => [node.id, node.mentions]));
+                processedPrerequisites = window.PrerequisiteUtils.simplifyPrerequisite(
+                    nodeId,
+                    processedPrerequisites,
+                    pathwayMap,
+                    mentionsMap
                 );
-                
-                if (validation.isValid && !validation.hasNonExistentNodes) {
-                    // Only simplify if expression is valid and all referenced nodes exist
-                    const simplified = window.ExpressionUtils.simplifyPrerequisitesInBrowser(
-                        processedPrerequisites,
-                        nodeId,
-                        this.state.nodes
-                    );
-                    
-                    // Validate the simplified expression again
-                    const simplifiedValidation = window.ExpressionUtils.parsePrerequisites(simplified);
-                    if (simplifiedValidation.isValid) {
-                        if (simplified !== processedPrerequisites) {
-                            console.log(`Prerequisites simplified for node ${nodeId || 'new'}: "${processedPrerequisites}" -> "${simplified}"`);
-                        }
-                        processedPrerequisites = simplified;
-                    } else {
-                        console.warn(`Simplified expression is invalid, keeping original: "${processedPrerequisites}"`);
-                    }
-                } else {
-                    // Don't simplify if there are non-existent nodes or syntax errors
-                    if (validation.hasNonExistentNodes) {
-                        console.warn(`Expression references non-existent nodes [${validation.missingNodes.join(', ')}], keeping original: "${processedPrerequisites}"`);
-                    } else {
-                        console.warn(`Invalid expression syntax, keeping original: "${processedPrerequisites}"`);
-                    }
-                }
             } catch (error) {
                 console.error('Error processing prerequisites:', error);
             }
@@ -638,17 +615,18 @@ class LabStateManager {
     updateMentions(nodeId, newPrereqs, oldPrereqs=null) {
         if (oldPrereqs && oldPrereqs.trim() && oldPrereqs.trim() !== '') {
             // Remove this node from old referenced nodes' mentions
-            const oldIds = window.ExpressionUtils.extractNodeIdsFromPrerequisites(oldPrereqs);
+            const oldIds = window.ExpressionUtils.extractNodeIds(oldPrereqs);
             oldIds.forEach(refId => {
                 const refNode = this.state.nodes.find(n => n.id === refId);
                 if (refNode && refNode.mentions) {
-                    refNode.mentions.pop(nodeId);
+                    const idx = refNode.mentions.indexOf(nodeId);
+                    if (idx !== -1) refNode.mentions.splice(idx, 1);
                 }
             });
         }
         
         // Add this node to new referenced nodes' mentions
-        const newIds = window.ExpressionUtils.extractNodeIdsFromPrerequisites(newPrereqs);
+        const newIds = window.ExpressionUtils.extractNodeIds(newPrereqs);
         newIds.forEach(refId => {
             const refNode = this.state.nodes.find(n => n.id === refId);            
             if (refNode) {
@@ -701,15 +679,23 @@ class LabStateManager {
      * @param {number} nodeId - Node ID
      * @param {Object} updates - Node updates
      */
-    updateNode(nodeId, updates, shouldPrereqChange=false) {
+    updateNode(nodeId, updates, shouldPrereqChange=false, processPrerequisites=true) {
         const nodeIndex = this.state.nodes.findIndex(node => node.id === nodeId);
         if (nodeIndex !== -1) {
             const existingNode = this.state.nodes[nodeIndex];
             const oldPrerequisites = existingNode.prerequisites;
             
-            // Process prerequisites if they are being updated
-            if (updates.prerequisites !== undefined) {
-                updates.prerequisites = this.processPrerequisites(updates.prerequisites, nodeId);
+            // Process prerequisites if they are being updated and if asked
+            if (updates.prerequisites !== undefined && processPrerequisites) {
+                try {
+                    updates.prerequisites = this.processPrerequisites(updates.prerequisites, nodeId);
+                } catch (error) {
+                    // Upon an error, revert back the update to the old prerequisites
+                    updates.prerequisites = oldPrerequisites;
+                    console.error('Error processing prerequisites:', error);
+                    this.notifyStateChange();
+                    return;
+                }
             }
             
             Object.assign(existingNode, updates, { _isDirty: true });  // Mark as dirty
@@ -1240,7 +1226,7 @@ class LabStateManager {
         if (newNode?.prerequisites && window.ExpressionUtils) {
             // `convertToDNF` accepts the raw prerequisite string; it
             // re-parses and returns [[prereqId, ...], ...] (DNF).
-            const dnfPathways = window.ExpressionUtils.convertToDNF(newNode.prerequisites);
+            const dnfPathways = window.ExpressionUtils.exprToDnf(newNode.prerequisites);
             // Each pathway is an array of prereq node ids. Drop
             // empty pathways and dedupe.
             const newPathways = [];
@@ -1262,11 +1248,12 @@ class LabStateManager {
             if (graphNode) graphNode.pathways = [];
         }
 
+        // TODO: IMPLEMENT CYCLE CHECKING
         // === 3. RECALCULATE CYCLES (minimally) ===
         // We hand the cycle detector a temporary edge list built from
         // the current pathways. We DO NOT keep this list around as
         // `graphState.edges`. Cycles are stored as node-id sequences.
-        if (window.ExpressionUtils) {
+        /*if (window.ExpressionUtils) {
             const minimalNodes = this.state.graphState.nodes.map(n => ({ id: n.id }));
             const tempEdges = [];
             this.state.graphState.nodes.forEach(node => {
@@ -1279,7 +1266,7 @@ class LabStateManager {
             });
             const nodeCycles = window.ExpressionUtils.detectCycles(minimalNodes, tempEdges);
             this.state.graphState.cycles = nodeCycles.map(nodeCycle => nodeCycle.slice());
-        }
+        }*/
     }
 
     /**

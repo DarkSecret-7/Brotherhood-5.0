@@ -163,9 +163,9 @@ class SnapshotsTransformer {
         // Second pass: extract DNF pathways from the backend tree and
         // store them as arrays of prereq node ids.
         backendNodes.forEach(node => {
-            if (node.prerequisite && window.ExpressionUtils) {
+            if (node.prerequisite && window.PrerequisiteUtils) {
                 // Extract DNF pathways directly from tree structure
-                const dnfPathways = window.ExpressionUtils.extractPathwaysFromTree(node.prerequisite);
+                const dnfPathways = window.PrerequisiteUtils.extractPathwaysFromAst(node.prerequisite);
                 console.log(node, dnfPathways, dnfPathways.map(p => Array.isArray(p) ? p.slice() : []));
                 
                 // Each pathway is already an array of prereq node ids
@@ -191,8 +191,9 @@ class SnapshotsTransformer {
         }*/
 
         // Generate default positions for nodes without stored positions
-        if (window.ExpressionUtils) {
-            const algorithmicPositions = window.ExpressionUtils.generateDefaultPositions(backendNodes, {
+        if (window.GraphUtils) {
+            // moved to GraphUtils
+            const algorithmicPositions = window.GraphUtils.generateDefaultPositions(backendNodes, {
                 width: 800,
                 height: 600,
                 layout: 'hierarchical'
@@ -421,9 +422,9 @@ class SnapshotsTransformer {
         if (!backendPrereq) return '';
         if (typeof backendPrereq === 'string') return backendPrereq;
         if (typeof backendPrereq === 'object') {
-            // Convert tree structure to string using ExpressionUtils
-            if (window.ExpressionUtils) {
-                return window.ExpressionUtils.treeToPrerequisiteString(backendPrereq);
+            // Convert tree structure to string using ASTUtils
+            if (window.ASTUtils) {
+                return window.ASTUtils.astToExpr(backendPrereq);
             }
         }
         return '';
@@ -439,7 +440,7 @@ class SnapshotsTransformer {
         
         // Parse expression into tree structure using ExpressionUtils
         if (window.ExpressionUtils) {
-            return window.ExpressionUtils.parsePrerequisiteToTree(frontendPrereq);
+            return window.ExpressionUtils.exprToAst(frontendPrereq);
         }
     }
 
