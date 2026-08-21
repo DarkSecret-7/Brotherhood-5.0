@@ -425,10 +425,18 @@ class ExpressionUtils {
         // ----- Updated Parser (returns { node, and, or } directly) -----
         let pos = 0;
 
+        /**
+         * Parses the expression into an abstract syntax tree.
+         * @return {Object} The parsed expression tree.
+         */
         function parseExpr() {
             return parseOr();
         }
 
+        /**
+         * Parse OR-connected operands into an expression AST node.
+         * @return {Object} The parsed operand or an `or` AST node containing the operands.
+         */
         function parseOr() {
             let left = parseAnd();
             const operands = [left];
@@ -440,6 +448,10 @@ class ExpressionUtils {
             return operands.length === 1 ? operands[0] : { or: operands };
         }
 
+        /**
+         * Parses a sequence of primary expressions joined by `AND`.
+         * @return {Object} The parsed expression node.
+         */
         function parseAnd() {
             let left = parsePrimary();
             const operands = [left];

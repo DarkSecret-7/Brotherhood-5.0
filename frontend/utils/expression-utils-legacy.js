@@ -272,8 +272,9 @@ class ExpressionUtils {
      */
     static convertPathwaysToExpression(pathways) {
         /**
-         * Helper function that recursively computes all minimal hitting sets of a collection of sets.
-         * Each set is an array of node IDs. Returns an array of arrays (minimal hitting sets).
+         * Computes all inclusion-minimal sets that intersect every input set.
+         * @param {Array<Array<number>>} sets - Collections of node IDs to cover.
+         * @return {Array<Array<number>>} The minimal hitting sets, or `[[]]` when no input sets are provided.
          */
         function minimalHittingSets(sets) {
             // Base case: no sets left → empty hitting set
@@ -666,6 +667,12 @@ class ExpressionUtils {
     static getReachability(nodesDeps) {
         const reachability = {};
 
+        /**
+         * Computes all transitive prerequisite IDs for a node.
+         * @param {number|string} nodeId - The node whose ancestors to collect.
+         * @param {Set<number|string>} visited - Node IDs already being traversed.
+         * @return {Set<number|string>} The node's direct and indirect prerequisite IDs.
+         */
         function getAncestors(nodeId, visited) {
             if (reachability[nodeId]) return reachability[nodeId];
             if (visited.has(nodeId)) return new Set();
@@ -750,6 +757,10 @@ class ExpressionUtils {
         const tokens = (expression || '').match(/\(|\)|\[|\]|\bAND\b|\bOR\b|,|\d+/gi) || [];
         let pos = 0;
 
+        /**
+         * Parses an expression's OR operations into an abstract syntax tree node.
+         * @return {IdNode|OpNode} The parsed expression tree.
+         */
         function parseOr() {
             let node = parseAnd();
             while (pos < tokens.length && String(tokens[pos]).toUpperCase() === 'OR') {
@@ -764,6 +775,10 @@ class ExpressionUtils {
             return node;
         }
 
+        /**
+         * Parses a sequence of primary expressions joined by `AND` or commas.
+         * @return {IdNode|OpNode} The parsed expression tree.
+         */
         function parseAnd() {
             let node = parsePrimary();
             while (pos < tokens.length && (String(tokens[pos]).toUpperCase() === 'AND' || tokens[pos] === ',')) {
