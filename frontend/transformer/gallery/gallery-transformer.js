@@ -153,9 +153,30 @@ class GalleryTransformer {
         if (!backendPrereq) return '';
         if (typeof backendPrereq === 'string') return backendPrereq;
         if (typeof backendPrereq === 'object') {
+            // Validate object shape before converting
+            const isValidAst = (obj) => {
+                if (!obj || typeof obj !== 'object') return false;
+                // Check for valid AST shapes: {node}, {and}, or {or}
+                const hasNode = 'node' in obj && typeof obj.node === 'number';
+                const hasAnd = 'and' in obj && Array.isArray(obj.and);
+                const hasOr = 'or' in obj && Array.isArray(obj.or);
+                // Reject malformed shapes like {op, args}
+                return (hasNode || hasAnd || hasOr) && !('op' in obj) && !('args' in obj);
+            };
+
+            if (!isValidAst(backendPrereq)) {
+                console.warn('Invalid AST structure in prerequisite:', backendPrereq);
+                return '';
+            }
+
             // Convert tree structure to string using ASTUtils
             if (window.ASTUtils) {
-                return window.ASTUtils.astToExpr(backendPrereq);
+                try {
+                    return window.ASTUtils.astToExpr(backendPrereq);
+                } catch (error) {
+                    console.error('Error converting AST to expression:', error);
+                    return '';
+                }
             }
         }
         return '';

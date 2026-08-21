@@ -73,7 +73,7 @@ class ExpressionUtils {
             .trim()
             .replace(/\s+/g, ' ') // Normalize whitespace
             .replace(/([()\[\]])/g, ' $1 ') // Add spaces around brackets/parentheses
-            .replace(/(and|AND|And|aNd|&&|&)/g, ' AND ') // Various AND operators (add spaces)
+            .replace(/\band\b|&&|&/gi, ' AND ') // Case-insensitive AND with word boundaries, plus && and &
             .replace(/(or|OR|Or|oR|\|\|)/g, ' OR ') // Various OR operators (add spaces)
             .replace(/,/g, ' AND ') // Comma as AND
             .replace(/\s+/g, ' ') // Clean up extra spaces
@@ -146,7 +146,7 @@ class ExpressionUtils {
         let expectingOperand = true;
         for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
-            
+
             if (expectingOperand) {
                 // Should be a number or opening bracket/parenthesis
                 if (token === '(' || token === '[') {
@@ -168,6 +168,11 @@ class ExpressionUtils {
             }
         }
 
+        // If we end while still expecting an operand, the expression is incomplete
+        if (expectingOperand) {
+            return false;
+        }
+
         return true;
     }
 
@@ -184,7 +189,7 @@ class ExpressionUtils {
             // This ensures consistent handling between backend (tree) and frontend (string)
             const tree = this.parsePrerequisiteToTree(expression);
             if (!tree) return [];
-            return this.extractPathwaysFromTreeAST(tree);
+            return this.extractPathwaysFromTree(tree);
         } catch (error) {
             console.warn('Failed to convert to DNF:', error);
             return [];
@@ -263,6 +268,8 @@ class ExpressionUtils {
                 return all;
             }
         }
+        // Fallback for unknown operators or unsupported input
+        return [];
     }
 
     /**
@@ -668,16 +675,27 @@ class ExpressionUtils {
 
         function getAncestors(nodeId, visited) {
             if (reachability[nodeId]) return reachability[nodeId];
-            if (visited.has(nodeId)) return new Set();
+            if (visited.has(nodeId)) {
+                // Cycle detected, return empty set but don't cache
+                return new Set();
+            }
             visited.add(nodeId);
             const ancestors = new Set();
             const deps = nodesDeps[nodeId] || [];
+            let wasCutShort = false;
             deps.forEach(function(preId) {
                 ancestors.add(preId);
                 const more = getAncestors(preId, new Set(visited));
+                // Check if traversal was cut short by cycle guard
+                if (visited.has(preId) && !reachability[preId]) {
+                    wasCutShort = true;
+                }
                 more.forEach(function(x) { ancestors.add(x); });
             });
-            reachability[nodeId] = ancestors;
+            // Only cache if traversal was complete
+            if (!wasCutShort) {
+                reachability[nodeId] = ancestors;
+            }
             return ancestors;
         }
 
@@ -779,25 +797,27 @@ class ExpressionUtils {
         }
 
         function parsePrimary() {
-            if (pos >= tokens.length) return null;
+            if (pos >= tokens.length) {
+                throw new Error('Unexpected end of expression');
+            }
             const token = tokens[pos];
             if (token === '(' || token === '[') {
+                const opener = token;
+                const expectedCloser = opener === '(' ? ')' : ']';
                 pos += 1;
                 const node = parseOr();
-                // Expect matching closing bracket or parenthesis
-                if (pos < tokens.length && 
-                    ((token === '(' && tokens[pos] === ')') || 
-                     (token === '[' && tokens[pos] === ']'))) {
-                    pos += 1;
+                // Require matching closing delimiter
+                if (pos >= tokens.length || tokens[pos] !== expectedCloser) {
+                    throw new Error(`Missing closing ${expectedCloser} for ${opener}`);
                 }
+                pos += 1;
                 return node;
             }
             if (/^\d+$/.test(token)) {
                 pos += 1;
                 return new IdNode(parseInt(token, 10));
             }
-            pos += 1;
-            return parsePrimary();
+            throw new Error(`Unexpected token: ${token}`);
         }
 
         try {
@@ -814,17 +834,29 @@ class ExpressionUtils {
 
         // Step 1: Expand disjunctive nodes (nodes with multiple pathways)
         if (nodePathways) {
+            // Build replacement mappings first, validating numeric IDs
+            const replacements = [];
             for (const [id, pathways] of Object.entries(nodePathways)) {
+                // Validate that id is numeric before creating RegExp
+                if (!/^\d+$/.test(id)) {
+                    console.warn(`Skipping invalid node ID: ${id}`);
+                    continue;
+                }
                 if (pathways.length > 1) {
-                    const orParts = pathways.map(p => 
+                    const orParts = pathways.map(p =>
                         p.length === 1 ? String(p[0]) : '(' + p.join(' AND ') + ')'
                     );
                     const replacement = orParts.join(' OR ');
-                    processedExpr = processedExpr.replace(
-                        new RegExp('\\b' + id + '\\b', 'g'), 
-                        '(' + replacement + ')'
-                    );
+                    replacements.push({
+                        id: id,
+                        regex: new RegExp('\\b' + id + '\\b', 'g'),
+                        replacement: '(' + replacement + ')'
+                    });
                 }
+            }
+            // Apply substitutions in a single pass to prevent re-expansion
+            for (const {regex, replacement} of replacements) {
+                processedExpr = processedExpr.replace(regex, replacement);
             }
         }
 
@@ -865,10 +897,31 @@ class ExpressionUtils {
         // 2. Expand each pathway: for any ID that has pathways, replace it with all its alternatives
         //    This is like substituting definitions.
         const expanded = [];
+        const MAX_EXPANSION_DEPTH = 100; // Cycle protection depth limit
+        const MAX_CURRENT_SIZE = 1000; // Cycle protection size limit
+
         for (const path of pathways) {
             let current = [path];
-            for (let i = 0; i < current.length; i++) {
-                const p = current[i];
+            const visitedPaths = new Set(); // Track visited path signatures for cycle detection
+            let iterationCount = 0;
+
+            while (current.length > 0 && iterationCount < MAX_EXPANSION_DEPTH) {
+                iterationCount++;
+                if (current.length > MAX_CURRENT_SIZE) {
+                    console.warn('Expansion size limit reached, stopping expansion');
+                    expanded.push(...current);
+                    break;
+                }
+
+                const p = current.shift(); // Process first path in queue
+                const pathSig = p.slice().sort((a, b) => a - b).join(',');
+
+                // Check for cycle
+                if (visitedPaths.has(pathSig)) {
+                    continue; // Skip already processed paths
+                }
+                visitedPaths.add(pathSig);
+
                 // Find first ID in p that has a definition
                 let found = false;
                 for (let j = 0; j < p.length; j++) {
@@ -882,8 +935,8 @@ class ExpressionUtils {
                             const combined = [...p.slice(0, j), ...def, ...p.slice(j+1)];
                             newPaths.push(combined);
                         }
-                        // Replace current p with newPaths
-                        current.splice(i, 1, ...newPaths);
+                        // Add new paths to front of queue for re-examination
+                        current.unshift(...newPaths);
                         found = true;
                         break;
                     }
@@ -977,8 +1030,20 @@ class ExpressionUtils {
      */
     static simplifyPrerequisitesWithPathways(expression, currentNodeId, nodePathways) {
         if (!expression) return '';
-        // Convert nodePathways object in the correct shape first
-        const mappedPathways = dict(nodePathways.map(node => [node.id, node.pathways]));
+        // Convert nodePathways to object map shape {nodeId: pathways}
+        let mappedPathways;
+        if (Array.isArray(nodePathways)) {
+            // Handle array of node objects
+            mappedPathways = Object.fromEntries(
+                nodePathways.map(node => [node.id, node.pathways])
+            );
+        } else if (typeof nodePathways === 'object') {
+            // Already an object map
+            mappedPathways = nodePathways;
+        } else {
+            return expression;
+        }
+
         // Exclude the current node's own pathways (to avoid self‑dependencies)
         const filteredPathways = { ...mappedPathways };
         if (currentNodeId !== undefined && filteredPathways[currentNodeId]) {
@@ -1092,9 +1157,10 @@ class ExpressionUtils {
         if (/^\d+$/.test(expression)) {
             return { node: parseInt(expression) };
         }
-        
-        // Fallback: return as-is if can't parse
-        return { expression: expression };
+
+        // Fallback: return null for unparseable fragments
+        console.warn('Unparseable expression fragment:', expression);
+        return null;
     }
 
     /**

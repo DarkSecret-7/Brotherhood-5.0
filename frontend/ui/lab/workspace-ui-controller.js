@@ -89,7 +89,7 @@ class LabUIController {
         
         // Buttons
         this.elements.buttons = {
-            addNode: document.querySelector('.btn-primary[onclick*="handleAddNode"]'),
+            addNode: document.getElementById('btn-add-node'),
             addDomain: document.getElementById('btn-group-domain'),
             llmSuggest: document.getElementById('btn-llm-suggest'),
             clearWorkspace: document.getElementById('btn-clear-workspace'),
@@ -987,9 +987,9 @@ class LabUIController {
         }
         
         try {
-            // Get current context nodes
-            const nodeIds = this.stateManager.state.nodes.map(node => node.localId);
-            
+            // Get current context nodes as a Set
+            const nodeIds = new Set(this.stateManager.state.nodes.map(node => node.id));
+
             // Normalise and validate with node existence check
             const validation = window.ExpressionUtils.validateExpression(
                 window.ExpressionUtils.normalizeExpression(value),

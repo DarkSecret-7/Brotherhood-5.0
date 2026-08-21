@@ -535,8 +535,8 @@ class LabStateManager {
         if (window.PrerequisiteUtils && processedPrerequisites.trim()) {
             try {
                 // Process directly and look for errors from the utils
-                const pathwayMap = new Map(this.state.graphState.nodes.map(node => [node.id, node.pathways]));
-                const mentionsMap = new Map(this.state.nodes.map(node => [node.id, node.mentions]));
+                const pathwayMap = new Map(this.state.graphState.nodes.map(node => [node.id, node.pathways || []]));
+                const mentionsMap = new Map(this.state.nodes.map(node => [node.id, node.mentions || []]));
                 processedPrerequisites = window.PrerequisiteUtils.simplifyPrerequisite(
                     nodeId,
                     processedPrerequisites,
@@ -545,6 +545,7 @@ class LabStateManager {
                 );
             } catch (error) {
                 console.error('Error processing prerequisites:', error);
+                throw error;
             }
         }
         return processedPrerequisites;
@@ -687,15 +688,7 @@ class LabStateManager {
             
             // Process prerequisites if they are being updated and if asked
             if (updates.prerequisites !== undefined && processPrerequisites) {
-                try {
-                    updates.prerequisites = this.processPrerequisites(updates.prerequisites, nodeId);
-                } catch (error) {
-                    // Upon an error, revert back the update to the old prerequisites
-                    updates.prerequisites = oldPrerequisites;
-                    console.error('Error processing prerequisites:', error);
-                    this.notifyStateChange();
-                    return;
-                }
+                updates.prerequisites = this.processPrerequisites(updates.prerequisites, nodeId);
             }
             
             Object.assign(existingNode, updates, { _isDirty: true });  // Mark as dirty
@@ -1224,24 +1217,32 @@ class LabStateManager {
         // (if any) and write it to both the workspace node and the
         // graphState node.
         if (newNode?.prerequisites && window.ExpressionUtils) {
-            // `convertToDNF` accepts the raw prerequisite string; it
-            // re-parses and returns [[prereqId, ...], ...] (DNF).
-            const dnfPathways = window.ExpressionUtils.exprToDnf(newNode.prerequisites);
-            // Each pathway is an array of prereq node ids. Drop
-            // empty pathways and dedupe.
-            const newPathways = [];
-            const seen = new Set();
-            dnfPathways.forEach(pathway => {
-                if (!Array.isArray(pathway) || pathway.length === 0) return;
-                const sig = pathway.slice().sort((a, b) => a - b).join(',');
-                if (seen.has(sig)) return;
-                seen.add(sig);
-                newPathways.push(pathway.slice());
-            });
+            try {
+                // `convertToDNF` accepts the raw prerequisite string; it
+                // re-parses and returns [[prereqId, ...], ...] (DNF).
+                const dnfPathways = window.ExpressionUtils.exprToDnf(newNode.prerequisites);
+                // Each pathway is an array of prereq node ids. Drop
+                // empty pathways and dedupe.
+                const newPathways = [];
+                const seen = new Set();
+                dnfPathways.forEach(pathway => {
+                    if (!Array.isArray(pathway) || pathway.length === 0) return;
+                    const sig = pathway.slice().sort((a, b) => a - b).join(',');
+                    if (seen.has(sig)) return;
+                    seen.add(sig);
+                    newPathways.push(pathway.slice());
+                });
 
-            const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
-            if (graphNode) graphNode.pathways = newPathways;
-            if (newNode) newNode.pathways = newPathways;
+                const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
+                if (graphNode) graphNode.pathways = newPathways;
+                if (newNode) newNode.pathways = newPathways;
+            } catch (error) {
+                console.error('Error converting to DNF:', error);
+                // Continue with empty pathways rather than aborting
+                const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);
+                if (graphNode) graphNode.pathways = [];
+                if (newNode) newNode.pathways = [];
+            }
         } else if (newNode && !newNode.prerequisites) {
             // No prerequisites -> empty pathway list.
             const graphNode = this.state.graphState.nodes.find(n => n.id === nodeId);

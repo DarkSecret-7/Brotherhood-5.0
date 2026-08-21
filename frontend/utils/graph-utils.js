@@ -587,6 +587,70 @@ class GraphUtils {
     }
 
     /**
+     * Parse prerequisite expression and extract node IDs
+     * @param {Object} node - Node with prerequisites
+     * @returns {Set} Set of prerequisite node IDs
+     */
+    static getPrerequisiteSet(node) {
+        if (!node || !node.prerequisites) return new Set();
+
+        // Use ExpressionUtils if available
+        if (window.ExpressionUtils) {
+            try {
+                const ids = window.ExpressionUtils.extractNodeIds(node.prerequisites);
+                return new Set(ids);
+            } catch (error) {
+                console.warn('Error parsing prerequisites:', error);
+            }
+        }
+
+        // Fallback: simple regex extraction
+        const matches = node.prerequisites.match(/\b\d+\b/g);
+        return new Set(matches ? matches.map(id => parseInt(id, 10)) : []);
+    }
+
+    /**
+     * Calculate hierarchical levels for nodes based on prerequisites
+     * @param {Array} nodes - Array of node objects
+     * @returns {Object} Map of node ID to level
+     */
+    static calculateLevels(nodes) {
+        const levels = {};
+        const visited = new Set();
+
+        const calculateLevel = (node) => {
+            if (visited.has(node.id)) return levels[node.id] || 0;
+            visited.add(node.id);
+
+            const prereqIds = this.getPrerequisiteSet(node);
+            if (prereqIds.size === 0) {
+                levels[node.id] = 0;
+                return 0;
+            }
+
+            let maxPrereqLevel = -1;
+            prereqIds.forEach(prereqId => {
+                const prereqNode = nodes.find(n => n.id === prereqId);
+                if (prereqNode) {
+                    const prereqLevel = calculateLevel(prereqNode);
+                    maxPrereqLevel = Math.max(maxPrereqLevel, prereqLevel);
+                }
+            });
+
+            levels[node.id] = maxPrereqLevel + 1;
+            return levels[node.id];
+        };
+
+        nodes.forEach(node => {
+            if (!visited.has(node.id)) {
+                calculateLevel(node);
+            }
+        });
+
+        return levels;
+    }
+
+    /**
      * Generate default positions for nodes using simple layout
      * @param {Array} nodes - Array of node objects
      * @param {Object} options - Layout options
@@ -603,6 +667,11 @@ class GraphUtils {
         } = options;
 
         if (layout === 'hierarchical') {
+            // Return early if nodes is empty to prevent Math.max from receiving no levels
+            if (!nodes || nodes.length === 0) {
+                return positions;
+            }
+
             // Prerequisite-aware hierarchical layout with domain clustering
             const sortedNodes = [...nodes].sort((a, b) => a.id - b.id);
             const levels = this.calculateLevels(sortedNodes);

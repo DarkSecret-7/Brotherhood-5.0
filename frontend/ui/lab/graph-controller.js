@@ -214,9 +214,12 @@ class GraphController {
             console.log(pathway);
         }
         console.log(node.pathways);
-        
+
+        // Filter out empty clauses before converting to expression
+        const filteredPathways = node.pathways.filter(pathway => Array.isArray(pathway) && pathway.length > 0);
+
         // Simply pass this to the state manager, it will validate and simplify it
-        const prerequisites = window.ExpressionUtils.dnfToExpr(node.pathways);
+        const prerequisites = filteredPathways.length > 0 ? window.ExpressionUtils.dnfToExpr(filteredPathways) : '';
 
         // Update node
         this.stateManager.updateNode(this.removingPrerequisiteId, { prerequisites });

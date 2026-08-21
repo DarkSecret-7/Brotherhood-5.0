@@ -28,6 +28,12 @@ class PrerequisiteUtils {
 
         // 6. Convert back to expression
         const reducedDnf = reducedHyperarcs.map(set => Array.from(set).sort((a,b)=>a-b));
+
+        // Detect empty reduction result and return empty string
+        if (!reducedDnf || reducedDnf.length === 0) {
+            return '';
+        }
+
         const simplifiedPrerequisite = ExpressionUtils.dnfToExpr(reducedDnf);
 
         return simplifiedPrerequisite;
