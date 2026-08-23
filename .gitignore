@@ -18,6 +18,7 @@ brotherhood.db
 .windsurf/
 .trae/
 .github/
+.pi/
 AGENTS.md
 
 # Temporary docs
@@ -41,3 +42,6 @@ DATABASE_BACKUPS/
 # Development Artifacts
 future_plans/
 graphify-out/
+
+# Experimental
+constellation/

@@ -139,6 +139,9 @@ class GraphController {
         if (!this.addingPrerequisiteId) throw new Error('Not adding a prerequisite');
         if (nodeId === this.addingPrerequisiteId) throw new Error('Cannot add a node as a prerequisite to itself');
 
+        // Get node (shared by both branches)
+        const node = this.graphState.nodes.find(node => node.id === this.addingPrerequisiteId);
+        if (!node) throw new Error('Node not found');
         if (alpha) {
             // If alpha, add to all pathways
             node.pathways.forEach(pathway => {
@@ -146,8 +149,6 @@ class GraphController {
             });
         } else {
             // Get current pathway
-            const node = this.graphState.nodes.find(node => node.id === this.addingPrerequisiteId);
-            if (!node) throw new Error('Node not found');
             const pathwayIndex = this.nodePathwayIndex.get(this.addingPrerequisiteId) || 0;
             if (pathwayIndex >= node.pathways?.length && node.pathways?.length > 0) throw new Error('Pathway index out of range');
             // Could have no pathways yet
@@ -158,12 +159,12 @@ class GraphController {
             
             pathway.push(nodeId);
             node.pathways[pathwayIndex] = pathway;
-            console.log(pathway);
         }
         console.log(node.pathways);
 
         // Simply pass this to the state manager, it will validate and simplify it
-        const prerequisites = window.ExpressionUtils.dnfToExpr(node.pathways);
+        const filteredPathways = (node.pathways || []).filter(p => Array.isArray(p) && p.length > 0);
+        const prerequisites = window.ExpressionUtils.dnfToExpr(filteredPathways);
 
         // Update node
         this.stateManager.updateNode(this.addingPrerequisiteId, { prerequisites });
@@ -211,12 +212,18 @@ class GraphController {
             }
 
             node.pathways[pathwayIndex] = pathway;
-            console.log(pathway);
         }
         console.log(node.pathways);
         
+
+        // Filter empty clauses so removing the final item from a pathway
+        // cannot trigger AST validation errors downstream.
+        const filteredPathways = (node.pathways || []).filter(p => Array.isArray(p) && p.length > 0);
+
         // Simply pass this to the state manager, it will validate and simplify it
-        const prerequisites = window.ExpressionUtils.dnfToExpr(node.pathways);
+        const prerequisites = filteredPathways.length
+            ? window.ExpressionUtils.dnfToExpr(filteredPathways)
+            : '';
 
         // Update node
         this.stateManager.updateNode(this.removingPrerequisiteId, { prerequisites });

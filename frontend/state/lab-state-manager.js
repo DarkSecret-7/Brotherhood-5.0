@@ -535,8 +535,8 @@ class LabStateManager {
         if (window.PrerequisiteUtils && processedPrerequisites.trim()) {
             try {
                 // Process directly and look for errors from the utils
-                const pathwayMap = new Map(this.state.graphState.nodes.map(node => [node.id, node.pathways]));
-                const mentionsMap = new Map(this.state.nodes.map(node => [node.id, node.mentions]));
+                const pathwayMap = new Map(this.state.graphState.nodes.map(node => [node.id, node.pathways] || []));
+                const mentionsMap = new Map(this.state.nodes.map(node => [node.id, node.mentions] || []));
                 processedPrerequisites = window.PrerequisiteUtils.simplifyPrerequisite(
                     nodeId,
                     processedPrerequisites,
@@ -544,7 +544,9 @@ class LabStateManager {
                     mentionsMap
                 );
             } catch (error) {
+                // Rethrow so callers (e.g. updateNode) can roll back to oldPrerequisites.
                 console.error('Error processing prerequisites:', error);
+                throw error;
             }
         }
         return processedPrerequisites;
@@ -1224,9 +1226,18 @@ class LabStateManager {
         // (if any) and write it to both the workspace node and the
         // graphState node.
         if (newNode?.prerequisites && window.ExpressionUtils) {
-            // `convertToDNF` accepts the raw prerequisite string; it
+            // Normalise the raw string so the tokenizer accepts brackets,
+            // commas, and `&&` consistently with the rest of the system.
+            const normalizedPrereq = window.ExpressionUtils.normalizeExpression(newNode.prerequisites);
+            // `convertToDNF` accepts the normalised prerequisite string; it
             // re-parses and returns [[prereqId, ...], ...] (DNF).
-            const dnfPathways = window.ExpressionUtils.exprToDnf(newNode.prerequisites);
+            let dnfPathways;
+            try {
+                dnfPathways = window.ExpressionUtils.exprToDnf(normalizedPrereq);
+            } catch (error) {
+                console.error('Error converting prerequisites to DNF:', error);
+                dnfPathways = [];
+            }
             // Each pathway is an array of prereq node ids. Drop
             // empty pathways and dedupe.
             const newPathways = [];

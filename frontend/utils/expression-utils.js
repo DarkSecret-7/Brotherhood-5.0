@@ -28,6 +28,10 @@ class PrerequisiteUtils {
 
         // 6. Convert back to expression
         const reducedDnf = reducedHyperarcs.map(set => Array.from(set).sort((a,b)=>a-b));
+        // An empty reduction (no reachable hyperarcs) means the expression
+        // collapses to nothing — return an empty string so the caller can
+        // distinguish "no prerequisites" from a parse/syntax error.
+        if (reducedDnf.length === 0) return '';
         const simplifiedPrerequisite = ExpressionUtils.dnfToExpr(reducedDnf);
 
         return simplifiedPrerequisite;
@@ -733,10 +737,7 @@ class HypergraphUtils {
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = HypergraphUtils;
-    module.exports.ExpressionUtils = ExpressionUtils;
-    module.exports.ASTUtils = ASTUtils;
-    module.exports.PrerequisiteUtils = PrerequisiteUtils;
+    module.exports = { HypergraphUtils, ExpressionUtils, ASTUtils, PrerequisiteUtils };
 } else {
     window.HypergraphUtils = HypergraphUtils;
     window.ExpressionUtils = ExpressionUtils;

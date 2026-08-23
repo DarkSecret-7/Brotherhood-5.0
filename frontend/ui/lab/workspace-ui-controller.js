@@ -89,7 +89,7 @@ class LabUIController {
         
         // Buttons
         this.elements.buttons = {
-            addNode: document.querySelector('.btn-primary[onclick*="handleAddNode"]'),
+            addNode: document.getElementById('btn-add-node'),
             addDomain: document.getElementById('btn-group-domain'),
             llmSuggest: document.getElementById('btn-llm-suggest'),
             clearWorkspace: document.getElementById('btn-clear-workspace'),
@@ -988,8 +988,8 @@ class LabUIController {
         
         try {
             // Get current context nodes
-            const nodeIds = this.stateManager.state.nodes.map(node => node.localId);
-            
+            const nodeIds = new Set(this.stateManager.state.nodes.map(node => node.id));
+
             // Normalise and validate with node existence check
             const validation = window.ExpressionUtils.validateExpression(
                 window.ExpressionUtils.normalizeExpression(value),
@@ -1037,12 +1037,15 @@ class LabUIController {
         
         try {
             // Get current node context for simplification
-            const currentNodeId = this.elements.forms.newNode.localId.value ? parseInt(this.elements.forms.newNode.localId.value) : null;
+            const isEditForm = input === this.elements.forms.editNode?.prerequisite;
+            const idInput = isEditForm ? this.elements.forms.editNode.localId : this.elements.forms.newNode.localId;
+            const currentNodeId = idInput && idInput.value ? parseInt(idInput.value) : null;
             const contextNodes = this.stateManager.state.nodes;
             
             // First validate with node existence check
             const nodeIds = new Set(contextNodes.map(node => node.id));
-            const validation = window.ExpressionUtils.validateExpression(value, nodeIds);
+            const normalized = window.ExpressionUtils.normalizeExpression(value);
+            const validation = window.ExpressionUtils.validateExpression(normalized, nodeIds);
             
             // Only simplify if there are no non-existent nodes and the expression is syntactically valid
             if (validation) {
@@ -1072,13 +1075,11 @@ class LabUIController {
             } else {
                 // Show red border for invalid expressions or those with non-existent nodes
                 input.style.borderColor = '#d93025';
-                
+
                 // Show helper explaining why simplification wasn't possible
-                if (!validation) {
-                    this.showSimplificationHelper(input, 'Cannot simplify: invalid expression syntax');
-                }
-                
-                if (forceUpdate && !validation) {
+                this.showSimplificationHelper(input, 'Cannot simplify: invalid expression syntax');
+
+                if (forceUpdate) {
                     this.stateManager.showAlert('Invalid expression syntax');
                 }
                 return false;

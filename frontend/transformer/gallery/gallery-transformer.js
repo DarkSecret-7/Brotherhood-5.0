@@ -147,12 +147,22 @@ class GalleryTransformer {
     /**
      * Transform prerequisite expression from backend format
      * @param {Object|String} backendPrereq - Backend prerequisite data
+     *   The AST shape produced by the backend is an n-ary tree of
+     *   { node: int }, { and: [child, ...] }, or { or: [child, ...] }.
      * @returns {String} Frontend prerequisite expression
      */
     transformPrerequisitesFromBackend(backendPrereq) {
         if (!backendPrereq) return '';
         if (typeof backendPrereq === 'string') return backendPrereq;
         if (typeof backendPrereq === 'object') {
+            // Reject malformed objects (e.g. {op, args} from an older shape)
+            // so they don't reach ASTUtils and throw inside.
+            const isValidAst =
+                'node' in backendPrereq ||
+                ('and' in backendPrereq && Array.isArray(backendPrereq.and)) ||
+                ('or' in backendPrereq && Array.isArray(backendPrereq.or));
+            if (!isValidAst) return '';
+
             // Convert tree structure to string using ASTUtils
             if (window.ASTUtils) {
                 return window.ASTUtils.astToExpr(backendPrereq);
@@ -276,7 +286,7 @@ class GalleryTransformer {
         // Generate default positions for nodes without stored positions
         if (window.GraphUtils) {
             // moved to GraphUtils
-            const algorithmicPositions = window.GraphUtils.generateDefaultPositions(backendNodes, {
+            const algorithmicPositions = window.GraphUtils.generateDefaultPositions(nodes, {
                 width: 800,
                 height: 600,
                 layout: 'hierarchical'

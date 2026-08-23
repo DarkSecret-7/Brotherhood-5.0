@@ -603,6 +603,9 @@ class GraphUtils {
         } = options;
 
         if (layout === 'hierarchical') {
+            // No nodes => return early so Math.max never receives no levels.
+            if (!Array.isArray(nodes) || nodes.length === 0) return positions;
+
             // Prerequisite-aware hierarchical layout with domain clustering
             const sortedNodes = [...nodes].sort((a, b) => a.id - b.id);
             const levels = this.calculateLevels(sortedNodes);
@@ -712,6 +715,144 @@ class GraphUtils {
         }
 
         return positions;
+    }
+
+    /**
+     * Parse a node's prerequisite field into a flat set of prereq ids.
+     * Accepts either a string expression or an n-ary AST
+     * ({node}/{and}/{or}) and falls back to `node.pathways` if both
+     * are absent. Returns an empty Set if no source is usable.
+     * @param {Object} node
+     * @returns {Set<number>}
+     */
+    static getPrerequisiteSet(node) {
+        if (!node) return new Set();
+
+        // AST shape from the backend: {node}|{and:[..]}|{or:[..]}
+        const collectFromAst = (ast, acc) => {
+            if (ast == null) return;
+            if (typeof ast === 'number') { acc.add(ast); return; }
+            if (typeof ast !== 'object') return;
+            if ('node' in ast && ast.node != null) { acc.add(ast.node); return; }
+            if (Array.isArray(ast.and)) ast.and.forEach(c => collectFromAst(c, acc));
+            if (Array.isArray(ast.or)) ast.or.forEach(c => collectFromAst(c, acc));
+        };
+
+        // String expression — try ExpressionUtils first, then PrerequisiteUtils.
+        if (typeof node.prerequisites === 'string' && node.prerequisites.trim() !== '') {
+            if (window.ExpressionUtils && window.ExpressionUtils.exprToDnf) {
+                try {
+                    const dnf = window.ExpressionUtils.exprToDnf(node.prerequisites);
+                    const acc = new Set();
+                    dnf.forEach(clause => {
+                        if (Array.isArray(clause)) clause.forEach(id => acc.add(id));
+                    });
+                    return acc;
+                } catch (e) { /* fall through */ }
+            }
+        }
+
+        // AST object form.
+        if (node.prerequisites && typeof node.prerequisites === 'object') {
+            const acc = new Set();
+            collectFromAst(node.prerequisites, acc);
+            return acc;
+        }
+
+        // Fallback: the graphState node carries the DNF pathways already.
+        if (Array.isArray(node.pathways)) {
+            const acc = new Set();
+            node.pathways.forEach(p => {
+                if (Array.isArray(p)) p.forEach(id => acc.add(id));
+            });
+            return acc;
+        }
+
+        return new Set();
+    }
+
+    /**
+     * Parse a node's prerequisite field into a DNF array of clauses
+     * (each clause is an array of prereq node ids). Reuses
+     * ExpressionUtils/PrerequisiteUtils when available, otherwise walks
+     * the AST manually. Returns [] when nothing parseable is found.
+     * @param {Object} node
+     * @returns {Array<Array<number>>}
+     */
+    static parsePrerequisite(node) {
+        if (!node) return [];
+
+        if (typeof node.prerequisites === 'string' && node.prerequisites.trim() !== '') {
+            if (window.ExpressionUtils && window.ExpressionUtils.exprToDnf) {
+                try {
+                    const dnf = window.ExpressionUtils.exprToDnf(node.prerequisites);
+                    if (Array.isArray(dnf)) return dnf;
+                } catch (e) { /* fall through */ }
+            }
+            if (window.PrerequisiteUtils && window.PrerequisiteUtils.extractPathways) {
+                try {
+                    return window.PrerequisiteUtils.extractPathways(node.prerequisites) || [];
+                } catch (e) { /* fall through */ }
+            }
+        }
+
+        if (node.prerequisites && typeof node.prerequisites === 'object') {
+            if (window.PrerequisiteUtils && window.PrerequisiteUtils.extractPathwaysFromAst) {
+                try {
+                    return window.PrerequisiteUtils.extractPathwaysFromAst(node.prerequisites) || [];
+                } catch (e) { /* fall through */ }
+            }
+            if (window.ASTUtils && window.ASTUtils.astToDnf) {
+                try {
+                    return window.ASTUtils.astToDnf(node.prerequisites) || [];
+                } catch (e) { /* fall through */ }
+            }
+        }
+
+        if (Array.isArray(node.pathways)) return node.pathways;
+        return [];
+    }
+
+    /**
+     * Compute a topological level for each node: level 0 for nodes with
+     * no prerequisites, otherwise 1 + max(level of any prereq). Nodes in
+     * a cycle are clamped to a safe level so they don't blow up Math.max.
+     * @param {Array<Object>} nodes - Nodes with `id` and prereq info
+     * @returns {Object<number, number>} Map of node id -> level
+     */
+    static calculateLevels(nodes) {
+        const levels = {};
+        const visiting = new Set();
+        const visited = new Set();
+
+        const getLevel = (node) => {
+            if (!node) return 0;
+            if (levels[node.id] !== undefined) return levels[node.id];
+            if (visited.has(node.id)) return levels[node.id] || 0;
+            if (visiting.has(node.id)) {
+                // Cycle — don't recurse further; fall back to level 0.
+                levels[node.id] = 0;
+                return 0;
+            }
+
+            visiting.add(node.id);
+            const prereqs = this.getPrerequisiteSet(node);
+            let maxPrereqLevel = -1;
+            const nodeMap = new Map(nodes.map(n => [n.id, n]));
+            prereqs.forEach(prereqId => {
+                const prereqNode = nodeMap.get(prereqId);
+                if (!prereqNode) return;
+                maxPrereqLevel = Math.max(maxPrereqLevel, getLevel(prereqNode));
+            });
+            visiting.delete(node.id);
+            visited.add(node.id);
+
+            levels[node.id] = maxPrereqLevel + 1;
+            return levels[node.id];
+        };
+
+        nodes.forEach(node => getLevel(node));
+        return levels;
     }
 }
 

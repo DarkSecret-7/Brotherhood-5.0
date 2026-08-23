@@ -166,8 +166,7 @@ class SnapshotsTransformer {
             if (node.prerequisite && window.PrerequisiteUtils) {
                 // Extract DNF pathways directly from tree structure
                 const dnfPathways = window.PrerequisiteUtils.extractPathwaysFromAst(node.prerequisite);
-                console.log(node, dnfPathways, dnfPathways.map(p => Array.isArray(p) ? p.slice() : []));
-                
+
                 // Each pathway is already an array of prereq node ids
                 // (post-DNF). No edge-id fabrication here anymore.
                 nodePathways.set(node.local_id, dnfPathways.map(p => Array.isArray(p) ? p.slice() : []));
@@ -193,7 +192,7 @@ class SnapshotsTransformer {
         // Generate default positions for nodes without stored positions
         if (window.GraphUtils) {
             // moved to GraphUtils
-            const algorithmicPositions = window.GraphUtils.generateDefaultPositions(backendNodes, {
+            const algorithmicPositions = window.GraphUtils.generateDefaultPositions(nodes, {
                 width: 800,
                 height: 600,
                 layout: 'hierarchical'
@@ -437,11 +436,16 @@ class SnapshotsTransformer {
      */
     transformPrerequisitesToBackend(frontendPrereq) {
         if (!frontendPrereq || frontendPrereq.trim() === '') return null;
-        
+
         // Parse expression into tree structure using ExpressionUtils
         if (window.ExpressionUtils) {
-            return window.ExpressionUtils.exprToAst(frontendPrereq);
+            const trimmed = frontendPrereq.trim();
+            return window.ExpressionUtils.exprToAst(
+                window.ExpressionUtils.normalizeExpression(trimmed)
+            );
         }
+        console.warn('ExpressionUtils not available; prerequisite not serialized');
+        return null;
     }
 
     /**
