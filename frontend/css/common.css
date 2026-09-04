@@ -1430,7 +1430,7 @@ tr:hover td {
     }
 }
 
-@media (max-width: 440px) {
+@media (max-width: 600px) {
     /* Responsive tabs */
     .nav-tabs {
         border-bottom: none !important;

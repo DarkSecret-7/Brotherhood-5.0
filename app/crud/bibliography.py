@@ -20,6 +20,8 @@ Pure CRUD operations for Bibliography model.
 No business logic - only raw database operations.
 """
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
+from typing import List, Optional
 from .. import models
 
 def get_bibliography_by_hash(db: Session, public_hash: str):
@@ -54,3 +56,55 @@ def delete_bibliography_by_hash(db: Session, public_hash: str):
         db.commit()
         return True
     return False
+
+
+def search_bibliographies(
+    db: Session,
+    query: Optional[str] = None,
+    bib_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> List[models.Bibliography]:
+    """Return a paginated list of bibliographies matching the filters.
+
+    `query` is matched case-insensitively against `title` and `author`
+    using `ILIKE` semantics. `bib_type` is an exact match when provided.
+    Results are ordered by `title` ascending so the UI gets a stable
+    order without needing a secondary sort key. Soft deletion is not
+    modeled for bibliographies (no `deleted_at` column), so all rows
+    are returned.
+    """
+    q = db.query(models.Bibliography)
+    if query and query.strip():
+        like = f"%{query.strip()}%"
+        q = q.filter(or_(
+            models.Bibliography.title.ilike(like),
+            models.Bibliography.author.ilike(like),
+        ))
+    if bib_type and bib_type.strip():
+        q = q.filter(models.Bibliography.bib_type == bib_type.strip())
+    return (
+        q.order_by(func.lower(models.Bibliography.title).asc(), models.Bibliography.public_hash.asc())
+        .offset(max(0, int(offset)))
+        .limit(max(1, min(int(limit), 200)))
+        .all()
+    )
+
+
+def count_bibliographies(
+    db: Session,
+    query: Optional[str] = None,
+    bib_type: Optional[str] = None,
+) -> int:
+    """Count bibliographies that match the same filters as `search_bibliographies`."""
+    q = db.query(models.Bibliography)
+    if query and query.strip():
+        like = f"%{query.strip()}%"
+        q = q.filter(or_(
+            models.Bibliography.title.ilike(like),
+            models.Bibliography.author.ilike(like),
+        ))
+    if bib_type and bib_type.strip():
+        q = q.filter(models.Bibliography.bib_type == bib_type.strip())
+    return q.count()
+

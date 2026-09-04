@@ -628,6 +628,68 @@ class WorkspaceOpsController {
     }
 
     /**
+     * BFS over the prerequisite graph from a starting node, returning the
+     * set of node local_ids reachable within `depth` hops (inclusive of
+     * the start). Used by the Source Attribution "Nearby nodes" sort.
+     *
+     * Prerequisites are stored on each node as `node.pathways` (an array
+     * of arrays of local_ids, one per DNF clause). For BFS purposes we
+     * treat every directed edge "node -> prerequisite" as one hop, so
+     * this walks the "downstream-of-the-prerequisite-direction" tree of
+     * the start node.
+     *
+     * Soft-deleted nodes (`_isDeleted` true) are skipped during expansion
+     * and excluded from the result.
+     *
+     * @param {number|string} startId - Starting node local_id
+     * @param {number} depth - Maximum hop count (>= 0)
+     * @param {Array} nodes - Node array from stateManager.state.nodes
+     * @returns {Set<number|string>} Set of local_ids within `depth` hops
+     */
+    bfsNearbyNodes(startId, depth, nodes) {
+        const result = new Set();
+        if (startId == null || !Array.isArray(nodes) || nodes.length === 0) {
+            return result;
+        }
+
+        const byId = new Map();
+        nodes.forEach(n => {
+            if (n && !n._isDeleted) byId.set(n.id, n);
+        });
+
+        if (!byId.has(startId)) return result;
+
+        const visited = new Set();
+        // Each entry: [nodeId, remainingHops]
+        const queue = [[startId, Math.max(0, depth | 0)]];
+        visited.add(startId);
+        result.add(startId);
+
+        while (queue.length > 0) {
+            const [currentId, remaining] = queue.shift();
+            if (remaining <= 0) continue;
+
+            const currentNode = byId.get(currentId);
+            if (!currentNode) continue;
+
+            // Collect prerequisite ids from all DNF pathways.
+            const pathways = currentNode.pathways || [];
+            for (const clause of pathways) {
+                if (!Array.isArray(clause)) continue;
+                for (const prereqId of clause) {
+                    if (visited.has(prereqId)) continue;
+                    if (!byId.has(prereqId)) continue;
+                    visited.add(prereqId);
+                    result.add(prereqId);
+                    queue.push([prereqId, remaining - 1]);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Handle file input change for import (v1.0 binary .knw).
      * @param {Event} event - File input change event
      */
@@ -665,6 +727,203 @@ class WorkspaceOpsController {
 
         // Clear file input
         event.target.value = '';
+    }
+
+    // ====================================================================
+    // Source Attribution ops (Source Attribution Tab)
+    // --------------------------------------------------------------------
+    // Pure operations; no rendering. The UI controller dispatches DOM
+    // events here, these methods mutate state via the state manager
+    // (which triggers re-renders through its subscriber pattern), and
+    // the UI re-renders automatically from `updateAttributionDisplay`.
+    // ====================================================================
+
+    /**
+     * Initialise the lazy API service for the global bibliography
+     * search. Created on first use so that workspaces that never open
+     * the Source Attribution tab don't pay the cost.
+     */
+    _bibliographyApi() {
+        if (!this._bibliographyApiService) {
+            const Ctor = window.BibliographyApiService;
+            if (!Ctor) {
+                throw new Error('BibliographyApiService is not loaded');
+            }
+            this._bibliographyApiService = new Ctor();
+        }
+        return this._bibliographyApiService;
+    }
+
+    /**
+     * Add a graph citation (identified by hash) to the active tray.
+     * Resolves the citation from the state manager's cache, then
+     * delegates to `stateManager.addToActiveTray`. Returns true on
+     * success, false if the tray was full or the citation was not
+     * found.
+     * @param {string} hash
+     * @returns {boolean}
+     */
+    addCitationToTray(hash) {
+        if (!hash) return false;
+        const citation = this.stateManager.getGraphCitations().find(c => c.hash === hash);
+        if (!citation) return false;
+        return this.stateManager.addToActiveTray(citation) === true;
+    }
+
+    /**
+     * Remove a tray source by hash. The state manager also handles
+     * the side effect of clearing the selection if the removed source
+     * was the currently selected one.
+     * @param {string} hash
+     */
+    removeCitationFromTray(hash) {
+        if (!hash) return;
+        this.stateManager.removeFromActiveTray(hash);
+    }
+
+    /**
+     * Toggle the selection of a tray source. Selecting the same hash
+     * again deselects it, so the user always has an explicit way to
+     * "unclick" the source from a tab.
+     * @param {string} hash
+     */
+    toggleTraySourceSelection(hash) {
+        if (!hash) return;
+        if (this.stateManager.state.selectedTraySourceHash === hash) {
+            this.stateManager.deselectActiveTraySource();
+        } else {
+            this.stateManager.selectActiveTraySource(hash);
+        }
+    }
+
+    /**
+     * Explicitly deselect any currently selected tray source. Used by
+     * the "Deselect" button shown next to the Add Source button when
+     * a source is armed.
+     */
+    deselectTraySource() {
+        this.stateManager.deselectActiveTraySource();
+    }
+
+    /**
+     * Generate a stable client-side hash for a brand-new bibliography.
+     * Mirrors the backend's hash length (64 hex chars) so the visual
+     * presentation is consistent, but the seed differs from the
+     * backend's `title|author|year|type|url` concatenation so a
+     * client-created entry will not collide with a server entry that
+     * happens to share the same details. For the prototype, uniqueness
+     * within the tray is all that matters.
+     */
+    generateClientHash(title, author, year, type, url) {
+        const seed = `${title}|${author || ''}|${year || ''}|${type || 'Other'}|${url || ''}`;
+        let h = 0;
+        for (let i = 0; i < seed.length; i++) {
+            h = ((h << 5) - h) + seed.charCodeAt(i);
+            h |= 0;
+        }
+        const hex = (h >>> 0).toString(16).padStart(8, '0');
+        return (hex + '0'.repeat(56)).slice(0, 64);
+    }
+
+    /**
+     * Read the create-new-bibliography form, generate a hash, and add
+     * the result to the tray. Returns an object describing the result
+     * so the UI can show a success or error message without re-doing
+     * the validation here.
+     *
+     * @param {Object} form - { title, author, year, type, url }
+     * @returns {{ ok: boolean, reason?: string, bib?: Object }}
+     */
+    createNewBibliography(form) {
+        const title = (form && form.title || '').trim();
+        if (!title) {
+            return { ok: false, reason: 'Title is required to create a new bibliography.' };
+        }
+        const author = (form.author || '').trim();
+        const yearStr = (form.year || '').toString().trim();
+        const type = (form.type || 'Other').trim() || 'Other';
+        const url = (form.url || '').trim();
+        const year = yearStr ? parseInt(yearStr, 10) : null;
+
+        const hash = this.generateClientHash(title, author, year, type, url);
+        const bib = { hash, title, author: author || null, year, type, url: url || null };
+        const added = this.stateManager.addToActiveTray(bib) === true;
+        if (!added) {
+            return { ok: false, reason: 'Tray is full (max 6). Remove a source first.' };
+        }
+        return { ok: true, bib };
+    }
+
+    /**
+     * Add a remote (server-side) bibliography to the active tray. The
+     * server entry is the source of truth for hash/title/author/etc.,
+     * so we don't recompute the hash client-side. Same dedup and
+     * `MAX_TRAY_ITEMS` rules as `addCitationToTray` apply.
+     */
+    addServerBibliographyToTray(bib) {
+        if (!bib || !bib.public_hash) return false;
+        const trayEntry = {
+            hash: bib.public_hash,
+            title: bib.title,
+            author: bib.author || null,
+            year: bib.year || null,
+            type: bib.bib_type || 'Other',
+            url: bib.url || null,
+            origin: 'server'
+        };
+        return this.stateManager.addToActiveTray(trayEntry) === true;
+    }
+
+    /**
+     * Search the global bibliography database via the backend. The
+     * `BibliographyApiService` does the HTTP call; this method is the
+     * single seam where the UI controller calls into the network.
+     *
+     * @param {Object} params - { query, bibType, limit, offset }
+     * @returns {Promise<{items: Array, total: number, limit: number, offset: number}>}
+     */
+    async searchGlobalBibliographies({ query = null, bibType = null, limit = 50, offset = 0 } = {}) {
+        const api = this._bibliographyApi();
+        return await api.searchBibliographies({ query, bibType, limit, offset });
+    }
+
+    /**
+     * Save the Attribute Source dialog's contents: attach the currently
+     * selected tray source to the target node, persisting the optional
+     * `fragmentStart` / `fragmentEnd` strings. Returns a result object
+     * the UI uses to show feedback; on success the source is kept
+     * selected (per the prototype's design — a curator may want to
+     * attribute the same source to multiple nodes).
+     *
+     * @param {number} targetNodeId
+     * @param {string} fragmentStart
+     * @param {string} fragmentEnd
+     * @returns {{ ok: boolean, reason?: string, bib?: Object }}
+     */
+    saveAttributeSource(targetNodeId, fragmentStart, fragmentEnd) {
+        if (targetNodeId == null) {
+            return { ok: false, reason: 'No target node selected.' };
+        }
+        const hash = this.stateManager.state.selectedTraySourceHash;
+        if (!hash) {
+            return { ok: false, reason: 'No source selected.' };
+        }
+        const bib = (this.stateManager.state.activeTray || []).find(b => b.hash === hash);
+        if (!bib) {
+            return { ok: false, reason: 'Selected source is no longer in the tray.' };
+        }
+        const sourceData = {
+            title: bib.title,
+            type: bib.type,
+            author: bib.author,
+            year: bib.year,
+            url: bib.url,
+            hash: bib.hash,
+            fragmentStart: (fragmentStart || '').trim(),
+            fragmentEnd: (fragmentEnd || '').trim()
+        };
+        this.stateManager.addSourceToNode(targetNodeId, sourceData);
+        return { ok: true, bib };
     }
 }
 

@@ -22,7 +22,7 @@ brotherhood.db
 AGENTS.md
 
 # Temporary docs
-*.md
+/*.md
 
 # OS
 .DS_Store

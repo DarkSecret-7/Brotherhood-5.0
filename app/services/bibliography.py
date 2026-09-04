@@ -20,6 +20,7 @@ Bibliography service layer - Business logic for bibliography operations.
 Orchestrates CRUD operations and handles business rules.
 """
 from sqlalchemy.orm import Session
+from typing import List, Optional
 from .. import crud, schemas, models
 from ..utils import utils
 
@@ -50,7 +51,7 @@ class BibliographyService:
         """Create bibliography with business logic"""
         string_data = bibliography_data.title + bibliography_data.author + str(bibliography_data.year) + bibliography_data.bib_type + bibliography_data.url
         public_hash = utils.generate_hash(string_data)
-        
+
         db_bibliography = crud.bibliography.create_bibliography_record(
             db=db,
             public_hash=public_hash,
@@ -60,7 +61,7 @@ class BibliographyService:
             bib_type=bibliography_data.bib_type,
             url=bibliography_data.url
         )
-        
+
         db.commit()
         db.refresh(db_bibliography)
         return BibliographyService._convert_to_read_schema(db_bibliography)
@@ -69,3 +70,40 @@ class BibliographyService:
     def delete_bibliography(db: Session, public_hash: str) -> bool:
         """Delete bibliography with business logic"""
         return crud.bibliography.delete_bibliography_by_hash(db, public_hash)
+
+    @staticmethod
+    def search_bibliographies(
+        db: Session,
+        query: Optional[str] = None,
+        bib_type: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> schemas.BibliographySearchResult:
+        """Search the global bibliography database.
+
+        Returns a paginated list of `BibliographyRead` schemas together
+        with the total match count. The total is what the UI uses to
+        decide whether to show "no results" vs. "showing first N of M".
+        Pure read-only — no caching, no per-user filtering, and no
+        schema changes. The query matches title and author (case
+        insensitive) and bib_type is an exact match.
+        """
+        results = crud.bibliography.search_bibliographies(
+            db=db,
+            query=query,
+            bib_type=bib_type,
+            limit=limit,
+            offset=offset,
+        )
+        total = crud.bibliography.count_bibliographies(
+            db=db,
+            query=query,
+            bib_type=bib_type,
+        )
+        return schemas.BibliographySearchResult(
+            items=[BibliographyService._convert_to_read_schema(b) for b in results],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+

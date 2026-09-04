@@ -57,6 +57,23 @@ class BibliographyRead(BibliographyBase):
     class Config:
         from_attributes = True
 
+class BibliographySearchResult(BaseModel):
+    """Paginated search response for the global bibliography database.
+
+    `items` are the same shape as `BibliographyRead`. `total` is the
+    total number of matching rows (independent of `limit`/`offset`) so
+    the UI can render a "showing N of M" line and decide when to stop
+    paginating. `limit` and `offset` echo the request for the caller's
+    convenience.
+    """
+    items: List[BibliographyRead]
+    total: int
+    limit: int
+    offset: int
+
+    class Config:
+        from_attributes = True
+
 class BibliographySafeRead(BibliographyBase):   # Safe reading of bibliography, public_hash is optional
     bib_hash: Optional[str] = None
 

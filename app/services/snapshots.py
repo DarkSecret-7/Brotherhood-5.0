@@ -949,7 +949,7 @@ class SnapshotService:
                     )
             
             # Create source fragment
-            bib_crud.create_source_fragment_record(
+            crud.snapshots.create_source_fragment(
                 db,
                 node_id=db_node.id,
                 bib_id=bib.id,

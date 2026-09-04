@@ -22,6 +22,9 @@
  * Handles snapshot loading, workspace state, and UI interactions
  */
 class LabStateManager {
+    // Maximum number of bibliography entries the Active Source Tray can hold.
+    static MAX_TRAY_ITEMS = 6;
+
     constructor() {
         this.state = {
             // Current workspace state - separate fields instead of monolithic objects
@@ -90,7 +93,24 @@ class LabStateManager {
             },
 
             // Snapshot management
-            overwriteMode: false
+            overwriteMode: false,
+
+            // Active Source Tray (per-user, client-side only). Holds a
+            // small set of bibliography objects the curator is currently
+            // working with for the Source Attribution tab. Persisted to
+            // localStorage; never sent to the backend in this prototype.
+            activeTray: [],
+            selectedTraySourceHash: null,
+
+            // Cached, deduplicated list of bibliographies that appear in
+            // the currently loaded graph nodes (i.e. attached to at
+            // least one non-deleted source on a non-deleted node). Kept
+            // in sync with the rest of state by the recompute* hooks
+            // called from addNode/deleteNode/addSourceToNode/... and
+            // read by `getGraphCitations()`. This avoids rebuilding the
+            // dedup map on every keystroke when the user is searching
+            // inside the Source Discovery modal.
+            graphCitations: []
         };
 
         // Initialize subscribers array
@@ -182,7 +202,20 @@ class LabStateManager {
             if (graphDomains) {
                 this.state.graphState.domains = JSON.parse(graphDomains);
             }
-            
+
+            // Load Active Source Tray (per-user, client-side only)
+            const tray = localStorage.getItem('lab_activeTray');
+            const selectedTrayHash = localStorage.getItem('lab_selectedTraySourceHash');
+            if (tray) {
+                const parsedTray = JSON.parse(tray);
+                if (Array.isArray(parsedTray)) {
+                    this.state.activeTray = parsedTray;
+                }
+            }
+            if (selectedTrayHash) {
+                this.state.selectedTraySourceHash = selectedTrayHash;
+            }
+
         } catch (error) {
             console.warn('Failed to load persisted state:', error);
         }
@@ -209,6 +242,10 @@ class LabStateManager {
             localStorage.setItem('lab_graphNodes', JSON.stringify(graphState.nodes));
             localStorage.setItem('lab_graphCycles', JSON.stringify(graphState.cycles));
             localStorage.setItem('lab_graphDomains', JSON.stringify(graphState.domains));
+
+            // Persist Active Source Tray (per-user, client-side only)
+            localStorage.setItem('lab_activeTray', JSON.stringify(this.state.activeTray || []));
+            localStorage.setItem('lab_selectedTraySourceHash', this.state.selectedTraySourceHash || '');
         } catch (error) {
             console.warn('Failed to persist state:', error);
         }
@@ -307,6 +344,9 @@ class LabStateManager {
 
             // Mark as clean
             this.state.isDirty = false;
+
+            // A new snapshot brings new sources; rebuild the citation cache.
+            this.recomputeGraphCitations();
 
             // Persist state
             this.persistState();
@@ -604,6 +644,9 @@ class LabStateManager {
         // Recalculate graph state for node creation (null, newNode)
         this.recalculateNodeUpdate(null, newNode);
 
+        // A new node can carry new sources; keep the citation cache fresh.
+        this.recomputeGraphCitations();
+
         this.state.isDirty = true;
         this.notifyStateChange();
     }
@@ -739,6 +782,9 @@ class LabStateManager {
             // Recalculate graph state (deletion: oldNode, null)
             this.recalculateNodeUpdate(oldNode, null);
 
+            // A deleted node drops its sources; drop them from the cache.
+            this.recomputeGraphCitations();
+
             this.notifyStateChange();
         }
     }
@@ -759,6 +805,9 @@ class LabStateManager {
 
             // Recalculate graph state (creation: null, newNode)
             this.recalculateNodeUpdate(null, node);
+
+            // The node and its sources are back; reflect that in citations.
+            this.recomputeGraphCitations();
 
             this.notifyStateChange();
         }
@@ -942,13 +991,15 @@ class LabStateManager {
                 ...sourceData,
                 _isDirty: true  // Mark as dirty since it's new
             };
-            
+
             if (!this.state.nodes[nodeIndex].sources) {
                 this.state.nodes[nodeIndex].sources = [];
             }
             this.state.nodes[nodeIndex].sources.push(newSource);
             this.state.nodes[nodeIndex]._isDirty = true;  // Mark node as dirty too
             this.state.isDirty = true;
+            // Keep the citation cache in sync with the new source.
+            this.recomputeGraphCitations();
             this.notifyStateChange();
         }
     }
@@ -967,6 +1018,9 @@ class LabStateManager {
                 Object.assign(source, updates, { _isDirty: true });  // Mark as dirty
                 this.state.nodes[nodeIndex]._isDirty = true;  // Mark node as dirty too
                 this.state.isDirty = true;
+                // The cache is keyed by hash; if the hash itself is being
+                // changed the citation list could split/merge entries.
+                this.recomputeGraphCitations();
                 this.notifyStateChange();
             }
         }
@@ -985,8 +1039,190 @@ class LabStateManager {
             this.state.nodes[nodeIndex].sources[sourceIndex]._isDirty = true;
             this.state.nodes[nodeIndex]._isDirty = true;  // Mark node as dirty too
             this.state.isDirty = true;
+            // Recompute: the source is now hidden from "in graph" view.
+            this.recomputeGraphCitations();
             this.notifyStateChange();
         }
+    }
+
+    // ====================================================================
+    // Active Source Tray (Source Attribution Tab)
+    // ====================================================================
+
+    /**
+     * Add a bibliography object to the Active Source Tray.
+     * Deduplicates by `hash`; refuses to add beyond MAX_TRAY_ITEMS.
+     * @param {Object} bib - Bibliography object: { hash, title, author, year, type, url }
+     * @returns {boolean} true if added, false if tray was full or input was invalid
+     */
+    addToActiveTray(bib) {
+        if (!bib || !bib.hash) return false;
+        if (this.state.activeTray.length >= LabStateManager.MAX_TRAY_ITEMS) {
+            return false;
+        }
+        if (this.state.activeTray.some(item => item.hash === bib.hash)) {
+            return false; // already in tray
+        }
+        // Store a minimal projection so localStorage stays small.
+        const entry = {
+            hash: bib.hash,
+            title: bib.title || '',
+            author: bib.author || null,
+            year: bib.year || null,
+            type: bib.type || bib.bibType || 'Other',
+            url: bib.url || null
+        };
+        this.state.activeTray.push(entry);
+        this.persistState();
+        this.notifyStateChange();
+        return true;
+    }
+
+    /**
+     * Remove a bibliography from the Active Source Tray.
+     * Clears the active selection if it pointed at the removed entry.
+     * @param {string} hash - Bibliography hash
+     */
+    removeFromActiveTray(hash) {
+        const before = this.state.activeTray.length;
+        this.state.activeTray = this.state.activeTray.filter(item => item.hash !== hash);
+        if (this.state.selectedTraySourceHash === hash) {
+            this.state.selectedTraySourceHash = null;
+        }
+        if (this.state.activeTray.length !== before) {
+            this.persistState();
+            this.notifyStateChange();
+        }
+    }
+
+    /**
+     * Select a tray source for subsequent node attribution.
+     * @param {string|null} hash - Bibliography hash, or null to clear
+     */
+    selectActiveTraySource(hash) {
+        if (hash !== null && !this.state.activeTray.some(item => item.hash === hash)) {
+            return; // not in tray
+        }
+        this.state.selectedTraySourceHash = hash;
+        this.persistState();
+        this.notifyStateChange();
+    }
+
+    /**
+     * Empty the tray and clear the active selection.
+     */
+    clearActiveTray() {
+        this.state.activeTray = [];
+        this.state.selectedTraySourceHash = null;
+        this.persistState();
+        this.notifyStateChange();
+    }
+
+    /**
+     * Build a deduplicated list of bibliography objects that appear in
+     * the currently loaded graph nodes, annotated with a usage count
+     * and the node ids that use each one. Used by the Source Discovery
+     * modal's "Search Graph Citations" panel.
+     *
+     * Reads from `state.graphCitations`, which is kept up to date by
+     * `recomputeGraphCitations()`. The cache is rebuilt on any state
+     * change that could add/remove a source or a node; callers do not
+     * need to invalidate it manually. If the cache is somehow empty
+     * (e.g. right after a snapshot load before any recompute) the
+     * function falls back to a one-shot recompute, so the result is
+     * always consistent with the current state.
+     *
+     * @returns {Array<{hash, title, author, year, type, url, count, nodeIds}>}
+     */
+    getGraphCitations() {
+        if (!Array.isArray(this.state.graphCitations) || this.state.graphCitations.length === 0) {
+            // Fallback: ensure the cache reflects the current state.
+            this.recomputeGraphCitations();
+        }
+        // Return a shallow copy so callers can't mutate the cache by
+        // accident (e.g. by sorting in place).
+        return (this.state.graphCitations || []).map(c => ({
+            ...c,
+            nodeIds: Array.isArray(c.nodeIds) ? c.nodeIds.slice() : []
+        }));
+    }
+
+    /**
+     * Compute a deterministic client hash for sources missing a server hash.
+     */
+    computeBibHash(src) {
+        if (!src) return 'hash_unknown';
+        const title = (src.title || '').trim().toLowerCase();
+        const author = (src.author || '').trim().toLowerCase();
+        const year = src.year || '';
+        const type = (src.type || src.bibType || 'Other').trim().toLowerCase();
+        const url = (src.url || '').trim().toLowerCase();
+        const seed = `${title}|${author}|${year}|${type}|${url}`;
+        let h = 0;
+        for (let i = 0; i < seed.length; i++) {
+            h = ((h << 5) - h) + seed.charCodeAt(i);
+            h |= 0;
+        }
+        const hex = (h >>> 0).toString(16).padStart(8, '0');
+        return (hex + '0'.repeat(56)).slice(0, 64);
+    }
+
+    /**
+     * Rebuild `state.graphCitations` from the current authoritative
+     * node list. Walks every non-deleted node, then every non-deleted
+     * source, and groups by `hash` while counting uses and remembering
+     * the referencing node ids.
+     *
+     * Call this from anywhere a source might have been added, removed,
+     * or moved (e.g. `addNode`, `deleteNode`, `addSourceToNode`,
+     * `updateSourceInNode`, `deleteSourceFromNode`, `clearDirtyFlags`,
+     * `loadSnapshot`, `clearWorkspace`).
+     */
+    recomputeGraphCitations() {
+        const byHash = new Map();
+        const nodes = this.state.nodes || [];
+        nodes.forEach(node => {
+            if (!node || node._isDeleted) return;
+            const sources = Array.isArray(node.sources) ? node.sources : [];
+            sources.forEach(src => {
+                if (!src || src._isDeleted) return;
+                let hash = src.hash;
+                if (!hash) {
+                    hash = this.computeBibHash(src);
+                    src.hash = hash;
+                }
+                if (!byHash.has(hash)) {
+                    byHash.set(hash, {
+                        hash,
+                        title: src.title || '',
+                        author: src.author || null,
+                        year: src.year || null,
+                        type: src.type || src.bibType || 'Other',
+                        url: src.url || null,
+                        count: 0,
+                        nodeIds: []
+                    });
+                }
+                const entry = byHash.get(hash);
+                entry.count += 1;
+                if (!entry.nodeIds.includes(node.id)) entry.nodeIds.push(node.id);
+            });
+        });
+        this.state.graphCitations = Array.from(byHash.values());
+    }
+
+    /**
+     * Clear the active tray source selection without touching the
+     * tray itself. Called by the UI when the user unfocuses the graph
+     * or clicks outside the attribution view while a source is
+     * selected, so a stray selection doesn't survive a "I didn't mean
+     * to attribute anything" gesture.
+     */
+    deselectActiveTraySource() {
+        if (this.state.selectedTraySourceHash == null) return;
+        this.state.selectedTraySourceHash = null;
+        this.persistState();
+        this.notifyStateChange();
     }
 
     /**
@@ -1172,6 +1408,9 @@ class LabStateManager {
         this.state.graphState.nodes = [];
         this.state.graphState.cycles = [];
         this.state.graphState.domains = [];
+
+        // Wipe the citation cache — the graph is empty.
+        this.recomputeGraphCitations();
 
         this.persistState();
         this.notifyStateChange();

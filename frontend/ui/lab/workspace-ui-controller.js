@@ -119,7 +119,43 @@ class LabUIController {
             source: document.getElementById('sourceModal'),
             llm: document.getElementById('llm-modal'),
             dialog: document.getElementById('dialogModal'),
-            metadata: document.getElementById('metadata-modal')
+            metadata: document.getElementById('metadata-modal'),
+            sourceDiscovery: document.getElementById('sourceDiscoveryModal'),
+            attributeSource: document.getElementById('attributeSourceModal')
+        };
+
+        // Source Attribution (Source Tray) elements
+        this.elements.attribution = {
+            trayTabs: document.getElementById('attribution-tray-tabs'),
+            trayList: document.getElementById('attribution-tray-list'),
+            trayCount: document.getElementById('attribution-tray-count'),
+            hint: document.getElementById('attribution-hint'),
+            graphContainer: document.getElementById('attribution-graph-container'),
+            openDiscoveryBtn: document.getElementById('btn-open-source-discovery'),
+            deselectBtn: document.getElementById('btn-deselect-source')
+        };
+
+        // Source Discovery modal elements
+        this.elements.discovery = {
+            search: document.getElementById('graph-citation-search'),
+            sort: document.getElementById('graph-citation-sort'),
+            results: document.getElementById('graph-citation-results'),
+            globalSearch: document.getElementById('global-bib-search'),
+            globalType: document.getElementById('global-bib-type'),
+            globalResults: document.getElementById('global-bib-results'),
+            newTitle: document.getElementById('new-bib-title'),
+            newAuthor: document.getElementById('new-bib-author'),
+            newYear: document.getElementById('new-bib-year'),
+            newType: document.getElementById('new-bib-type'),
+            newUrl: document.getElementById('new-bib-url')
+        };
+
+        // Attribute Source dialog elements
+        this.elements.attributeSource = {
+            targetTitle: document.getElementById('attribute-target-node-title'),
+            info: document.getElementById('attribute-source-info'),
+            fragmentStart: document.getElementById('attribute-fragment-start'),
+            fragmentEnd: document.getElementById('attribute-fragment-end')
         };
         
         // Status elements
@@ -294,19 +330,23 @@ class LabUIController {
     initializeUI() {
         // Update workspace display
         this.updateWorkspaceDisplay();
-        
+
         // Update status display
         this.updateStatusDisplay();
+
+        // Update source attribution display
+        this.updateAttributionDisplay();
     }
 
     /**
      * Handle state changes
      * @param {Object} state - Current state
      */
-    handleStateChange(state) {        
+    handleStateChange(state) {
         this.updateWorkspaceDisplay();
         this.updateStatusDisplay();
         this.updateModalDisplay();
+        this.updateAttributionDisplay();
         this.updateLoadingState(state.isLoading);
         this.updateErrorDisplay(state.error);
     }
@@ -1441,8 +1481,8 @@ class LabUIController {
                         ${source.author ? `<span style="color: #666;"> - ${source.author}</span>` : ''}
                     </div>
                     ${source.url ? `<a href="${source.url}" target="_blank" class="source-link-btn">🔗</a>` : ''}
-                    <button class="btn btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')">Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')">Remove</button>
+                    <button class="btn btn-secondary btn-small" onclick="labUIController.editSource(${index}, '${formName}')"><span class="btn-icon">✏️</span><span class="btn-text"> Edit</span></button>
+                    <button class="btn btn-danger btn-small" onclick="labUIController.removeSource(${index}, '${formName}')"><span class="btn-icon">🗑️</span><span class="btn-text"> Remove</span></button>
                 `;
                 container.appendChild(sourceDiv);
             });
@@ -1498,6 +1538,537 @@ class LabUIController {
             // Notify state change to trigger re-render
             this.stateManager.notifyStateChange();
         }
+    }
+
+    // ====================================================================
+    // Source Attribution Tab
+    // ====================================================================
+
+    /**
+     * Re-render the tray list and the hint banner.
+     */
+    updateAttributionDisplay() {
+        const { activeTray, selectedTraySourceHash } = this.stateManager.state;
+
+        // Render the top tab strip (one tab per tray entry).
+        if (this.elements.attribution && this.elements.attribution.trayTabs) {
+            this.renderTrayTabs(activeTray || [], selectedTraySourceHash);
+        }
+
+        // Render the (now vestigial) tray list - kept for the empty-state
+        // message and as a fallback if a future iteration reintroduces
+        // it. Hidden by the new tab-based CSS, but functional.
+        if (this.elements.attribution && this.elements.attribution.trayList) {
+            this.renderTrayList(activeTray || [], selectedTraySourceHash);
+        }
+
+        // Update count
+        if (this.elements.attribution && this.elements.attribution.trayCount) {
+            this.elements.attribution.trayCount.textContent = String((activeTray || []).length);
+        }
+
+        // Toggle hint banner state based on whether a source is selected
+        if (this.elements.attribution && this.elements.attribution.hint) {
+            if (selectedTraySourceHash) {
+                const bib = (activeTray || []).find(item => item.hash === selectedTraySourceHash);
+                const title = bib ? bib.title : 'selected source';
+                this.elements.attribution.hint.textContent = `Active source: "${title}". Click any node on the graph to attribute it.`;
+                this.elements.attribution.hint.classList.add('is-armed');
+            } else {
+                this.elements.attribution.hint.textContent = 'Select a source from the tray, then click a node on the graph to attribute it.';
+                this.elements.attribution.hint.classList.remove('is-armed');
+            }
+        }
+
+        // Show or hide the "Deselect" button based on the selected state.
+        const deselectBtn = this.elements.attribution && this.elements.attribution.deselectBtn;
+        if (deselectBtn) {
+            deselectBtn.style.display = selectedTraySourceHash ? '' : 'none';
+        }
+    }
+
+    /**
+     * Render the top tab strip with one tab per tray entry. The tabs
+     * are the primary interaction surface for the Source Attribution
+     * tab: clicking a tab toggles the selection (which arms the
+     * attribution), the small × button removes the source from the
+     * tray, and the active tab is highlighted. Tabs collapse to short
+     * labels and ultimately to the icon on narrow viewports.
+     *
+     * @param {Array} tray - Array of tray items
+     * @param {string|null} selectedHash - Hash of selected source
+     */
+    renderTrayTabs(tray, selectedHash) {
+        const container = this.elements.attribution && this.elements.attribution.trayTabs;
+        if (!container) return;
+
+        const max = (window.LabStateManager && LabStateManager.MAX_TRAY_ITEMS) || 6;
+
+        if (!tray || tray.length === 0) {
+            container.innerHTML = `<div class="attribution-tab-empty" role="tab" aria-disabled="true">
+                No sources yet (0/${max})
+            </div>`;
+            this.elements.attribution.hint.style.display = 'none';
+            return;
+        } else {
+            this.elements.attribution.hint.style.display = 'block';
+        }
+
+        container.innerHTML = tray.map(item => {
+            const isSelected = item.hash === selectedHash;
+            const titleText = item.title || 'Untitled';
+            // Truncate the data-title so the CSS ellipsis takes over at
+            // the right width. `data-hash` is used by the click handler.
+            return `
+                <div class="attribution-tab ${isSelected ? 'is-selected' : ''}" role="tab" aria-selected="${isSelected}" data-hash="${this.escapeHtml(item.hash)}" title="${this.escapeHtml(titleText)}" onclick="labUIController.selectTraySource('${this.escapeHtml(item.hash)}')">
+                    <span class="btn-icon">📚</span>
+                    <span class="btn-text tab-label">${this.escapeHtml(titleText)}</span>
+                    <button class="tab-remove" title="Remove from tray" onclick="event.stopPropagation(); labUIController.removeTraySource('${this.escapeHtml(item.hash)}')">&times;</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Fallback list rendering for the Source Attribution tray. Hidden
+     * by the new tab-based CSS, but kept functional so the empty-state
+     * copy is still discoverable through other means (e.g. tests,
+     * legacy viewports, future return-to-sidebar designs).
+     *
+     * @param {Array} tray
+     * @param {string|null} selectedHash
+     */
+    renderTrayList(tray, selectedHash) {
+        const container = this.elements.attribution && this.elements.attribution.trayList;
+        if (!container) return;
+
+        if (!tray || tray.length === 0) {
+            container.innerHTML = '<p class="empty-state">No active sources. Click <strong>+ Add Source</strong> to start.</p>';
+            return;
+        }
+
+        container.innerHTML = tray.map(item => {
+            const isSelected = item.hash === selectedHash;
+            const author = item.author ? `<div class="tray-author">${this.escapeHtml(item.author)}${item.year ? ' (' + this.escapeHtml(String(item.year)) + ')' : ''}</div>` : '';
+            return `
+                <div class="attribution-tray-item ${isSelected ? 'is-selected' : ''}" data-hash="${this.escapeHtml(item.hash)}" onclick="labUIController.selectTraySource('${this.escapeHtml(item.hash)}')">
+                    <div class="tray-text">
+                        <div class="tray-title">${this.escapeHtml(item.title || 'Untitled')}</div>
+                        ${author}
+                    </div>
+                    <button class="tray-remove" title="Remove from tray" onclick="event.stopPropagation(); labUIController.removeTraySource('${this.escapeHtml(item.hash)}')">&times;</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Select a tray source. Delegates to the ops controller; the ops
+     * layer is responsible for toggling off when the user clicks the
+     * same tab twice.
+     * @param {string} hash - Bibliography hash
+     */
+    selectTraySource(hash) {
+        const ops = window.workspaceOpsController;
+        if (!ops) return;
+        ops.toggleTraySourceSelection(hash);
+    }
+
+    /**
+     * Remove a tray source. Delegates to the ops controller.
+     * @param {string} hash - Bibliography hash
+     */
+    removeTraySource(hash) {
+        const ops = window.workspaceOpsController;
+        if (!ops) return;
+        ops.removeCitationFromTray(hash);
+    }
+
+    /**
+     * Handler for the "Deselect" button shown next to Add Source when
+     * a tray source is selected. Clears the selection without closing
+     * the modal or otherwise disturbing the tray contents.
+     */
+    deselectActiveSource() {
+        const ops = window.workspaceOpsController;
+        if (!ops) return;
+        ops.deselectTraySource();
+    }
+
+    /**
+     * Open the Source Discovery modal.
+     * Always starts on the "Search Graph Citations" tab.
+     */
+    openSourceDiscoveryModal() {
+        const modal = this.elements.modals.sourceDiscovery;
+        if (!modal) return;
+        this.switchDiscoveryPanel('graph');
+        this.filterGraphCitations();
+        // Clear the create-new form
+        if (this.elements.discovery) {
+            if (this.elements.discovery.newTitle) this.elements.discovery.newTitle.value = '';
+            if (this.elements.discovery.newAuthor) this.elements.discovery.newAuthor.value = '';
+            if (this.elements.discovery.newYear) this.elements.discovery.newYear.value = '';
+            if (this.elements.discovery.newType) this.elements.discovery.newType.value = 'Other';
+            if (this.elements.discovery.newUrl) this.elements.discovery.newUrl.value = '';
+        }
+        modal.style.display = 'flex';
+    }
+
+    /**
+     * Close the Source Discovery modal.
+     */
+    closeSourceDiscoveryModal() {
+        const modal = this.elements.modals.sourceDiscovery;
+        if (modal) modal.style.display = 'none';
+    }
+
+    /**
+     * Switch the active panel inside the Source Discovery modal.
+     * @param {string} panel - 'graph', 'global', or 'create'
+     */
+    switchDiscoveryPanel(panel) {
+        document.querySelectorAll('.discovery-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.panel === panel);
+        });
+        document.querySelectorAll('.discovery-panel').forEach(p => {
+            p.classList.toggle('active', p.id === 'discovery-panel-' + panel);
+        });
+        if (panel === 'graph') {
+            this.filterGraphCitations();
+        } else if (panel === 'global') {
+            this.filterGlobalBibliographies();
+        }
+    }
+
+    /**
+     * Run a search against the global bibliography database via the
+     * ops controller, then render the results in the modal. Reads
+     * query and bib_type filter from the panel's inputs.
+     */
+    async filterGlobalBibliographies() {
+        if (!this.elements.discovery || !this.elements.discovery.globalResults) return;
+        const query = (this.elements.discovery.globalSearch && this.elements.discovery.globalSearch.value || '').trim();
+        const bibType = (this.elements.discovery.globalType && this.elements.discovery.globalType.value || '').trim();
+        const ops = window.workspaceOpsController;
+        if (!ops || typeof ops.searchGlobalBibliographies !== 'function') {
+            this.renderGlobalBibliographies([], 0, 'Search service unavailable.');
+            return;
+        }
+        try {
+            const result = await ops.searchGlobalBibliographies({ query, bibType, limit: 50, offset: 0 });
+            this.renderGlobalBibliographies(result.items || [], result.total || 0, null);
+        } catch (err) {
+            console.warn('Global bibliography search failed:', err);
+            this.renderGlobalBibliographies([], 0, 'Search failed. Are you online?');
+        }
+    }
+
+    /**
+     * Render the global bibliography results in the discovery modal.
+     * @param {Array} items
+     * @param {number} total
+     * @param {string|null} errorMessage
+     */
+    renderGlobalBibliographies(items, total, errorMessage) {
+        const container = this.elements.discovery && this.elements.discovery.globalResults;
+        if (!container) return;
+        const trayHashes = new Set((this.stateManager.state.activeTray || []).map(i => i.hash));
+
+        if (errorMessage) {
+            container.innerHTML = `<p class="empty-state">${this.escapeHtml(errorMessage)}</p>`;
+            return;
+        }
+        if (!items || items.length === 0) {
+            container.innerHTML = '<p class="empty-state">No matching bibliographies in the global database.</p>';
+            return;
+        }
+
+        const summary = total > items.length
+            ? `<div class="discovery-results-summary">Showing ${items.length} of ${total}.</div>`
+            : `<div class="discovery-results-summary">${total} result${total === 1 ? '' : 's'}.</div>`;
+
+        const rows = items.map(b => {
+            const inTray = trayHashes.has(b.public_hash);
+            const meta = [
+                b.author ? this.escapeHtml(b.author) : null,
+                b.year ? this.escapeHtml(String(b.year)) : null,
+                this.escapeHtml(b.bib_type || 'Other')
+            ].filter(Boolean).join(' &middot; ');
+            // The "add" handler is inline so we don't have to look up
+            // the bibliography by hash from a fresh search result.
+            // We embed the bib as JSON on the button's data attribute.
+            const bibJson = this.escapeHtml(JSON.stringify(b));
+            return `
+                <div class="discovery-result-item">
+                    <div class="result-text">
+                        <div class="result-title">${this.escapeHtml(b.title || 'Untitled')}</div>
+                        <div class="result-meta">${meta}</div>
+                    </div>
+                    <button class="btn btn-secondary btn-small result-add" ${inTray ? 'disabled' : ''} data-bib='${bibJson}' onclick="labUIController.addGlobalCitationFromButton(this)">
+                        <span class="btn-icon">${inTray ? '✓' : '➕'}</span><span class="btn-text"> ${inTray ? 'In Tray' : 'Add to Tray'}</span>
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = summary + rows;
+    }
+
+    /**
+     * Inline-onclick handler for the "Add to Tray" buttons in the
+     * Global Database panel. The `data-bib` attribute carries the
+     * server-side bibliography as a JSON string, so the user can
+     * immediately add a result without the search running again.
+     * @param {HTMLButtonElement} btn
+     */
+    addGlobalCitationFromButton(btn) {
+        if (!btn || !btn.dataset || !btn.dataset.bib) return;
+        let bib;
+        try {
+            bib = JSON.parse(btn.dataset.bib);
+        } catch (e) {
+            console.warn('Could not parse data-bib for global citation add', e);
+            return;
+        }
+        this.addServerCitationToTray(bib);
+    }
+
+    /**
+     * Filter and re-render the graph citation search results.
+     * Used by both the search input and the sort dropdown.
+     */
+    filterGraphCitations() {
+        if (!this.elements.discovery || !this.elements.discovery.results) return;
+        const allCitations = this.stateManager.getGraphCitations();
+        const query = (this.elements.discovery.search && this.elements.discovery.search.value || '').toLowerCase().trim();
+        const sortKey = (this.elements.discovery.sort && this.elements.discovery.sort.value) || 'alphabetical';
+
+        let results = allCitations;
+        if (query) {
+            results = results.filter(c =>
+                (c.title || '').toLowerCase().includes(query) ||
+                (c.author || '').toLowerCase().includes(query)
+            );
+        }
+
+        // Sort
+        if (sortKey === 'alphabetical') {
+            results.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        } else if (sortKey === 'most-used') {
+            results.sort((a, b) => b.count - a.count);
+        } else if (sortKey === 'recently-added') {
+            // No reliable timestamp; fall back to title order
+            results.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        } else if (sortKey === 'nearby') {
+            // BFS over prerequisite graph from the currently focused/selected node.
+            const focusedId = this.getAttributionFocusedNodeId();
+            if (focusedId !== null && window.workspaceOpsController) {
+                const nearby = window.workspaceOpsController.bfsNearbyNodes(
+                    focusedId,
+                    2,
+                    this.stateManager.state.nodes
+                );
+                // Group by source hash. Score = best rank among its nodes in the BFS set.
+                const scoreByHash = new Map();
+                this.stateManager.state.nodes.forEach(n => {
+                    if (!n || n._isDeleted) return;
+                    if (!nearby.has(n.id)) return;
+                    (n.sources || []).forEach(s => {
+                        if (s._isDeleted || !s.hash) return;
+                        const current = scoreByHash.get(s.hash);
+                        if (current === undefined) scoreByHash.set(s.hash, n.id);
+                    });
+                });
+                results.sort((a, b) => {
+                    const sa = scoreByHash.has(a.hash) ? 0 : 1;
+                    const sb = scoreByHash.has(b.hash) ? 0 : 1;
+                    if (sa !== sb) return sa - sb;
+                    return b.count - a.count;
+                });
+            }
+        }
+
+        this.renderGraphCitations(results, allCitations);
+    }
+
+    /**
+     * Get the currently focused/selected node for the "Nearby nodes" sort.
+     * Prefers a single selected node in the workspace; otherwise null.
+     */
+    getAttributionFocusedNodeId() {
+        const { selectedNodes } = this.stateManager.state;
+        if (selectedNodes && selectedNodes.size === 1) {
+            return selectedNodes.values().next().value;
+        }
+        return null;
+    }
+
+    /**
+     * Render the graph citation result list in the discovery modal.
+     * @param {Array} results - Filtered, sorted citations
+     * @param {Array} allCitations - All citations (used to detect "already in tray")
+     */
+    renderGraphCitations(results, allCitations) {
+        const container = this.elements.discovery && this.elements.discovery.results;
+        if (!container) return;
+        const trayHashes = new Set((this.stateManager.state.activeTray || []).map(i => i.hash));
+
+        if (!results || results.length === 0) {
+            container.innerHTML = '<p class="empty-state">No matching citations in the current graph.</p>';
+            return;
+        }
+
+        container.innerHTML = results.map(c => {
+            const inTray = trayHashes.has(c.hash);
+            const meta = [
+                c.author ? this.escapeHtml(c.author) : null,
+                c.year ? this.escapeHtml(String(c.year)) : null,
+                `used by ${c.count} node${c.count === 1 ? '' : 's'}`
+            ].filter(Boolean).join(' &middot; ');
+            return `
+                <div class="discovery-result-item">
+                    <div class="result-text">
+                        <div class="result-title">${this.escapeHtml(c.title || 'Untitled')}</div>
+                        <div class="result-meta">${meta}</div>
+                    </div>
+                    <button class="btn btn-secondary btn-small result-add" ${inTray ? 'disabled' : ''} onclick="labUIController.addCitationToTray('${this.escapeHtml(c.hash)}')">
+                        <span class="btn-icon">${inTray ? '✓' : '➕'}</span><span class="btn-text"> ${inTray ? 'In Tray' : 'Add to Tray'}</span>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Add a graph citation to the active tray by its hash. Delegates
+     * to the ops controller; the UI does not talk to the state manager
+     * directly for citation operations. Refreshes the result list so
+     * the just-added entry flips to "In Tray".
+     * @param {string} hash - Bibliography hash
+     */
+    addCitationToTray(hash) {
+        const ops = window.workspaceOpsController;
+        if (!ops) return;
+        const ok = ops.addCitationToTray(hash);
+        if (!ok) {
+            this.stateManager.showAlert('Tray is full (max 6). Remove a source first.');
+        } else {
+            this.filterGraphCitations(); // refresh "In Tray" state
+        }
+    }
+
+    /**
+     * Add a server-side (global DB) bibliography to the tray. The ops
+     * layer translates `public_hash` into the tray's `hash` field so
+     * the rest of the prototype can keep treating tray entries by
+     * their single `hash` key.
+     * @param {Object} bib - BibliographyRead from the backend
+     */
+    addServerCitationToTray(bib) {
+        const ops = window.workspaceOpsController;
+        if (!ops) return;
+        const ok = ops.addServerBibliographyToTray(bib);
+        if (!ok) {
+            this.stateManager.showAlert('Tray is full (max 6). Remove a source first.');
+            return false;
+        }
+        this.filterGlobalBibliographies();
+        return true;
+    }
+
+    /**
+     * Read the create-new-bibliography form, hand it to the ops
+     * controller for validation and hashing, then show the result
+     * (success message or alert) and close the modal on success.
+     */
+    createNewBibliography() {
+        if (!this.elements.discovery) return;
+        const result = window.workspaceOpsController && window.workspaceOpsController.createNewBibliography({
+            title: (this.elements.discovery.newTitle && this.elements.discovery.newTitle.value || ''),
+            author: (this.elements.discovery.newAuthor && this.elements.discovery.newAuthor.value || ''),
+            year: (this.elements.discovery.newYear && this.elements.discovery.newYear.value || ''),
+            type: (this.elements.discovery.newType && this.elements.discovery.newType.value || 'Other'),
+            url: (this.elements.discovery.newUrl && this.elements.discovery.newUrl.value || '')
+        });
+        if (!result) return;
+        if (!result.ok) {
+            this.stateManager.showAlert(result.reason);
+            return;
+        }
+        this.closeSourceDiscoveryModal();
+        this.stateManager.showMessage(`Added "${result.bib.title}" to the tray.`, 'success');
+    }
+
+    /**
+     * Open the Attribute Source dialog for a specific node.
+     * Called by the graph controller when a node is clicked in the
+     * attribution tab. If no source is selected, we still open the
+     * dialog with a notice so the curator can see what the dialog
+     * looks like and pick a source from the tray.
+     * @param {number} nodeId - Target node's local id
+     */
+    openAttributeSourceModal(nodeId) {
+        const node = this.stateManager.state.nodes.find(n => n.id === nodeId);
+        if (!node) return;
+
+        this._attributeTargetNodeId = nodeId;
+
+        // Render dialog fields
+        if (this.elements.attributeSource) {
+            if (this.elements.attributeSource.targetTitle) {
+                this.elements.attributeSource.targetTitle.textContent = node.title ? `"${node.title}"` : `Node ${nodeId}`;
+            }
+            if (this.elements.attributeSource.fragmentStart) {
+                this.elements.attributeSource.fragmentStart.value = '';
+            }
+            if (this.elements.attributeSource.fragmentEnd) {
+                this.elements.attributeSource.fragmentEnd.value = '';
+            }
+            if (this.elements.attributeSource.info) {
+                const hash = this.stateManager.state.selectedTraySourceHash;
+                const bib = hash ? (this.stateManager.state.activeTray || []).find(b => b.hash === hash) : null;
+                if (bib) {
+                    this.elements.attributeSource.info.innerHTML = `
+                        <div class="attr-title">${this.escapeHtml(bib.title || 'Untitled')}</div>
+                        <div class="attr-author">${this.escapeHtml(bib.author || 'Unknown author')}${bib.year ? ' (' + this.escapeHtml(String(bib.year)) + ')' : ''}</div>
+                    `;
+                } else {
+                    this.elements.attributeSource.info.innerHTML = '<div class="attr-hint">No source selected. Pick one from the tray above first.</div>';
+                }
+            }
+        }
+
+        const modal = this.elements.modals.attributeSource;
+        if (modal) modal.style.display = 'flex';
+    }
+
+    /**
+     * Close the Attribute Source dialog.
+     */
+    closeAttributeSourceModal() {
+        this._attributeTargetNodeId = null;
+        const modal = this.elements.modals.attributeSource;
+        if (modal) modal.style.display = 'none';
+    }
+
+    /**
+     * Save the attribute dialog's fragment fields as a new source on the
+     * target node. Delegates to the ops controller. Per the prototype
+     * design, the source is kept selected on success so the curator
+     * can attribute the same source to several nodes in a row.
+     */
+    saveAttributeSource() {
+        const targetId = this._attributeTargetNodeId;
+        const fragmentStart = (this.elements.attributeSource && this.elements.attributeSource.fragmentStart && this.elements.attributeSource.fragmentStart.value || '').trim();
+        const fragmentEnd = (this.elements.attributeSource && this.elements.attributeSource.fragmentEnd && this.elements.attributeSource.fragmentEnd.value || '').trim();
+        const result = window.workspaceOpsController && window.workspaceOpsController.saveAttributeSource(targetId, fragmentStart, fragmentEnd);
+        this.closeAttributeSourceModal();
+        if (!result || !result.ok) {
+            this.stateManager.showAlert((result && result.reason) || 'Failed to attribute source.');
+            return;
+        }
+        this.stateManager.showMessage(`Attributed "${result.bib.title}" to node ${targetId}.`, 'success');
     }
 
     /**

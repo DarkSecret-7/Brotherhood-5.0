@@ -25,7 +25,7 @@
     <link rel="shortcut icon" type="image/x-icon" href="/frontend/assets/icon.png" />
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <link rel="stylesheet" href="/frontend/css/common.css">
-    <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=8">
+    <link rel="stylesheet" href="/frontend/css/lab_styles.css?v=9">
     <script src="/frontend/utils/theme.js" defer></script>
 </head>
 <body>
@@ -51,10 +51,12 @@
                 <select id="lab-tab-select" class="nav-tabs-select" onchange="labStateManager.setActiveTab(this.value)">
                     <option value="workspace">Node Draft</option>
                     <option value="graph">Graph Visualizer</option>
+                    <option value="attribution">Source Attribution</option>
                     <option value="save">Save Version</option>
                 </select>
                 <button id="tab-workspace" class="tab-btn active" onclick="labStateManager.setActiveTab('workspace')">Node Draft</button>
                 <button id="tab-graph" class="tab-btn" onclick="labStateManager.setActiveTab('graph')">Graph Visualizer</button>
+                <button id="tab-attribution" class="tab-btn" onclick="labStateManager.setActiveTab('attribution')">Source Attribution</button>
                 <button id="tab-save" class="tab-btn" onclick="labStateManager.setActiveTab('save')">Save Version</button>
             </div>
 
@@ -157,6 +159,40 @@
                         <p class="graph-helper-text">
                             Arrows point from <strong>prerequisite</strong> to <strong>dependent</strong> node.
                         </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Source Attribution -->
+            <div id="view-attribution" class="view-section">
+                <div class="attribution-layout">
+                    <div class="card" style="width: 100%;">
+                        <div class="section-header">
+                            <h2>Source Attribution (<span id="attribution-tray-count">0</span>/6)</h2>
+                        </div>
+
+                        <!-- Top tab strip: one tab per tray entry. Clicking
+                             a tab toggles selection (the same source can
+                             be deselected by clicking it again). The
+                             labels truncate as the window narrows, and
+                             collapse to the icon at small widths. -->
+                        <div id="attribution-tray-tabs" class="attribution-tabs" role="tablist" aria-label="Active bibliography sources"></div>
+
+                        <div id="attribution-hint" class="attribution-hint">
+                            Select a source from the tray, then click a node on the graph to attribute it.
+                        </div>
+
+                        <div class="attribution-actions">
+                            <button id="btn-open-source-discovery" class="btn btn-primary" onclick="labUIController.openSourceDiscoveryModal()"><span class="btn-icon">➕</span><span class="btn-text"> Add Source</span></button>
+                            <button id="btn-deselect-source" class="btn btn-secondary" onclick="labUIController.deselectActiveSource()" style="display: none;"><span class="btn-icon">✖</span><span class="btn-text"> Deselect</span></button>
+                        </div>
+
+                        <!-- Vestigial list container. Kept for fallback
+                             rendering and the empty-state copy; hidden by
+                             the tab-based CSS. -->
+                        <div id="attribution-tray-list" class="attribution-tray-list" hidden></div>
+
+                        <div id="attribution-graph-container" class="attribution-graph-container"></div>
                     </div>
                 </div>
             </div>
@@ -491,6 +527,125 @@
             </div>
         </div>
     </div>
+
+    <!-- Source Discovery Modal (Source Attribution Tab) -->
+    <div id="sourceDiscoveryModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>Add Source to Tray</h2>
+                <span class="close" onclick="labUIController.closeSourceDiscoveryModal()">&times;</span>
+            </div>
+            <div class="discovery-tabs">
+                <button id="discovery-tab-graph" class="discovery-tab active" data-panel="graph" onclick="labUIController.switchDiscoveryPanel('graph')">Search Graph Citations</button>
+                <button id="discovery-tab-global" class="discovery-tab" data-panel="global" onclick="labUIController.switchDiscoveryPanel('global')">Search Global Database</button>
+                <button id="discovery-tab-create" class="discovery-tab" data-panel="create" onclick="labUIController.switchDiscoveryPanel('create')">Create New Bibliography</button>
+            </div>
+
+            <div id="discovery-panel-graph" class="discovery-panel active">
+                <div class="form-group">
+                    <input type="text" id="graph-citation-search" placeholder="Search by title or author..." oninput="labUIController.filterGraphCitations()">
+                </div>
+                <div class="form-group">
+                    <label>Sort by</label>
+                    <select id="graph-citation-sort" onchange="labUIController.filterGraphCitations()">
+                        <option value="alphabetical">Alphabetical</option>
+                        <option value="most-used">Most used</option>
+                        <option value="recently-added">Recently added</option>
+                        <option value="nearby">Nearby nodes (BFS prerequisites)</option>
+                    </select>
+                </div>
+                <div id="graph-citation-results" class="discovery-results">
+                    <p class="empty-state">No citations in the current graph yet.</p>
+                </div>
+            </div>
+
+            <div id="discovery-panel-global" class="discovery-panel">
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <input type="text" id="global-bib-search" placeholder="Search global database by title or author..." style="flex: 1;" oninput="labUIController.filterGlobalBibliographies()">
+                    <button class="btn btn-primary" onclick="labUIController.filterGlobalBibliographies()">
+                        <span class="btn-icon">🔍</span><span class="btn-text"> Search</span>
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label>Filter by Type</label>
+                    <select id="global-bib-type" onchange="labUIController.filterGlobalBibliographies()">
+                        <option value="">All Types</option>
+                        <option value="PDF">PDF</option>
+                        <option value="Video">Video</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div id="global-bib-results" class="discovery-results">
+                    <p class="empty-state">Type a query above and click Search to query the database.</p>
+                </div>
+            </div>
+
+            <div id="discovery-panel-create" class="discovery-panel">
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" id="new-bib-title" placeholder="Source Title">
+                </div>
+                <div class="form-group">
+                    <label>Author</label>
+                    <input type="text" id="new-bib-author" placeholder="Author Name">
+                </div>
+                <div class="form-group">
+                    <label>Year</label>
+                    <input type="number" id="new-bib-year" placeholder="Year">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="new-bib-type">
+                        <option value="PDF">PDF</option>
+                        <option value="Video">Video</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="text" id="new-bib-url" placeholder="https://...">
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="labUIController.createNewBibliography()">
+                        <span class="btn-icon">➕</span><span class="btn-text"> Create &amp; Add to Tray</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="labUIController.closeSourceDiscoveryModal()">
+                        <span class="btn-icon">✖</span><span class="btn-text"> Cancel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribute Source Dialog (Source Attribution Tab) -->
+    <div id="attributeSourceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Attribute Source to <span id="attribute-target-node-title"></span></h2>
+                <span class="close" onclick="labUIController.closeAttributeSourceModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Source</label>
+                <div id="attribute-source-info" class="attribute-source-info"></div>
+            </div>
+            <div class="form-group">
+                <label>Fragment Start</label>
+                <input type="text" id="attribute-fragment-start" placeholder="e.g. pp 101, 12:40, Chapter 2, etc.">
+            </div>
+            <div class="form-group">
+                <label>Fragment End</label>
+                <input type="text" id="attribute-fragment-end" placeholder="e.g. pp 107, 15:26, Chapter 3, etc.">
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="labUIController.saveAttributeSource()">
+                    <span class="btn-icon">💾</span><span class="btn-text"> Save</span>
+                </button>
+                <button class="btn btn-secondary" onclick="labUIController.closeAttributeSourceModal()">
+                    <span class="btn-icon">✖</span><span class="btn-text"> Cancel</span>
+                </button>
+            </div>
+        </div>
+    </div>
     
     <div id="side-panel-overlay" class="side-panel-overlay"></div>
     <div id="side-panel" class="side-panel">
@@ -511,6 +666,7 @@
     <script src="/frontend/api/llm/llm-api-service.js"></script>
     <script src="/frontend/api/auth/auth-api-service.js"></script>
     <script src="/frontend/api/snapshots/snapshots-api-service.js"></script>
+    <script src="/frontend/api/bibliography/bibliography-api-service.js"></script>
     <script src="/frontend/utils/expression-utils.js"></script>
     <script src="/frontend/utils/knw-format.js"></script>
     <script src="/frontend/transformer/snapshots/snapshots-transformer.js"></script>

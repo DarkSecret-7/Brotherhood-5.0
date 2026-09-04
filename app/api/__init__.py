@@ -2,7 +2,7 @@
 API module initialization
 """
 from fastapi import APIRouter
-from . import auth, snapshots, proposals, authorship, utility, bookmarks, settings
+from . import auth, snapshots, proposals, authorship, utility, bookmarks, settings, bibliography
 
 # Create main router
 api_router = APIRouter()
@@ -15,3 +15,4 @@ api_router.include_router(authorship.router, tags=["authorship"])
 api_router.include_router(utility.router, tags=["utility"])
 api_router.include_router(bookmarks.router, tags=["bookmarks"])
 api_router.include_router(settings.router, tags=["settings"])
+api_router.include_router(bibliography.router, tags=["bibliography"])

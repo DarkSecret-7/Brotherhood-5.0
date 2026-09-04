@@ -29,6 +29,7 @@ class GraphController {
         // Graph elements
         this.elements = {
             graphContainer: document.getElementById('graph-container'),
+            attributionGraphContainer: document.getElementById('attribution-graph-container'),
             resetLayoutBtn: document.getElementById('btn-reset-layout'),
             randomizeBtn: document.getElementById('btn-randomize'),
             fixBtn: document.getElementById('btn-fix-positions'),
@@ -37,7 +38,7 @@ class GraphController {
             graphStatus: document.getElementById('graph-status'),
             cycleWarning: document.getElementById('cycle-warning')
         };
-        
+
         // Graph state
         // TODO: Replace with authorative state from stateManager
         this.graphState = {
@@ -54,7 +55,7 @@ class GraphController {
         this.removingPrerequisiteId = null;
         this.addAlpha = false;
         this.removeAlpha = false;
-        
+
         this.initializeElements();
         this.bindEventListeners();
         this.subscribeToStateChanges();
@@ -67,13 +68,14 @@ class GraphController {
         this.elements = {
             // Graph container
             graphContainer: document.getElementById('graph-container'),
-            
+            attributionGraphContainer: document.getElementById('attribution-graph-container'),
+
             // Control buttons
             resetLayoutBtn: document.querySelector('button[onclick*="restoreSavedPositions"]'),
             randomizeBtn: document.querySelector('button[onclick*="randomisePositions"]'),
             fixBtn: document.querySelector('button[onclick*="fixPositions"]'),
             refreshBtn: document.querySelector('button[onclick*="refreshGraph"]'),
-            
+
             // Status elements
             graphStatus: document.getElementById('graph-status'),
             cycleWarning: document.getElementById('cycle-warning')
@@ -88,6 +90,9 @@ class GraphController {
         window.addEventListener('resize', () => {
             if (this.visualizer) {
                 this.visualizer.handleResize();
+            }
+            if (this.attributionVisualizer) {
+                this.attributionVisualizer.handleResize();
             }
         });
     }
@@ -109,16 +114,27 @@ class GraphController {
      * @param {Object} state - Current state
      */
     handleStateChange(state) {
-        // Only update if we're on the graph tab
+        // Always keep `graphState` synced; the visualizers (graph and
+        // attribution) read from it. Without this, changes made on other
+        // tabs (e.g. adding a source) would not be reflected when the
+        // user revisits the graph/attribution tab.
+        this.updateGraphData();
+
         if (state.activeTab === 'graph') {
-            // Always update graph data first
-            this.updateGraphData();
-            
             // Initialize visualizer if not already done
             if (!this.visualizer) {
                 this.initializeVisualizer();
             } else {
                 this.updateVisualization();
+            }
+        } else if (state.activeTab === 'attribution') {
+            // The attribution tab has its own visualizer that mirrors
+            // the graph structure but adds a `📚 N` badge to each node
+            // showing how many bibliography sources are attached.
+            if (!this.attributionVisualizer) {
+                this.initializeAttributionVisualizer();
+            } else {
+                this.updateAttributionVisualization();
             }
         }
     }
@@ -471,13 +487,103 @@ class GraphController {
     }
 
     /**
+     * Initialize the second GraphVisualizer that lives inside the
+     * Source Attribution tab. Same renderer as the main graph but with:
+     *  - `showSourceCount: true` so each node label gets a `📚 N` badge
+     *    when the node has at least one non-deleted source.
+     *  - A different node-click handler that routes to
+     *    `labUIController.openAttributeSourceModal(nodeId)` instead of
+     *    opening the context menu. Domain/edge/pathway interactions are
+     *    intentionally a no-op for the prototype: attribution only
+     *    targets individual nodes.
+     */
+    initializeAttributionVisualizer() {
+        if (this.elements.attributionGraphContainer && !this.attributionVisualizer) {
+            console.log('GraphController: Creating new attribution GraphVisualizer');
+            this.attributionVisualizer = new GraphVisualizer(
+                this.elements.attributionGraphContainer,
+                {
+                    showSourceCount: true,
+                    onNodeClick: (event, nodeId) => this.handleAttributionNodeClick(event, nodeId),
+                    onPathwayClick: () => {},
+                    onEdgeClick: () => {},
+                    onDomainClick: () => {},
+                    onUnfocus: () => this.handleAttributionUnfocus()
+                }
+            );
+
+            console.log('GraphController: Attribution GraphVisualizer created');
+
+            this.updateAttributionVisualization();
+        } else {
+            console.log('GraphController: Cannot create attribution visualizer - container:', !!this.elements.attributionGraphContainer, 'visualizer:', !!this.attributionVisualizer);
+        }
+    }
+
+    /**
+     * Handle unfocus in the attribution tab (e.g. clicking canvas background).
+     * Deselects the active tray source.
+     */
+    handleAttributionUnfocus() {
+        if (this.stateManager) {
+            this.stateManager.deselectActiveTraySource();
+        }
+    }
+
+    /**
      * Update visualization with current graph data
      */
-    updateVisualization() {   
+    updateVisualization() {
         if (this.visualizer) {
-            this.applyPathwayHighlights();        
+            this.applyPathwayHighlights();
             this.visualizer.updateVisualization(this.graphState);
         }
+    }
+
+    /**
+     * Update the attribution visualizer. Re-derives the per-node source
+     * count from the authoritative workspace nodes (not the minimal
+     * `graphState.nodes` projection) so the badge always reflects the
+     * current state, including pending soft-deletes and additions.
+     */
+    updateAttributionVisualization() {
+        if (!this.attributionVisualizer) return;
+
+        const sourceCountById = this.buildSourceCountById();
+        this.attributionVisualizer.updateVisualization(this.graphState, sourceCountById);
+    }
+
+    /**
+     * Build a `Map<nodeId, number>` of non-deleted source counts, sourced
+     * from the workspace's authoritative node list. Soft-deleted
+     * (`_isDeleted` true) sources are excluded.
+     * @returns {Map<number|string, number>}
+     */
+    buildSourceCountById() {
+        const counts = new Map();
+        const nodes = (this.stateManager && this.stateManager.state && this.stateManager.state.nodes) || [];
+        nodes.forEach(n => {
+            if (!n || n._isDeleted) return;
+            const sources = Array.isArray(n.sources) ? n.sources : [];
+            const live = sources.filter(s => s && !s._isDeleted).length;
+            if (live > 0) counts.set(n.id, live);
+        });
+        return counts;
+    }
+
+    /**
+     * Node-click handler for the attribution visualizer. If a tray
+     * source is currently selected, immediately open the attribute
+     * dialog; otherwise open it anyway (per spec: "Single node only,
+     * always show dialog") so the user can see what the dialog looks
+     * like and pick a source from the tray first.
+     * @param {MouseEvent} event
+     * @param {number} nodeId
+     */
+    handleAttributionNodeClick(event, nodeId) {
+        if (typeof window.labUIController === 'undefined' || !window.labUIController) return;
+        if (typeof window.labUIController.openAttributeSourceModal !== 'function') return;
+        window.labUIController.openAttributeSourceModal(nodeId);
     }
 
     /**
@@ -700,6 +806,10 @@ class GraphController {
         if (this.visualizer) {
             this.visualizer.destroy();
             this.visualizer = null;
+        }
+        if (this.attributionVisualizer) {
+            this.attributionVisualizer.destroy();
+            this.attributionVisualizer = null;
         }
     }
 }

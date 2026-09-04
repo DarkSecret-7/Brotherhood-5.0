@@ -32,6 +32,12 @@ class GraphVisualizer {
             onPositionChange: options.onPositionChange || (() => {}),
             onDomainClick: options.onDomainClick || (() => {}),
             onUnfocus: options.onUnfocus || (() => {}),
+            // When true, the visualizer suffixes ` 📚 N` to each node's
+            // label where N is the value looked up in the
+            // `sourceCountById` map passed to `updateVisualization`.
+            // Used by the Source Attribution tab to surface, at a glance,
+            // how many bibliography sources each node has.
+            showSourceCount: options.showSourceCount === true,
             ...options
         };
 
@@ -531,11 +537,17 @@ class GraphVisualizer {
      * `domain.isCollapsed` flags into vis.js nodes/edges. Callers do not
      * pass pre-built edges anymore; they only pass the clean
      * `{ nodes, cycles, domains }` shape.
+     *
      * @param {Object} graphState - Graph state with nodes, cycles, domains
+     * @param {Map<number|string, number>} [sourceCountById] - Optional
+     *   map of node local_id -> count of non-deleted sources. Only used
+     *   when `options.showSourceCount` is true. When the count for a
+     *   node is > 0, the visualizer appends ` 📚 N` to that node's label.
      */
-    updateVisualization(graphState) {
+    updateVisualization(graphState, sourceCountById) {
         // Store graph state for domain hull rendering and remap lookups
         this.graphState = graphState;
+        this.currentSourceCountById = sourceCountById || null;
 
         if (!this.network) {
             // Try to initialize - if it fails, don't retry (will just fail again)
@@ -544,7 +556,7 @@ class GraphVisualizer {
                 return; // Initialization failed, don't retry
             }
             // After network is created, update with data
-            setTimeout(() => this.updateVisualization(graphState), 100);
+            setTimeout(() => this.updateVisualization(graphState, sourceCountById), 100);
             return;
         }
 
@@ -602,9 +614,22 @@ class GraphVisualizer {
             }
 
             const position = node.position || node.defaultPosition;
+            let label = `${node.id}: ${node.title || 'Untitled'}`;
+
+            // Source Attribution badge: when the visualizer was created
+            // with `showSourceCount: true`, append ` 📚 N` for every
+            // node that has N > 0 non-deleted sources. The map is
+            // optional; missing entries are treated as 0.
+            if (this.options.showSourceCount && this.currentSourceCountById) {
+                const count = this.currentSourceCountById.get(node.id) || 0;
+                if (count > 0) {
+                    label += ` 📚 ${count}`;
+                }
+            }
+
             const visNode = {
                 id: node.id,
-                label: `${node.id}: ${node.title || 'Untitled'}`,
+                label: label,
                 shape: 'box'
             };
 
